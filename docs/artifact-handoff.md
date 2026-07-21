@@ -3,7 +3,7 @@
 Codepatrol separates the work of deciding, reviewing, implementing, and verifying so each step can run in a different harness or session. The portable boundary is one version-controlled directory:
 
 ```text
-docs/codepatrol/<work-id>/
+.codepatrol/work/<work-id>/
 ├── handoff.yaml
 ├── spec.md
 ├── plan.md
@@ -39,10 +39,10 @@ The `work-id` is `<YYYY-MM-DD>-<slug>` with a numeric suffix on collision. A pac
 The CLI provides two deterministic operations, `record` and `validate`, the latter across three stages:
 
 ```bash
-codepatrol artifact record --manifest docs/codepatrol/<work-id>/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/work/<work-id>/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
 ```
 
 `record` validates the package boundary and atomically writes hashes. `validate` is read-only. Review validation requires a complete, unchanged producer handoff. Implementation validation additionally requires `review.md`, verdict `merge`, and `approval.reviewed_revision` equal to the current governing revision. Verification validation requires status `implemented`, a declared `implementation.md`, and that same intact approval. Absolute paths, traversal, duplicate declarations, missing files, package-escaping symlinks, stale hashes, and invalid lifecycle data fail explicitly.
@@ -61,7 +61,7 @@ The governing revision covers `spec.md`, `plan.md`, and producer evidence. A rev
 
 ## Cross-harness example
 
-1. Claude runs `codepatrol-plan`, commits `docs/codepatrol/2026-07-18-cache/`, and hands off status `ready-for-review`.
+1. Claude runs `codepatrol-plan`, commits `.codepatrol/work/2026-07-18-cache/`, and hands off status `ready-for-review`.
 2. Codex validates hashes, reviews code evidence, corrects an interface and its task, increments revision 1 to 2, writes `review.md`, and commits status `approved` with `reviewed_revision: 2`.
 3. Pi validates the approved package, reconstructs workflow tasks from `plan.md`, creates `implementation.md`, and executes only the ready dependency frontier.
 4. If Pi finds material baseline drift, it records the evidence and returns the package to `changes-requested`; it does not redesign the interface locally.

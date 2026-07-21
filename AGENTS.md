@@ -8,7 +8,7 @@
 - `README.md` is the functional product contract. Keep product behavior, public workflows, installation, and skill composition there.
 - This file contains instructions for harnesses developing or using Codepatrol. Do not add product promises here that are absent from the README.
 - `skills/catalog.yaml` is authoritative for primary/support roles, invocation edges, inputs, outputs, and mutation policy.
-- `docs/codepatrol/<work-id>/` is the durable interface between primary workflows. Decisions required by another harness belong in this package, not in conversation history.
+- `.codepatrol/work/<work-id>/` is the durable interface between primary workflows. Decisions required by another harness belong in this package, not in conversation history.
 - `.codepatrol/workflows/ledger.json` is resumable operational memory. It may be reconstructed from an artifact package and never replaces its governing specification, plan, review, or implementation journal.
 
 Do not create or maintain a root progress file. Record active work, decisions, evidence, blockers, and safe next actions with the native workflow commands.
@@ -41,7 +41,7 @@ Native delegation is optional. Delegate only bounded units with explicit scope, 
 Use one directory per independently reviewable change:
 
 ```text
-docs/codepatrol/<work-id>/
+.codepatrol/work/<work-id>/
 ├── handoff.yaml
 ├── spec.md
 ├── plan.md

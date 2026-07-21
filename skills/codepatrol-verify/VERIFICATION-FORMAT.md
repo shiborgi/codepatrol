@@ -1,6 +1,6 @@
 # Verification report format
 
-Write `docs/codepatrol/<work-id>/verification.md` when verifying an implemented package. Record executed evidence, never restated journal claims.
+Write `.codepatrol/work/<work-id>/verification.md` when verifying an implemented package. Record executed evidence, never restated journal claims.
 
 ```markdown
 # Verification — <name>

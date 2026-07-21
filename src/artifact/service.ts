@@ -25,9 +25,9 @@ function canonicalManifest(workspace: string, manifestPath: string): { absolute:
 	const canonicalWorkspace = realpathSync(workspace);
 	const absolute = resolveInside(canonicalWorkspace, manifestPath);
 	const workspaceRelative = relative(canonicalWorkspace, absolute).split("\\").join("/");
-	const match = /^docs\/codepatrol\/([^/]+)\/handoff\.yaml$/.exec(workspaceRelative);
+	const match = /^\.codepatrol\/work\/([^/]+)\/handoff\.yaml$/.exec(workspaceRelative);
 	if (!match || !WORK_ID.test(match[1])) {
-		throw artifactError("Manifest must be docs/codepatrol/<work-id>/handoff.yaml with a portable work id.");
+		throw artifactError("Manifest must be .codepatrol/work/<work-id>/handoff.yaml with a portable work id.");
 	}
 	if (!existsSync(absolute) || !statSync(absolute).isFile()) throw artifactError(`Artifact manifest does not exist: ${workspaceRelative}`);
 	return { absolute, relative: workspaceRelative, workId: match[1] };
@@ -193,13 +193,13 @@ function load(workspace: string, manifestPath: string): { manifest: ArtifactMani
 
 export function listArtifactPackages(workspace: string): { packages: ArtifactPackageSummary[]; warnings: string[] } {
 	const canonicalWorkspace = realpathSync(workspace);
-	const root = resolveInside(canonicalWorkspace, "docs/codepatrol");
+	const root = resolveInside(canonicalWorkspace, ".codepatrol/work");
 	const packages: ArtifactPackageSummary[] = [];
 	const warnings: string[] = [];
 	if (!existsSync(root) || !statSync(root).isDirectory()) return { packages, warnings };
 	for (const entry of readdirSync(root, { withFileTypes: true })) {
 		if (!entry.isDirectory()) continue;
-		const portable = `docs/codepatrol/${entry.name}/handoff.yaml`;
+		const portable = `.codepatrol/work/${entry.name}/handoff.yaml`;
 		const absolute = join(root, entry.name, "handoff.yaml");
 		if (!existsSync(absolute) || !statSync(absolute).isFile()) continue;
 		try {

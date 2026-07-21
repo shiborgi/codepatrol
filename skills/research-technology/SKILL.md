@@ -47,6 +47,6 @@ Never add the reference as a dependency, integration, adapter, plugin, compatibl
 
 ## Deliver and remember
 
-When invoked for a Codepatrol work package, write `docs/codepatrol/<work-id>/evidence/reference-<slug>.md` and declare it in `handoff.yaml`. When used standalone, write `docs/architecture/reference-<YYYY-MM-DD>-<slug>.md`, using a numeric suffix on collision. The calling primary workflow decides whether recommendations enter a specification or plan; research alone does not change architecture or code.
+When invoked for a Codepatrol work package, write `.codepatrol/work/<work-id>/evidence/reference-<slug>.md` and declare it in `handoff.yaml`. When used standalone, write `.codepatrol/architecture/reference-<YYYY-MM-DD>-<slug>.md`, using a numeric suffix on collision. The calling primary workflow decides whether recommendations enter a specification or plan; research alone does not change architecture or code.
 
 Record the analysis as an evidence item. Record only an accepted, durable conclusion as a decision or project-scoped memory, linking the analysis artifact and exact external revision.

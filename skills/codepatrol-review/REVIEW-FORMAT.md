@@ -1,6 +1,6 @@
 # Handoff review format
 
-Write `docs/codepatrol/<work-id>/review.md` when reviewing an artifact package.
+Write `.codepatrol/work/<work-id>/review.md` when reviewing an artifact package.
 
 ```markdown
 # Review — <name>

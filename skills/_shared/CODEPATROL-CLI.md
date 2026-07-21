@@ -17,11 +17,11 @@ codepatrol wiki status --workspace "$PWD" --format json
 codepatrol wiki validate --workspace "$PWD" --format json
 codepatrol wiki generate --workspace "$PWD" --format json
 codepatrol wiki record --input result.json --workspace "$PWD" --format json
-codepatrol artifact record --manifest docs/codepatrol/<work-id>/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage plan --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/work/<work-id>/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage plan --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
 codepatrol workflow create --input workflow.json --workspace "$PWD" --format json
 codepatrol workflow ready --workflow-id cpw-example --workspace "$PWD" --format json
 codepatrol workflow claim --id cpw-item --actor codex --workspace "$PWD" --format json

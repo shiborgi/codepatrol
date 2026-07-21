@@ -5,7 +5,7 @@ description: (codepatrol) Convert a decision-complete Codepatrol specification i
 
 # Writing Plans
 
-Write or repair `docs/codepatrol/<work-id>/plan.md` from the package's `spec.md`. Follow [PLAN-FORMAT.md](PLAN-FORMAT.md), the [artifact handoff contract](../_shared/ARTIFACTS.md), [solution-simplification](../solution-simplification/SKILL.md), and [verification-strategy](../verification-strategy/SKILL.md).
+Write or repair `.codepatrol/work/<work-id>/plan.md` from the package's `spec.md`. Follow [PLAN-FORMAT.md](PLAN-FORMAT.md), the [artifact handoff contract](../_shared/ARTIFACTS.md), [solution-simplification](../solution-simplification/SKILL.md), and [verification-strategy](../verification-strategy/SKILL.md).
 
 Read the complete spec and governing evidence. For brownfield work, use graph impact and verified source reads to name real paths, interfaces, callers, and tests. A plan must be executable by another harness with the repository and package but no conversation history.
 

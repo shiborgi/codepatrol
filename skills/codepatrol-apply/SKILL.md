@@ -11,10 +11,10 @@ Follow the [artifact handoff contract](../_shared/ARTIFACTS.md), [workflow memor
 
 ## Validate before mutation
 
-Identify the explicit `docs/codepatrol/<work-id>/handoff.yaml`; never choose the newest package. Start with `codepatrol status` to list open approved work when the user has not named a work id. On every new or resumed session run:
+Identify the explicit `.codepatrol/work/<work-id>/handoff.yaml`; never choose the newest package. Start with `codepatrol status` to list open approved work when the user has not named a work id. On every new or resumed session run:
 
 ```bash
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
 ```
 
 Stop before production edits unless all declared hashes match, status is `approved`, `implementing`, or resumable `blocked`, approval verdict is `approve` (or its deprecated alias `merge`), `approval.reviewed_revision` equals the manifest `revision`, and `review.md` is present. If status is `implemented`, report the existing result rather than execute twice. If resuming a verify-returned `implementing` package, read `verification.md`, validate the implementation stage, and rebuild only the affected workflow items; do not reopen the approved contract.
@@ -27,7 +27,7 @@ Run `workflow prime` when the manifest's workflow id is available. If the ledger
 
 For every deferred constraint whose later discovery matters, create a `deferred` workflow task that references its `DC-N` in `spec.md` and repeats the known ceiling, observable trigger, and bounded upgrade path. It must not enter the ready frontier until evidence shows that trigger occurred. The spec remains authoritative; this ledger item is only resumable operational memory, not a second debt contract.
 
-Create `docs/codepatrol/<work-id>/implementation.md` using [IMPLEMENTATION-FORMAT.md](IMPLEMENTATION-FORMAT.md), declare it in the manifest, set status `implementing`, record `steps.apply` with your harness, model when known, and the ISO completion time, then run `artifact record`. Do not modify approved `spec.md`, `plan.md`, producer evidence, or `review.md`.
+Create `.codepatrol/work/<work-id>/implementation.md` using [IMPLEMENTATION-FORMAT.md](IMPLEMENTATION-FORMAT.md), declare it in the manifest, set status `implementing`, record `steps.apply` with your harness, model when known, and the ISO completion time, then run `artifact record`. Do not modify approved `spec.md`, `plan.md`, producer evidence, or `review.md`.
 
 ## Execute the approved frontier
 

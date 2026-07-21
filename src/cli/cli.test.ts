@@ -230,7 +230,7 @@ test("CLI status summarizes open work and validates its options", () => {
 test("CLI records and validates a portable artifact handoff", () => {
 	const root = workspace();
 	try {
-		const directory = join(root, "docs", "codepatrol", "2026-07-18-cache");
+		const directory = join(root, ".codepatrol", "work", "2026-07-18-cache");
 		mkdirSync(directory, { recursive: true });
 		writeFileSync(join(directory, "spec.md"), "# Cache specification\n");
 		writeFileSync(join(directory, "plan.md"), "# Cache plan\n");
@@ -250,11 +250,11 @@ test("CLI records and validates a portable artifact handoff", () => {
 			"",
 		].join("\n"));
 
-		const recorded = run(["artifact", "record", "--manifest", "docs/codepatrol/2026-07-18-cache/handoff.yaml", "--workspace", root, "--format=json"]);
+		const recorded = run(["artifact", "record", "--manifest", ".codepatrol/work/2026-07-18-cache/handoff.yaml", "--workspace", root, "--format=json"]);
 		assert.equal(recorded.status, 0, recorded.stderr || recorded.stdout);
 		assert.match(JSON.parse(recorded.stdout).data.artifacts.spec.sha256, /^[a-f0-9]{64}$/);
 
-		const validated = run(["artifact", "validate", "--manifest", "docs/codepatrol/2026-07-18-cache/handoff.yaml", "--stage", "review", "--workspace", root, "--format=json"]);
+		const validated = run(["artifact", "validate", "--manifest", ".codepatrol/work/2026-07-18-cache/handoff.yaml", "--stage", "review", "--workspace", root, "--format=json"]);
 		assert.equal(validated.status, 0, validated.stderr || validated.stdout);
 		assert.equal(JSON.parse(validated.stdout).data.valid, true);
 	} finally { rmSync(root, { recursive: true, force: true }); }

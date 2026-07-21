@@ -1,6 +1,6 @@
 # ADR format
 
-Architectural Decision Records live in `docs/adr/`, named sequentially: `0001-short-slug.md`, `0002-short-slug.md`. Create the directory with the first ADR, not before.
+Architectural Decision Records live in `.codepatrol/adr/`, named sequentially: `0001-short-slug.md`, `0002-short-slug.md`. Create the directory with the first ADR, not before.
 
 The point of an ADR is to capture *that* a decision was made and *why* — so a future explorer (human or agent) doesn't re-litigate it. Format is secondary to that.
 
@@ -12,7 +12,7 @@ A title plus 1–3 sentences: the context, the decision, the reason.
 # 0003 — Keep the report as plain markdown
 
 Reviews are read in terminals and on git hosts, not in browsers. We render
-`docs/codepatrol/<work-id>/evidence/analysis.md` with Mermaid fences instead of generating
+`.codepatrol/work/<work-id>/evidence/analysis.md` with Mermaid fences instead of generating
 HTML; a browser-opening step was rejected because it breaks headless and
 remote sessions.
 ```

@@ -50,7 +50,7 @@ Wiki commands:
   wiki record --input <file|->
 
 Artifact handoff commands:
-  artifact record --manifest <docs/codepatrol/<work-id>/handoff.yaml>
+  artifact record --manifest <.codepatrol/work/<work-id>/handoff.yaml>
   artifact validate --manifest <path> --stage plan|review|implementation|verification
 
 Workflow memory commands:

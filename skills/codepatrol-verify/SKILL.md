@@ -14,7 +14,7 @@ Follow the [artifact handoff contract](../_shared/ARTIFACTS.md), [workflow memor
 Start with `codepatrol status` to list open work; verify only an explicitly chosen work id, otherwise help the user identify one. Never select by recency. On every new or resumed session run:
 
 ```bash
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
 ```
 
 A structural failure, hash mismatch, non-`implemented` status, missing `implementation.md`, or stale approval stops verification until provenance is restored. Read `spec.md`, `plan.md`, `review.md`, `implementation.md`, and governing evidence completely before inspecting code. Resume or create workflow memory so scope, executed checks, findings, and the safe next action survive interruption.
@@ -35,7 +35,7 @@ Independent read-only slices may split these duties per the execution protocol. 
 
 ## Record the verdict
 
-Write `docs/codepatrol/<work-id>/verification.md` using [VERIFICATION-FORMAT.md](VERIFICATION-FORMAT.md), declare it as `artifacts.verification` in the manifest, and choose exactly one verdict:
+Write `.codepatrol/work/<work-id>/verification.md` using [VERIFICATION-FORMAT.md](VERIFICATION-FORMAT.md), declare it as `artifacts.verification` in the manifest, and choose exactly one verdict:
 
 - `commit`: every acceptance criterion passed independent re-verification and no blocking finding remains. Set status `verified` and record `verification.verdict: commit`, `verification.verified_revision` equal to the current revision, verifier, and timestamp.
 - `improve`: one or more checks failed. Classify every blocking finding in `verification.md` as `implementation-defect` (delivered code/tests diverge from the still-correct approved contract) or `contract-defect` (spec, plan, or evidence is wrong or incomplete). If every finding is an implementation defect, set status `implementing` and return to `codepatrol-apply` with approval intact. If any finding is a contract defect, including a mixed set, set status `changes-requested` and return to `codepatrol-plan`. Ambiguity takes the stricter Plan route.

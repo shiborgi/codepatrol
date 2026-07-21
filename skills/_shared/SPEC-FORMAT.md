@@ -1,6 +1,6 @@
 # Specification format
 
-Write the governing specification to `docs/codepatrol/<work-id>/spec.md`. It is shared by project proposals, feature proposals, architecture improvements, and bug corrections. The plan reads this file, not the producing conversation.
+Write the governing specification to `.codepatrol/work/<work-id>/spec.md`. It is shared by project proposals, feature proposals, architecture improvements, and bug corrections. The plan reads this file, not the producing conversation.
 
 ```markdown
 # Specification — <name>

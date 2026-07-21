@@ -1,0 +1,49 @@
+schema_version: 1
+work_id: 2026-07-21-lean-docs
+origin:
+  skill: improve-codebase
+  mode: architecture
+workflow_id: cpw-298c772c4edf
+status: verified
+revision: 2
+artifacts:
+  spec:
+    path: spec.md
+    sha256: e70c704df4dae16c83266f3fd361bbd4880531199595ea92603a413f6856036d
+  plan:
+    path: plan.md
+    sha256: 499ecd35d8277f61275f1e44f4028d72640a85ce3b2a70af9f3390b81f2d005d
+  review:
+    path: review.md
+    sha256: 72fa1b77b7165bf46e6bde5150cdb58609069df2f44f694bb4b8bdba75c73c3b
+  implementation:
+    path: implementation.md
+    sha256: 9c8f397e74e31207c0b97dbcbf3a2a34a8b663a366f557fe62ae07523102096f
+approval:
+  verdict: approve
+  reviewed_revision: 2
+  reviewer: pi
+  reviewed_at: 2026-07-21T15:43:00Z
+updated_at: 2026-07-21T16:00:51.618Z
+steps:
+  plan:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T15:26:00Z
+  review:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T15:43:00Z
+  apply:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T15:53:00Z
+  verify:
+    harness: claude
+    model: claude-opus-4-8
+    completed_at: 2026-07-21T16:00:00Z
+verification:
+  verdict: commit
+  verified_revision: 2
+  verifier: claude
+  verified_at: 2026-07-21T16:00:00Z

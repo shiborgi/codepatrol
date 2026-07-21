@@ -1,6 +1,6 @@
 # Plan format
 
-Write the approved implementation instructions to `docs/codepatrol/<work-id>/plan.md`. It implements the adjacent `spec.md` and must be usable without conversation history. Execution state belongs in `implementation.md`, so implementation never changes this file.
+Write the approved implementation instructions to `.codepatrol/work/<work-id>/plan.md`. It implements the adjacent `spec.md` and must be usable without conversation history. Execution state belongs in `implementation.md`, so implementation never changes this file.
 
 ## Header and coverage
 

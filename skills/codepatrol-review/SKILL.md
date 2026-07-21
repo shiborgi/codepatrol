@@ -13,13 +13,13 @@ Follow the [artifact handoff contract](../_shared/ARTIFACTS.md), [workflow memor
 
 State one mode and identify exact inputs from content and user direction, never filename recency:
 
-- **Handoff review** — `docs/codepatrol/<work-id>/handoff.yaml`, `spec.md`, `plan.md`, and declared evidence.
+- **Handoff review** — `.codepatrol/work/<work-id>/handoff.yaml`, `spec.md`, `plan.md`, and declared evidence.
 - **Change review** — exact diff, branch, ref range, or project checkout plus its governing artifact package. If no governing artifact exists, state the inferred contract and the resulting confidence limit.
 
 For handoff review, begin with:
 
 ```bash
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
 ```
 
 A structural or hash failure stops review until provenance is restored. Read the complete spec and plan before exploring code. Reconcile the declared baseline with current source; material drift is a finding.
@@ -48,7 +48,7 @@ Record every adjustment and its reason in `review.md` using [REVIEW-FORMAT.md](R
 
 ## Record the verdict
 
-Write `docs/codepatrol/<work-id>/review.md`, add it to the manifest, and choose exactly one verdict:
+Write `.codepatrol/work/<work-id>/review.md`, add it to the manifest, and choose exactly one verdict:
 
 - `approve`: the resulting revision is decision-complete and executable;
 - `fix-first`: bounded corrections or evidence still remain;
@@ -57,7 +57,7 @@ Write `docs/codepatrol/<work-id>/review.md`, add it to the manifest, and choose 
 For `approve`, set status `approved` and record `approval.verdict: approve`, `approval.reviewed_revision` equal to the current revision, reviewer, and timestamp. Record `steps.review` with your harness, model when known, and the ISO completion time, then run `artifact record` followed by:
 
 ```bash
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
 ```
 
 Approval is complete only if it passes.

@@ -39,7 +39,7 @@ Use a disposable repository for graph/wiki exercises. Never point a rewrite payl
 
 ## Artifact handoff
 
-- Create `docs/codepatrol/<work-id>/` with `handoff.yaml`, `spec.md`, and `plan.md`; run `artifact record` and confirm all declared files receive SHA-256 values.
+- Create `.codepatrol/work/<work-id>/` with `handoff.yaml`, `spec.md`, and `plan.md`; run `artifact record` and confirm all declared files receive SHA-256 values.
 - Run `artifact validate --stage review`, hash the package before and after, and confirm validation is read-only.
 - Change `plan.md` without recording it and confirm review validation exits `4` with a hash mismatch.
 - Try `../`, an absolute path, a duplicate declaration, and a symlink outside the package; confirm each fails without rewriting the prior manifest.

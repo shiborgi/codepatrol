@@ -1,5 +1,14 @@
 node_modules/
 dist/
-.codepatrol/
 .DS_Store
 *.log
+# codepatrol: track the documented process artifacts in /work, /adr, /architecture;
+# everything else under .codepatrol/ is local-only runtime state.
+.codepatrol/workflows/
+.codepatrol/code-graph/
+.codepatrol/locks/
+.codepatrol/eval-runs/
+.codepatrol/wiki/
+.codepatrol/main-consolidation-*.json
+.codepatrol/scan-overview.json
+.codepatrol/version.json

@@ -55,7 +55,7 @@ test("project development uses native artifacts and workflow memory instead of h
 
 	assert.match(agents, /must not.*(?:provider|harness).*worktree|do not.*(?:provider|harness).*worktree/is);
 	assert.match(agents, /workflow prime/is);
-	assert.match(agents, /docs\/codepatrol\/<work-id>/);
+	assert.match(agents, /\.codepatrol\/work\/<work-id>/);
 	assert.match(readme, /codepatrol-plan.*spec\.md.*plan\.md/is);
 	assert.match(readme, /codepatrol-review.*review\.md/is);
 	assert.match(readme, /codepatrol-apply.*implementation\.md/is);

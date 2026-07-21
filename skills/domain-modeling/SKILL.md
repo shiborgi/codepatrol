@@ -1,6 +1,6 @@
 ---
 name: domain-modeling
-description: (codepatrol) Use when pinning down domain terminology or a ubiquitous language, recording an architectural decision, or when another skill needs the domain model maintained. Builds and sharpens CONTEXT.md and docs/adr/ inline as decisions crystallise.
+description: (codepatrol) Use when pinning down domain terminology or a ubiquitous language, recording an architectural decision, or when another skill needs the domain model maintained. Builds and sharpens CONTEXT.md and .codepatrol/adr/ inline as decisions crystallise.
 ---
 
 # Domain Modeling
@@ -25,9 +25,9 @@ Most repos have a single context:
 └── src/
 ```
 
-If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts; the map lists each context, where it lives, and how they relate. Each context then has its own `CONTEXT.md` (and optionally its own `docs/adr/`) inside its area, with the root `docs/adr/` reserved for system-wide decisions. When multiple contexts exist, infer which one the current topic belongs to before editing.
+If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts; the map lists each context, where it lives, and how they relate. Each context then has its own `CONTEXT.md` (and optionally its own `.codepatrol/adr/`) inside its area, with the root `.codepatrol/adr/` reserved for system-wide decisions. When multiple contexts exist, infer which one the current topic belongs to before editing.
 
-**Create files lazily** — only when there is something to write. No `CONTEXT.md`? Create it when the first term is resolved. No `docs/adr/`? Create it when the first ADR is needed. Never scaffold empty structure.
+**Create files lazily** — only when there is something to write. No `CONTEXT.md`? Create it when the first term is resolved. No `.codepatrol/adr/`? Create it when the first ADR is needed. Never scaffold empty structure.
 
 ## During the session
 

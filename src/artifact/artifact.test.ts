@@ -10,7 +10,7 @@ import { listArtifactPackages, recordArtifactPackage, validateArtifactPackage } 
 
 function fixture() {
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
-	const directory = join(root, "docs", "codepatrol", "2026-07-18-cache");
+	const directory = join(root, ".codepatrol", "work", "2026-07-18-cache");
 	mkdirSync(directory, { recursive: true });
 	writeFileSync(join(directory, "spec.md"), "# Specification\n");
 	writeFileSync(join(directory, "plan.md"), "# Plan\n");
@@ -22,7 +22,7 @@ function fixture() {
 		revision: 1,
 		artifacts: { spec: { path: "spec.md" }, plan: { path: "plan.md" } },
 	}));
-	return { root, directory, manifest: "docs/codepatrol/2026-07-18-cache/handoff.yaml", manifestPath: join(directory, "handoff.yaml") };
+	return { root, directory, manifest: ".codepatrol/work/2026-07-18-cache/handoff.yaml", manifestPath: join(directory, "handoff.yaml") };
 }
 
 const cliEntry = join(import.meta.dirname, "..", "cli", "main.ts");
@@ -366,7 +366,7 @@ test("a missing manifest is artifact state failure rather than an untrusted work
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-missing-"));
 	try {
 		await assert.rejects(
-			recordArtifactPackage(root, "docs/codepatrol/2026-07-18-missing/handoff.yaml"),
+			recordArtifactPackage(root, ".codepatrol/work/2026-07-18-missing/handoff.yaml"),
 			(error: unknown) => error instanceof CodepatrolError && error.code === "ARTIFACT_INVALID" && error.exitCode === 4,
 		);
 	} finally { rmSync(root, { recursive: true, force: true }); }
@@ -375,7 +375,7 @@ test("a missing manifest is artifact state failure rather than an untrusted work
 test("listArtifactPackages discovers packages leniently and skips malformed manifests", () => {
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
 	try {
-		const good = join(root, "docs", "codepatrol", "2026-07-19-alpha");
+		const good = join(root, ".codepatrol", "work", "2026-07-19-alpha");
 		mkdirSync(good, { recursive: true });
 		writeFileSync(join(good, "handoff.yaml"), stringifyYaml({
 			schema_version: 1,
@@ -386,7 +386,7 @@ test("listArtifactPackages discovers packages leniently and skips malformed mani
 			revision: 2,
 			artifacts: { spec: { path: "spec.md" }, plan: { path: "plan.md" } },
 		}));
-		const plain = join(root, "docs", "codepatrol", "2026-07-19-beta");
+		const plain = join(root, ".codepatrol", "work", "2026-07-19-beta");
 		mkdirSync(plain, { recursive: true });
 		writeFileSync(join(plain, "handoff.yaml"), stringifyYaml({
 			schema_version: 1,
@@ -396,24 +396,24 @@ test("listArtifactPackages discovers packages leniently and skips malformed mani
 			revision: 1,
 			artifacts: { spec: { path: "spec.md" }, plan: { path: "plan.md" } },
 		}));
-		const broken = join(root, "docs", "codepatrol", "2026-07-19-broken");
+		const broken = join(root, ".codepatrol", "work", "2026-07-19-broken");
 		mkdirSync(broken, { recursive: true });
 		writeFileSync(join(broken, "handoff.yaml"), "{");
-		mkdirSync(join(root, "docs", "codepatrol", "2026-07-19-empty"), { recursive: true });
+		mkdirSync(join(root, ".codepatrol", "work", "2026-07-19-empty"), { recursive: true });
 
 		const { packages, warnings } = listArtifactPackages(root);
 		assert.deepEqual(packages.map((pkg) => pkg.workId), ["2026-07-19-alpha", "2026-07-19-beta"]);
 		assert.equal(packages[0].status, "ready-for-review");
 		assert.equal(packages[0].revision, 2);
 		assert.equal(packages[0].workflowId, "cpw-abc");
-		assert.equal(packages[0].path, "docs/codepatrol/2026-07-19-alpha/handoff.yaml");
+		assert.equal(packages[0].path, ".codepatrol/work/2026-07-19-alpha/handoff.yaml");
 		assert.equal(packages[1].workflowId, undefined);
 		assert.equal(warnings.length, 1);
-		assert.match(warnings[0], /Skipped malformed artifact manifest: docs\/codepatrol\/2026-07-19-broken\/handoff\.yaml/);
+		assert.match(warnings[0], /Skipped malformed artifact manifest: \.codepatrol\/work\/2026-07-19-broken\/handoff\.yaml/);
 	} finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test("listArtifactPackages returns empty lists when docs/codepatrol is absent", () => {
+test("listArtifactPackages returns empty lists when .codepatrol/work is absent", () => {
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
 	try {
 		assert.deepEqual(listArtifactPackages(root), { packages: [], warnings: [] });
@@ -463,13 +463,13 @@ test("merge alias still validates but emits the deprecation warning", async () =
 test("invalid verdict is still rejected after rename", () => {
 	const raw = `schema_version: 1\nwork_id: 2026-07-21-invalid\nstatus: approved\nrevision: 1\norigin: { skill: improve-codebase, mode: architecture }\nartifacts:\n  spec: { path: spec.md }\n  plan: { path: plan.md }\napproval: { verdict: bogus, reviewed_revision: 1, reviewer: x, reviewed_at: 2026-07-18T12:00:00Z }\n`;
 	const dir = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
-	const pkgDir = join(dir, "docs", "codepatrol", "2026-07-21-invalid");
+	const pkgDir = join(dir, ".codepatrol", "work", "2026-07-21-invalid");
 	mkdirSync(pkgDir, { recursive: true });
 	try {
 		writeFileSync(join(pkgDir, "spec.md"), "");
 		writeFileSync(join(pkgDir, "plan.md"), "");
 		writeFileSync(join(pkgDir, "handoff.yaml"), raw);
-		const validation = validateArtifactPackage(dir, join("docs/codepatrol/2026-07-21-invalid/handoff.yaml"), "plan");
+		const validation = validateArtifactPackage(dir, join(".codepatrol/work/2026-07-21-invalid/handoff.yaml"), "plan");
 		assert.equal(validation.valid, false);
 		assert.ok(validation.errors.some((error) => /approval.verdict/.test(error)));
 	} finally { rmSync(dir, { recursive: true, force: true }); }

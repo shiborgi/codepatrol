@@ -7,7 +7,7 @@ Operational memory under `.codepatrol/workflows/` helps one harness resume. It i
 ## Canonical layout
 
 ```text
-docs/codepatrol/<work-id>/
+.codepatrol/work/<work-id>/
 ├── handoff.yaml
 ├── spec.md
 ├── plan.md
@@ -138,15 +138,15 @@ implemented ── improve(contract-defect or mixed) ──▶ changes-requested
 After writing a draft package, the producer records its hashes and runs the deterministic plan check before sealing:
 
 ```bash
-codepatrol artifact record --manifest docs/codepatrol/<work-id>/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage plan --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/work/<work-id>/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage plan --workspace "$PWD" --format json
 ```
 
 After setting `ready-for-review` and recording hashes, the producer validates the review handoff:
 
 ```bash
-codepatrol artifact record --manifest docs/codepatrol/<work-id>/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/work/<work-id>/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
 ```
 
 Reviewer first validates the incoming package, then records its review and runs either review validation for `changes-requested` or implementation validation for `approved`.
@@ -154,13 +154,13 @@ Reviewer first validates the incoming package, then records its review and runs 
 Implementer begins every new or resumed session with:
 
 ```bash
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
 ```
 
 Verifier begins with:
 
 ```bash
-codepatrol artifact validate --manifest docs/codepatrol/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
 ```
 
 Hash mismatch, missing approval, stale review revision, material baseline drift, or an unresolved decision is a stop condition, not permission to infer the missing contract.

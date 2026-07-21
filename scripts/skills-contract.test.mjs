@@ -150,7 +150,7 @@ test("primary workflows exchange one canonical, revisioned artifact package", ()
 	const implement = metadata("codepatrol-apply").content;
 
 	for (const producer of [propose]) {
-		assert.match(producer, /docs\/codepatrol\/<work-id>/);
+		assert.match(producer, /\.codepatrol\/work\/<work-id>/);
 		assert.match(producer, /handoff\.yaml/);
 		assert.match(producer, /spec\.md/);
 		assert.match(producer, /plan\.md/);

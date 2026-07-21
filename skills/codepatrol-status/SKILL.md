@@ -17,7 +17,7 @@ Run:
 codepatrol status --workspace "$PWD" --format json
 ```
 
-The summary lists open workflow roots from the ledger and non-`implemented` artifact packages from `docs/codepatrol/`, correlated by `workflow_id`. Use `--all` to include closed workflows and implemented packages.
+The summary lists open workflow roots from the ledger and non-`implemented` artifact packages from `.codepatrol/work/`, correlated by `workflow_id`. Use `--all` to include closed workflows and implemented packages.
 
 ## Present and route
 

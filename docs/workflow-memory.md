@@ -98,7 +98,7 @@ Query `workflow ready`, claim one returned ID, implement within its scope, and c
 ```json
 {
   "summary": "Compared two designs and selected the segment-based index.",
-  "artifacts": ["docs/codepatrol/2026-07-18-search/spec.md"]
+  "artifacts": [".codepatrol/work/2026-07-18-search/spec.md"]
 }
 ```
 
@@ -114,7 +114,7 @@ Claims are atomic. A competing actor receives `WORKFLOW_CONFLICT` and must selec
   "scope": "project",
   "title": "Reference-project policy",
   "summary": "External projects supply concepts for this target project, never automatic integrations.",
-  "artifacts": ["docs/codepatrol/2026-07-18-memory/evidence/reference-concepts.md"]
+  "artifacts": [".codepatrol/work/2026-07-18-memory/evidence/reference-concepts.md"]
 }
 ```
 
@@ -122,7 +122,7 @@ Use project scope only for knowledge that should appear when other workflows res
 
 `workflow prime` selects the requested workflow, or the most recently updated active workflow when no ID is given. Its token budget is converted to a bounded context containing the objective, project memories, decisions, active/ready/blocked work, recent results, artifacts, and next actions.
 
-Record memory after meaningful events rather than fixed phases: settled decisions, confirmed or rejected hypotheses, blockers, produced artifacts, verification results, interruptions, and safe next actions. A different harness may receive only `docs/codepatrol/<work-id>/`, so the ledger cannot contain a decision required to understand the specification or plan. Never store secrets, raw conversations, large logs, or full delegated-worker output.
+Record memory after meaningful events rather than fixed phases: settled decisions, confirmed or rejected hypotheses, blockers, produced artifacts, verification results, interruptions, and safe next actions. A different harness may receive only `.codepatrol/work/<work-id>/`, so the ledger cannot contain a decision required to understand the specification or plan. Never store secrets, raw conversations, large logs, or full delegated-worker output.
 
 ## Compaction and recovery
 
