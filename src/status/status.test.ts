@@ -28,7 +28,7 @@ test("statusSummary treats implemented packages as open work awaiting verificati
 	const root = workspace();
 	try {
 		const open = await createWorkflowItem(root, { kind: "workflow", title: "Active feature", nextAction: "Implement T3." });
-		const closed = await createWorkflowItem(root, { kind: "workflow", title: "Old work" });
+		const closed = await createWorkflowItem(root, { kind: "workflow", title: "Old work", status: "closed" });
 		await closeWorkflowItem(root, closed.id, { summary: "done" });
 		writePackage(root, "2026-07-19-alpha", { status: "ready-for-review", workflow_id: open.id });
 		writePackage(root, "2026-07-19-beta", { status: "implemented" });

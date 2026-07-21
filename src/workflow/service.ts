@@ -5,6 +5,7 @@ import { withWorkspaceLock } from "../shared/lock.js";
 import { resolveInside } from "../shared/workspace.js";
 import { readWorkflowLedger, writeWorkflowLedger } from "./store.js";
 import {
+	CLOSED_WORKFLOW_STATUS,
 	WORKFLOW_KINDS,
 	WORKFLOW_RELATIONS,
 	WORKFLOW_STATUSES,
@@ -20,6 +21,7 @@ import {
 	type WorkflowRootSummary,
 	type WorkflowStatus,
 } from "./types.js";
+import { assertNextActionInvariant } from "./types.js";
 
 interface OperationOptions {
 	signal?: AbortSignal;
@@ -198,6 +200,8 @@ function createInLedger(ledger: WorkflowLedgerV1, input: CreateWorkflowInput, no
 	if (kind === "workflow" && input.workflowId) invalid("A workflow root cannot specify workflowId.");
 	const status = input.status === undefined ? "open" : validateStatus(input.status);
 	if (status === "in-progress") invalid("Create work as open and use workflow claim to start it.");
+	if (status !== "closed" && input.nextAction === undefined) invalid("nextAction must be a non-empty string while status is not closed.");
+	const nextActionValue = input.nextAction === undefined ? undefined : nonEmptyString(input.nextAction, "nextAction", 4_000);
 	const item: WorkflowItemV1 = {
 		schemaVersion: 1,
 		id,
@@ -206,7 +210,7 @@ function createInLedger(ledger: WorkflowLedgerV1, input: CreateWorkflowInput, no
 		scope: input.scope ?? "workflow",
 		title: nonEmptyString(input.title, "title"),
 		summary: optionalString(input.summary, "summary"),
-		...(input.nextAction === undefined ? {} : { nextAction: nonEmptyString(input.nextAction, "nextAction", 4_000) }),
+		...(nextActionValue === undefined ? {} : { nextAction: nextActionValue }),
 		status,
 		priority: priority(input.priority),
 		...(input.parentId === undefined ? {} : { parentId: nonEmptyString(input.parentId, "parentId", 100) }),
@@ -239,8 +243,8 @@ export async function updateWorkflowItem(workspace: string, id: string, input: U
 		if (input.title !== undefined) item.title = nonEmptyString(input.title, "title");
 		if (input.summary !== undefined) item.summary = optionalString(input.summary, "summary");
 		if (input.nextAction !== undefined) {
-			if (input.nextAction === null) delete item.nextAction;
-			else item.nextAction = nonEmptyString(input.nextAction, "nextAction");
+			if (input.nextAction === null) invalid("Use workflow close with a result to clear nextAction.");
+			item.nextAction = nonEmptyString(input.nextAction, "nextAction", 4_000);
 		}
 		if (input.status !== undefined) {
 			item.status = validateStatus(input.status);
@@ -333,7 +337,7 @@ export async function closeWorkflowItem(workspace: string, id: string, result: C
 		}
 		item.summary = nonEmptyString(result.summary, "summary", 20_000);
 		item.artifacts = [...new Set([...item.artifacts, ...stringList(result.artifacts, "artifacts", 200)])];
-		item.status = "closed";
+		item.status = CLOSED_WORKFLOW_STATUS;
 		item.closedAt = now.toISOString();
 		item.updatedAt = now.toISOString();
 		delete item.nextAction;

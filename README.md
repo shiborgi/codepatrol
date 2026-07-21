@@ -197,7 +197,7 @@ The incremental graph supports TypeScript/TSX, JavaScript, Python, Go, Java, and
 
 ### OKF wiki
 
-`docs/wiki/` is always an OKF v0.1 bundle, never Codepatrol operational state. The root `index.md` declares only `okf_version: "0.1"`; conceptual pages have YAML frontmatter with a non-empty `type`; subdirectory indexes and `log.md` have no frontmatter. Unknown fields and concept types are preserved. Broken links and recommended-field omissions are warnings, while malformed structural fields are errors.
+`docs/wiki/` is an OKF v0.1 bundle produced by the CLI; the directory is absent by default and a fresh checkout must run `codepatrol wiki status` (which reports `absent`) and then `codepatrol wiki generate` to produce the bundle. A missing bundle is a valid current state, not a defect. Do not commit a placeholder `index.md`; let the generator own the bundle. The root `index.md` declares only `okf_version: "0.1"`; conceptual pages have YAML frontmatter with a non-empty `type`; subdirectory indexes and `log.md` have no frontmatter. Unknown fields and concept types are preserved. Broken links and recommended-field omissions are warnings, while malformed structural fields are errors.
 
 The freshness manifest lives separately at `.codepatrol/wiki/manifest.json`. `wiki status` requires a full rewrite when an existing tree is nonconformant, uses another OKF version, lacks a compatible manifest, or disagrees with the manifest's concept set. A rewrite does not import legacy wiki pages or metadata.
 

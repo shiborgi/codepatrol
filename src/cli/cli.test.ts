@@ -115,7 +115,7 @@ test("CLI workflow commands persist, claim, close, and resume native memory", ()
 	try {
 		const created = run(
 			["workflow", "create", "--input", "-", "--workspace", root, "--format=json"],
-			JSON.stringify({ kind: "workflow", title: "Build target project" }),
+			JSON.stringify({ kind: "workflow", title: "Build target project", nextAction: "Plan the project." }),
 		);
 		assert.equal(created.status, 0, created.stderr || created.stdout);
 		const workflow = JSON.parse(created.stdout).data;
@@ -174,7 +174,7 @@ test("CLI workflow prime warns when multiple active workflows exist", () => {
 		for (const title of ["First active", "Second active"]) {
 			const created = run(
 				["workflow", "create", "--input", "-", "--workspace", root, "--format=json"],
-				JSON.stringify({ kind: "workflow", title }),
+				JSON.stringify({ kind: "workflow", title, nextAction: `Plan ${title}.` }),
 			);
 			assert.equal(created.status, 0, created.stderr || created.stdout);
 		}
@@ -200,7 +200,7 @@ test("CLI status summarizes open work and validates its options", () => {
 
 		const created = run(
 			["workflow", "create", "--input", "-", "--workspace", root, "--format=json"],
-			JSON.stringify({ kind: "workflow", title: "Summarize me" }),
+			JSON.stringify({ kind: "workflow", title: "Summarize me", nextAction: "Plan the summary." }),
 		);
 		assert.equal(created.status, 0, created.stderr || created.stdout);
 		const workflow = JSON.parse(created.stdout).data;

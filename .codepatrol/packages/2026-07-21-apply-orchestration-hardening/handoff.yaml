@@ -1,0 +1,62 @@
+schema_version: 1
+work_id: 2026-07-21-apply-orchestration-hardening
+origin:
+  skill: improve-codebase
+  mode: architecture
+workflow_id: cpw-7b1ff14e9687
+status: verified
+revision: 2
+artifacts:
+  spec:
+    path: spec.md
+    sha256: 133e56f14b4641ace962d7f8c2de6e918de4480126701347bf7b7e4a86ee814d
+  plan:
+    path: plan.md
+    sha256: cc6f0ae03c78bd5f4e16857fb3b69e85778d8a462c5f44aba1022a6415f8662b
+  review:
+    path: review.md
+    sha256: 33379ffc4f6df08bd508ffe5755bf03bb1147e2369b70ed7e539a7efa620138d
+  implementation:
+    path: implementation.md
+    sha256: 2b1e2db8e2bd55d275b1c4ee4461238bb0f5bc1606e7e0949fb33c7271aff175
+  verification:
+    path: verification.md
+    sha256: 6ad520bc2c65060eef7b59ea2e69856b0d8b6b90ca3cdb3d0e3f0dfd00dee06d
+  evidence:
+    - path: evidence/analysis.md
+      sha256: 5315829d14f8b281fd06733c28b6b944f79442e36b7ce15aff110de32278ba98
+    - path: evidence/reference-concepts.md
+      sha256: 0d24116adc28aa52e0c66fe859e6b07126c6c581e81ed423011106f3b3607c1f
+    - path: evidence/qodo-disposition.md
+      sha256: d4726a4011f32f5bd9f7a11064a6c81b1cf6f68d0be7aec1485c1de5581dc2e2
+implementation:
+  base_ref: 1f03fd2
+  target: current-checkout
+approval:
+  verdict: approve
+  reviewed_revision: 2
+  reviewer: pi
+  reviewed_at: 2026-07-21T20:05:00Z
+verification:
+  verdict: commit
+  verified_revision: 2
+  verifier: pi
+  verified_at: 2026-07-21T20:36:00Z
+steps:
+  plan:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T19:26:40Z
+  review:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T20:05:00Z
+  apply:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T20:30:00Z
+  verify:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T20:36:00Z
+updated_at: 2026-07-21T20:36:42.454Z

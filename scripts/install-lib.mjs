@@ -8,6 +8,20 @@ import { parse as parseYaml } from "yaml";
 export const HARNESSES = ["pi", "claude", "codex", "kiro-ide", "opencode"];
 const SHARED = new Set(["codex", "opencode"]);
 
+/**
+ * Resolve the symlink type for a source. Files use `"file"`, directories use
+ * `"dir"`, anything else is rejected. The result is the single value passed
+ * to every create/relink/uninstall/rollback path so file-kind symlinks (for
+ * example `.opencode/commands/*.md`) and directory-kind symlinks (skill
+ * directories) round-trip identically.
+ */
+function linkTypeFor(source) {
+	const stat = lstatSync(source);
+	if (stat.isDirectory()) return "dir";
+	if (stat.isFile()) return "file";
+	throw new Error(`Refusing to symlink unsupported source type: ${source}`);
+}
+
 export function parseInstallerArgs(argv) {
 	let harness = "all";
 	let dryRun = false;
@@ -138,11 +152,11 @@ function diagnosticError(error, output) {
 // (especially under --dry-run) instead of aborting at the first.
 function preflightLink(source, target, roots) {
 	const current = lstat(target);
-	if (!current) return { source, target, create: true };
+	if (!current) return { source, target, linkType: linkTypeFor(source), create: true };
 	if (current.isSymbolicLink()) {
 		const link = canonicalLinkTarget(target);
-		if (link === source) return { source, target, create: false };
-		if (isUnderRoots(link, roots)) return { source, target, create: true, relink: true };
+		if (link === source) return { source, target, linkType: linkTypeFor(source), create: false };
+		if (isUnderRoots(link, roots)) return { source, target, linkType: linkTypeFor(source), create: true, relink: true };
 		return { source, target, conflict: `currently -> ${link}` };
 	}
 	return { source, target, conflict: "exists and is not a symlink" };
@@ -175,7 +189,7 @@ function applyLinkPlan(plan, dryRun, output) {
 			if (!dryRun) {
 				if (operation.relink) unlinkSync(operation.target);
 				mkdirSync(dirname(operation.target), { recursive: true });
-				symlinkSync(operation.source, operation.target, "dir");
+				symlinkSync(operation.source, operation.target, operation.linkType);
 				created.push(operation);
 			}
 		}
@@ -201,7 +215,7 @@ function preflightRemoval(source, target, roots) {
 	if (!current) return { source, target, remove: false, reason: "absent" };
 	if (current.isSymbolicLink()) {
 		const link = canonicalLinkTarget(target);
-		if (link === source || isUnderRoots(link, roots)) return { source, target, remove: true };
+		if (link === source || isUnderRoots(link, roots)) return { source, target, linkType: linkTypeFor(source), remove: true };
 	}
 	return { source, target, remove: false, reason: "non-owned" };
 }
@@ -234,7 +248,8 @@ function rollbackRemovals(removed, output) {
 			continue;
 		}
 		mkdirSync(dirname(operation.target), { recursive: true });
-		symlinkSync(operation.source, operation.target, "dir");
+		const restoreType = operation.linkType ?? linkTypeFor(operation.source);
+		symlinkSync(operation.source, operation.target, restoreType);
 		output.push(`restored ${operation.target}`);
 	}
 }
@@ -358,3 +373,6 @@ export function verify({ root, home = homedir(), harnesses }) {
 	}
 	return { ok, output };
 }
+
+// Exported for unit tests; not part of the public installer surface.
+export const __internal = { linkTypeFor, preflightLink, rollbackLinks, rollbackRemovals, runPi, diagnosticError };

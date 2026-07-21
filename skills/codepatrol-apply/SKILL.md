@@ -7,7 +7,7 @@ description: (codepatrol) Implement a Codepatrol artifact package only after rev
 
 Execute an approved proposal without inheriting the producer's conversation. Act as the **Implementer** defined in [ROLES.md](../_shared/ROLES.md): own bounded test-first mutation, never redesign the approved contract. The artifact package is the contract; operational workflow memory is rebuilt or resumed execution state.
 
-Follow the [artifact handoff contract](../_shared/ARTIFACTS.md), [workflow memory contract](../_shared/WORKFLOW.md), and [portable execution protocol](../_shared/EXECUTION.md). Use [execute-change](../execute-change/SKILL.md) for each bounded mutation.
+Follow the [artifact handoff contract](../_shared/ARTIFACTS.md), [workflow memory contract](../_shared/WORKFLOW.md), and [portable execution protocol](../_shared/EXECUTION.md). Use [execute-change](../execute-change/SKILL.md) for each claimed task; the catalog trigger `always-before-task-mutation` is the only path that invokes [execute-change](../execute-change/SKILL.md) from Apply.
 
 ## Stop rule (mandatory)
 

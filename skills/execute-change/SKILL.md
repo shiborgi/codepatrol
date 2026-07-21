@@ -19,6 +19,8 @@ If any precondition is false, do not mutate. Return the exact missing contract t
 
 Read all files in scope and their graph neighbors before editing. For behavior change, run the specified check and observe the expected failure; a setup/typo failure does not count as red. For behavior-preserving refactoring, establish characterization coverage at the public seam.
 
+The Apply contract invokes this skill with the single trigger `always-before-task-mutation` from `codepatrol-apply` and from itself for nested work. Apply decides when to invoke this skill based on the trigger table in `skills/catalog.yaml`; do not invoke a different support skill unless a catalog trigger is true.
+
 Invoke [solution-simplification](../solution-simplification/SKILL.md) before mutation. Confirm the task still uses the approved ladder rung, reuses the declared local/platform capability, and introduces no surface absent from the plan. A simpler mechanical implementation within the same interface is allowed and recorded; a semantic simplification returns to review.
 
 Make the smallest coherent change that satisfies the task. Do not redesign, bundle drive-by cleanup, weaken checks, change public behavior accidentally, or modify the approved spec/plan/review. Use [domain-modeling](../domain-modeling/SKILL.md) or [codebase-wiki](../codebase-wiki/SKILL.md) only when the approved task requires those project artifacts.

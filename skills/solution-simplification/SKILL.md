@@ -68,4 +68,4 @@ Each finding names the exact location, removable surface, replacement, safety ch
 
 Report actual surface delta only. The result must not report savings in lines, cost, tokens, or time for a live project without a controlled baseline; the unbuilt alternative is not measured evidence.
 
-_Concepts adapted from [Ponytail v4.8.4](https://github.com/DietrichGebert/ponytail/tree/v4.8.4) into Codepatrol's artifact and workflow model; no dependency or integration._
+_Concepts adapted from [Ponytail v4.8.4 (commit `bc9ee949d5f439e8b9f3bb92c6d6d3d1e6ebd324`)](https://github.com/DietrichGebert/ponytail/tree/bc9ee949d5f439e8b9f3bb92c6d6d3d1e6ebd324) into Codepatrol's artifact and workflow model; no dependency or integration._

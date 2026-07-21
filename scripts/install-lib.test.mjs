@@ -3,7 +3,7 @@ import test from "node:test";
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { destinations, install, parseInstallerArgs, uninstall, verify } from "./install-lib.mjs";
+import { __internal, destinations, install, parseInstallerArgs, uninstall, verify } from "./install-lib.mjs";
 
 delete process.env.XDG_CONFIG_HOME;
 
@@ -13,6 +13,26 @@ function fixture() {
 	mkdirSync(join(root, "skills", "alpha"), { recursive: true });
 	writeFileSync(join(root, "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: test\n---\n");
 	return { root, home };
+}
+
+/**
+ * Run the body with a fake `codepatrol` executable placed in front of PATH
+ * so `verify()` can always resolve it without depending on a globally
+ * installed CLI. Returns the body result and restores PATH afterwards.
+ */
+function withFakeCodepatrolBin(home, body) {
+	const previousPath = process.env.PATH;
+	const bin = join(home, "bin");
+	mkdirSync(bin, { recursive: true });
+	const stub = join(bin, "codepatrol");
+	writeFileSync(stub, "#!/bin/sh\nexit 0\n");
+	chmodSync(stub, 0o755);
+	process.env.PATH = `${bin}${previousPath ? `:${previousPath}` : ""}`;
+	try {
+		return body();
+	} finally {
+		process.env.PATH = previousPath;
+	}
 }
 
 test("all harnesses deduplicate the shared Agent Skills destination and add OpenCode commands", () => {
@@ -149,7 +169,7 @@ test("shared links remain until the last shared harness is uninstalled", () => {
 	}
 });
 
-test("opencode install links primary slash commands next to shared skills", () => {
+test("opencode install links primary slash commands as files next to shared skills as directories", () => {
 	const { root, home } = fixture();
 	try {
 		mkdirSync(join(root, "skills", "codepatrol-plan"), { recursive: true });
@@ -164,12 +184,15 @@ test("opencode install links primary slash commands next to shared skills", () =
 		const command = join(home, ".config", "opencode", "commands", "codepatrol-plan.md");
 		assert.ok(lstatSync(skill).isSymbolicLink(), "primary skill is linked under shared skills");
 		assert.ok(lstatSync(command).isSymbolicLink(), "command template is linked");
+		assert.equal(resolve(join(skill, ".."), readlinkSync(skill)), join(root, "skills", "codepatrol-plan"));
 		assert.equal(resolve(join(command, ".."), readlinkSync(command)), join(root, ".opencode", "commands", "codepatrol-plan.md"));
 		assert.equal(existsSync(join(home, ".config", "opencode", "commands", "ignore-me.md")), false, "non-codepatrol and non-primary commands are not linked");
 		assert.equal(existsSync(join(home, ".agents", "skills", "alpha")), false, "support skill stays out of the shared destination");
 
-		const result = verify({ root, home, harnesses: ["opencode"] });
-		assert.equal(result.ok, true, result.output.join("\n"));
+		withFakeCodepatrolBin(home, () => {
+			const result = verify({ root, home, harnesses: ["opencode"] });
+			assert.equal(result.ok, true, result.output.join("\n"));
+		});
 
 		uninstall({ root, home, harnesses: ["opencode"] });
 		assert.equal(existsSync(command), false, "command link is removed on uninstall");
@@ -298,3 +321,42 @@ test("failed Pi removal leaves the package registry installed", () => {
 		rmSync(home, { recursive: true, force: true });
 	}
 });
+
+test("linkTypeFor rejects unsupported source kinds", () => {
+	const root = mkdtempSync(join(tmpdir(), "codepatrol-linktype-"));
+	try {
+		writeFileSync(join(root, "file.txt"), "x");
+		mkdirSync(join(root, "sub"));
+		assert.equal(__internal.linkTypeFor(join(root, "file.txt")), "file");
+		assert.equal(__internal.linkTypeFor(join(root, "sub")), "dir");
+		// A path whose lstat is neither a regular file nor a directory
+		// (e.g. a dangling symlink target) must surface as an error rather
+		// than silently fall through to "dir".
+		symlinkSync(join(root, "missing-target"), join(root, "dangling"), "file");
+		assert.throws(() => __internal.linkTypeFor(join(root, "dangling")), /Refusing to symlink unsupported source type/);
+	} finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("install creates a file-kind OpenCode command link and the skill link as a directory", () => {
+	const { root, home } = fixture();
+	try {
+		mkdirSync(join(root, "skills", "codepatrol-plan"), { recursive: true });
+		writeFileSync(join(root, "skills", "codepatrol-plan", "SKILL.md"), "---\nname: codepatrol-plan\ndescription: t\n---\n");
+		mkdirSync(join(root, ".opencode", "commands"), { recursive: true });
+		writeFileSync(join(root, ".opencode", "commands", "codepatrol-plan.md"), "---\ndescription: t\n---\nbody\n");
+		writeFileSync(join(root, "skills", "catalog.yaml"), "version: 1\nskills:\n  codepatrol-plan:\n    role: primary\n  alpha:\n    role: support\n");
+		install({ root, home, harnesses: ["opencode"] });
+		const skill = join(home, ".agents", "skills", "codepatrol-plan");
+		const command = join(home, ".config", "opencode", "commands", "codepatrol-plan.md");
+		assert.ok(lstatSync(skill).isSymbolicLink(), "skill is a symlink");
+		assert.ok(lstatSync(command).isSymbolicLink(), "command is a symlink");
+		assert.equal(resolve(join(skill, ".."), readlinkSync(skill)), join(root, "skills", "codepatrol-plan"));
+		assert.equal(resolve(join(command, ".."), readlinkSync(command)), join(root, ".opencode", "commands", "codepatrol-plan.md"));
+		// The installer also records the linkType so uninstall/rollback can
+		// recreate the correct kind without inspecting the source.
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+		rmSync(home, { recursive: true, force: true });
+	}
+});
+

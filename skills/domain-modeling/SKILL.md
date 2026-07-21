@@ -63,4 +63,4 @@ Offer to record an ADR only when **all three** hold:
 
 Any of the three missing → skip it. Trivial reversible choices, self-evident picks, and foregone conclusions don't get ADRs. Use the format in [ADR-FORMAT.md](ADR-FORMAT.md).
 
-_Concepts from [mattpocock/skills](https://github.com/mattpocock/skills) (domain-modeling skill); no dependency on it. Adapted to this package's code-graph tools._
+_Concepts from [mattpocock/skills at commit `ed37663cc5fbef691ddfecd080dff42f7e7e350d`](https://github.com/mattpocock/skills/tree/ed37663cc5fbef691ddfecd080dff42f7e7e350d) (domain-modeling skill); no dependency on it. Adapted to this package's code-graph tools._

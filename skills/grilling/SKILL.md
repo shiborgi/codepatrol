@@ -40,4 +40,4 @@ Decisions crystallise language and sometimes deserve records — follow [domain-
 
 The grill is done when you can state the settled design in a few sentences and the user confirms it. State it, get the confirmation, then record it in the package `spec.md` decisions section (what was decided, what was rejected, and where the seam landed).
 
-_Concepts from [mattpocock/skills](https://github.com/mattpocock/skills) (grilling skill); no dependency on it. Adapted to this package's review-candidate workflow and code-graph evidence tools._
+_Concepts from [mattpocock/skills at commit `ed37663cc5fbef691ddfecd080dff42f7e7e350d`](https://github.com/mattpocock/skills/tree/ed37663cc5fbef691ddfecd080dff42f7e7e350d) (grilling skill); no dependency on it. Adapted to this package's review-candidate workflow and code-graph evidence tools._

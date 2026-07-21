@@ -73,4 +73,4 @@ Return the symptom, minimized reproduction, proven root cause, rejected hypothes
 
 If the cause is genuinely environmental after a complete investigation, document what was ruled out and specify proposed handling and monitoring. Do not disguise an incomplete causal chain as an environmental result.
 
-_Concepts from [superpowers](https://github.com/obra/superpowers) (systematic-debugging) and [mattpocock/skills](https://github.com/mattpocock/skills) (diagnosing-bugs); no dependency on either. Rebuilt around this package's graph, scout, and TDD machinery._
+_Concepts from [superpowers at commit `d884ae04edebef577e82ff7c4e143debd0bbec99`](https://github.com/obra/superpowers/tree/d884ae04edebef577e82ff7c4e143debd0bbec99) (systematic-debugging) and [mattpocock/skills at commit `ed37663cc5fbef691ddfecd080dff42f7e7e350d`](https://github.com/mattpocock/skills/tree/ed37663cc5fbef691ddfecd080dff42f7e7e350d) (diagnosing-bugs); no dependency on either. Rebuilt around this package's graph, scout, and TDD machinery._

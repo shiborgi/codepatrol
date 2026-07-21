@@ -6,11 +6,20 @@ export type WorkflowKind = typeof WORKFLOW_KINDS[number];
 export const WORKFLOW_STATUSES = ["open", "in-progress", "blocked", "waiting-user", "deferred", "closed"] as const;
 export type WorkflowStatus = typeof WORKFLOW_STATUSES[number];
 
+export const CLOSED_WORKFLOW_STATUS = "closed" as const;
+
 export const WORKFLOW_RELATIONS = ["blocks", "relates-to", "duplicates", "supersedes", "replies-to"] as const;
 export type WorkflowRelationType = typeof WORKFLOW_RELATIONS[number];
 
 export type WorkflowScope = "project" | "workflow";
 
+/**
+ * The runtime invariant enforced by the workflow ledger is that every
+ * non-closed item carries a non-empty `nextAction`, while a closed item
+ * may omit it. The field is declared optional on the persisted type
+ * because the same JSON shape encodes both states; consumers that need
+ * the discriminated view should narrow through `assertNextAction`.
+ */
 export interface WorkflowRelation {
 	type: WorkflowRelationType;
 	targetId: string;
@@ -127,4 +136,20 @@ export interface PrimeWorkflowResult {
 		memories: number;
 		completed: number;
 	};
+}
+
+/**
+ * Runtime check used by the ledger validator and by the create/update
+ * paths to enforce the conditional `nextAction` invariant.
+ */
+export function assertNextActionInvariant(item: { status: WorkflowStatus; nextAction?: string }, path: string): void {
+	if (item.status === CLOSED_WORKFLOW_STATUS) {
+		if (item.nextAction !== undefined && (typeof item.nextAction !== "string" || item.nextAction.length === 0)) {
+			throw new Error(`Closed item ${path} may not carry an empty nextAction.`);
+		}
+		return;
+	}
+	if (typeof item.nextAction !== "string" || item.nextAction.length === 0) {
+		throw new Error(`Non-closed item ${path} must carry a non-empty nextAction.`);
+	}
 }

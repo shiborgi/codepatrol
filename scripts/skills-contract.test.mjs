@@ -259,3 +259,109 @@ test("codepatrol-apply accepts the deprecated merge alias with a documented warn
 	const apply = metadata("codepatrol-apply").content;
 	assert.match(apply, /approve.*deprecated alias.*merge|merge.*alias/s);
 });
+
+test("catalog declares Plan<Review<Apply<Verify lifecycle order and codepatrol-status stays out of it", () => {
+	const expectedOrder = { "codepatrol-plan": 1, "codepatrol-review": 2, "codepatrol-apply": 3, "codepatrol-verify": 4 };
+	for (const [name, order] of Object.entries(expectedOrder)) {
+		assert.equal(catalog.skills[name].order, order, `${name} must declare order ${order}`);
+	}
+	assert.equal(catalog.skills["codepatrol-status"].order, undefined, "codepatrol-status is a dispatcher and must not declare lifecycle order");
+});
+
+test("catalog triggers declare a finite when value from the supported set and a non-primary target", () => {
+	const supportedWhen = new Set([
+		"always-before-recommendation",
+		"always-before-verdict",
+		"always-before-task-mutation",
+		"always-before-assessment",
+		"when-artifact-refresh-required",
+		"when-behavior-change",
+		"when-bug-mode",
+		"when-domain-term-settled",
+		"when-external-evidence-required",
+		"when-irreducible-seam",
+		"when-load-bearing-decision-unsettled",
+		"when-module-or-seam-change",
+		"when-plan-correction-required",
+		"when-seam-or-module-decision",
+		"after-decision-tree",
+		"after-root-cause",
+		"after-spec-decision-complete",
+		"after-task-change",
+		"after-task-result",
+		"when-wiki-refresh-required",
+	]);
+	for (const [name, entry] of Object.entries(catalog.skills)) {
+		if (!entry.triggers) continue;
+		for (const [index, trigger] of entry.triggers.entries()) {
+			assert.equal(typeof trigger.target, "string", `${name} triggers[${index}].target must be a string`);
+			assert.ok(catalog.skills[trigger.target]?.role === "support", `${name} triggers[${index}] must target a support skill, not ${trigger.target}`);
+			assert.ok(supportedWhen.has(trigger.when), `${name} triggers[${index}].when (${trigger.when}) is not a supported trigger value`);
+			const target = catalog.skills[trigger.target];
+			assert.ok((target.invokedBy ?? []).includes(name), `${name} -> ${trigger.target} trigger must be reciprocated in invokedBy`);
+		}
+	}
+});
+
+test("every support mayInvoke target has a corresponding trigger entry in the catalog", () => {
+	for (const [name, entry] of Object.entries(catalog.skills)) {
+		if (!entry.mayInvoke) continue;
+		const supportTargets = entry.mayInvoke.filter((target) => catalog.skills[target]?.role === "support");
+		const triggerTargets = new Set((entry.triggers ?? []).map((trigger) => trigger.target));
+		for (const target of supportTargets) {
+			assert.ok(triggerTargets.has(target), `${name} mayInvoke declares ${target} without a corresponding trigger entry`);
+		}
+	}
+});
+
+test("lintSkillTree detects fixture violations and lists them", async () => {
+	const { lintSkillTree } = await import("./lint-skills.mjs");
+	const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import("node:fs");
+	const { tmpdir } = await import("node:os");
+	const { join } = await import("node:path");
+
+	async function withFixture(name, catalogYaml, expectSubstring) {
+		const root = mkdtempSync(join(tmpdir(), `codepatrol-lint-${name}-`));
+		try {
+			mkdirSync(join(root, "_shared"), { recursive: true });
+			writeFileSync(join(root, "_shared", "EXECUTION.md"), "independent sequential barrier evidence\nNever let workers update the same file or module concurrently\n");
+			for (const skill of ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-status", "beta"]) {
+				mkdirSync(join(root, skill), { recursive: true });
+				writeFileSync(join(root, skill, "SKILL.md"), `---\nname: ${skill}\ndescription: ok\n---\n`);
+			}
+			writeFileSync(join(root, "catalog.yaml"), catalogYaml);
+			const failures = lintSkillTree(root);
+			assert.ok(failures.some((f) => f.includes(expectSubstring)), `expected lint to surface "${expectSubstring}", got: ${JSON.stringify(failures, null, 2)}`);
+		} finally { rmSync(root, { recursive: true, force: true }); }
+	}
+
+	await withFixture("order", `version: 1
+skills:
+  codepatrol-plan: {role: primary, order: 5, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-review: {role: primary, order: 2, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-apply: {role: primary, order: 3, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: authorized}
+  codepatrol-verify: {role: primary, order: 4, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-status: {role: primary, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: never}
+  beta: {role: support, invokedBy: [codepatrol-plan], mayInvoke: [], consumes: [], produces: [], mutation: never}
+`, "codepatrol-plan: order must be 1");
+
+	await withFixture("trigger-when", `version: 1
+skills:
+  codepatrol-plan: {role: primary, order: 1, invokedBy: [], mayInvoke: [beta], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-review: {role: primary, order: 2, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-apply: {role: primary, order: 3, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: authorized}
+  codepatrol-verify: {role: primary, order: 4, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-status: {role: primary, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: never}
+  beta: {role: support, invokedBy: [codepatrol-plan], mayInvoke: [], consumes: [], produces: [], mutation: never, triggers: [{target: codepatrol-plan, when: not-a-real-trigger}]}
+`, "must be one of the allowed trigger values");
+
+	await withFixture("missing-trigger", `version: 1
+skills:
+  codepatrol-plan: {role: primary, order: 1, invokedBy: [], mayInvoke: [beta], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-review: {role: primary, order: 2, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-apply: {role: primary, order: 3, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: authorized}
+  codepatrol-verify: {role: primary, order: 4, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
+  codepatrol-status: {role: primary, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: never}
+  beta: {role: support, invokedBy: [codepatrol-plan], mayInvoke: [], consumes: [], produces: [], mutation: never}
+`, "must declare triggers");
+});

@@ -10,9 +10,9 @@
 
 **Approve** — the review verdict that accepts the current revision and sets status `approved`. _Avoid_: merge, accept, sign-off.
 
-**Fix-first** — the review verdict meaning bounded corrections remain.
+**Fix-first** — the review verdict meaning bounded corrections remain. _Avoid_: changes-requested, revisions-requested.
 
-**Rework** — the review verdict meaning the contract, architecture, or verification strategy is materially unsound.
+**Rework** — the review verdict meaning the contract, architecture, or verification strategy is materially unsound. _Avoid_: reject, changes-requested.
 
 **Codepatrol Verify** — the delivery-gate workflow, invoked as `codepatrol-verify`, that independently re-verifies an implemented change package and records a commit or improve verdict. _Avoid_: verify-codebase, post-apply review.
 
@@ -24,4 +24,4 @@
 
 **Artifact Producer Origin** — the schema-v1 provenance value stored in a Change Package to distinguish project/feature production from architecture/bug production. The retained values are internal data, not Public Workflow identifiers. _Avoid_: command name, invocation alias.
 
-**Distribution Adapter** — a harness-specific install or presentation layer over the canonical skills and CLI. Only two exist: the filesystem installer (`scripts/install-local.mjs`, which links the agnostic `skills/` tree into each harness's discovery directory) and the Pi native extension (`.pi/`). Harness-specific source, when it exists, lives in a root dotfolder named for the harness (`.pi/`, `.claude/`, `.codex/`, `.opencode/`). An adapter owns no workflow semantics. _Avoid_: separate implementation, marketplace plugin.
+**Distribution Adapter** — the harness-specific layer that presents a canonical Codepatrol interface to a particular host. The canonical interfaces are the filesystem installer and the Pi native extension; no Codepatrol semantics live in the adapter. _Avoid_: naming harness integrations as separate products or as a marketplace concept.

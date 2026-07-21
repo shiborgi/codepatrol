@@ -53,6 +53,10 @@ A deliberate limit from an approved package may be mirrored as a `deferred` task
 
 `workflow update` cannot bypass `claim` or `close`. Closed items cannot be reopened or edited.
 
+## `nextAction` invariant
+
+Every actionable item — `open`, `in-progress`, `blocked`, `waiting-user`, or `deferred` — must carry a non-empty `nextAction` describing the immediate next step a future harness should take. A `closed` item may omit `nextAction` because closure is the final, recorded outcome. The ledger validator and the create/update paths share the `assertNextActionInvariant` helper; malformed ledgers fail with `WORKFLOW_INVALID` rather than being silently repaired. `workflow close` removes `nextAction`; an `update` with `nextAction: null` against a non-closed item is rejected (use `workflow close` instead). A closed record without `nextAction` is the only legitimate way `nextAction` may be absent on disk.
+
 ## Hierarchy and relations
 
 `parentId` creates workflow/task/subtask hierarchy and must remain inside one workflow. Parent cycles are rejected.
