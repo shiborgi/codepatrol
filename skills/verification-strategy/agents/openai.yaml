@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verification Strategy"
+  short_description: "Design risk-based verification for changes"
+  default_prompt: "Use $verification-strategy to define the smallest reliable feedback loops and test matrix for this change."

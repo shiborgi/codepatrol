@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Verify"
+  short_description: "Deep post-apply verification with a commit/improve verdict"
+  default_prompt: "Use $codepatrol-verify to deeply verify this implemented Codepatrol package and record a commit or improve verdict."

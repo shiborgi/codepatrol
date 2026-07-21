@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Review"
+  short_description: "Review a package, diff, branch, or change"
+  default_prompt: "Use $codepatrol-review to assess this Codepatrol package or code change and return an auditable verdict."

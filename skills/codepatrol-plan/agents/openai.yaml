@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Plan"
+  short_description: "Plan a project, feature, architecture scan, or bug correction"
+  default_prompt: "Use $codepatrol-plan to turn this project, feature, architecture scan, or bug symptom into a reviewable Codepatrol package."

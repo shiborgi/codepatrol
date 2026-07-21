@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Status"
+  short_description: "Summarize open workflows and packages"
+  default_prompt: "Use $codepatrol-status to summarize open Codepatrol workflows and artifact packages, then resume one or start new work."

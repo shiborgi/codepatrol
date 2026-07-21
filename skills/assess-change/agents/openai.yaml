@@ -1,0 +1,4 @@
+interface:
+  display_name: "Assess Change"
+  short_description: "Assess correctness, risk, and compliance"
+  default_prompt: "Use $assess-change to assess this change against its governing artifact and local evidence."

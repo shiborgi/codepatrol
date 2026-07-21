@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research Technology"
+  short_description: "Adapt external concepts to the target project"
+  default_prompt: "Use $research-technology to study a technology or GitHub reference and adapt its concepts to my target project."

@@ -1,0 +1,114 @@
+version: 1
+skills:
+  codepatrol-plan:
+    role: primary
+    invokedBy: []
+    mayInvoke: [codebase-design, diagnose-bug, domain-modeling, grilling, research-technology, solution-simplification, writing-plans]
+    consumes: [user intent, local project evidence, reference concept analyses]
+    produces: [portable specification, executable plan, recorded handoff package, workflow memory]
+    mutation: artifacts
+  codepatrol-review:
+    role: primary
+    invokedBy: []
+    mayInvoke: [assess-change, writing-plans, research-technology]
+    consumes: [artifact package, proposal, plan, diff or branch, local evidence]
+    produces: [review report, corrected governing artifacts, verdict, recorded approval, workflow memory]
+    mutation: artifacts
+  codepatrol-apply:
+    role: primary
+    invokedBy: []
+    mayInvoke: [execute-change]
+    consumes: [approved artifact package, current project state, workflow memory]
+    produces: [verified implementation, implementation journal, refreshed project artifacts, workflow memory]
+    mutation: authorized
+  codepatrol-verify:
+    role: primary
+    invokedBy: []
+    mayInvoke: [assess-change, verification-strategy]
+    consumes: [implemented artifact package, implementation diff, graph impact, project gates]
+    produces: [verification report, commit or improve verdict, recorded verification metadata, workflow memory]
+    mutation: artifacts
+  codepatrol-status:
+    role: primary
+    invokedBy: []
+    mayInvoke: []
+    consumes: [workflow ledger, artifact package manifests]
+    produces: [open work summary, resume or start-new recommendation]
+    mutation: never
+  assess-change:
+    role: support
+    invokedBy: [codepatrol-review, codepatrol-verify, execute-change]
+    mayInvoke: [solution-simplification]
+    consumes: [change package]
+    produces: [assessment result]
+    mutation: never
+  codebase-design:
+    role: support
+    invokedBy: [codepatrol-plan, domain-modeling, grilling, solution-simplification]
+    mayInvoke: []
+    consumes: [requirements, code evidence, domain language]
+    produces: [module and interface design]
+    mutation: never
+  codebase-wiki:
+    role: support
+    invokedBy: [execute-change]
+    mayInvoke: []
+    consumes: [code graph, verified source evidence]
+    produces: [OKF wiki bundle]
+    mutation: artifacts
+  diagnose-bug:
+    role: support
+    invokedBy: [codepatrol-plan]
+    mayInvoke: [verification-strategy]
+    consumes: [symptom, reproduction, graph and runtime evidence]
+    produces: [root-cause diagnosis, regression strategy]
+    mutation: artifacts
+  domain-modeling:
+    role: support
+    invokedBy: [codepatrol-plan, execute-change, grilling]
+    mayInvoke: [codebase-design]
+    consumes: [settled terminology and decisions]
+    produces: [CONTEXT.md updates, ADRs]
+    mutation: artifacts
+  execute-change:
+    role: support
+    invokedBy: [codepatrol-apply]
+    mayInvoke: [assess-change, codebase-wiki, domain-modeling, solution-simplification, verification-strategy]
+    consumes: [approved plan or correction, ready workflow item]
+    produces: [verified change, updated artifacts and memory]
+    mutation: authorized
+  grilling:
+    role: support
+    invokedBy: [codepatrol-plan]
+    mayInvoke: [domain-modeling, codebase-design]
+    consumes: [open design decisions, local evidence]
+    produces: [settled decisions]
+    mutation: artifacts
+  research-technology:
+    role: support
+    invokedBy: [codepatrol-plan, codepatrol-review]
+    mayInvoke: []
+    consumes: [target-project problem, external primary sources or GitHub reference]
+    produces: [reference concept analysis]
+    mutation: artifacts
+  solution-simplification:
+    role: support
+    invokedBy: [codepatrol-plan, assess-change, execute-change, writing-plans]
+    mayInvoke: [codebase-design, verification-strategy]
+    consumes: [acceptance criteria, verified flow evidence, proposed solution or change]
+    produces: [simplicity decision, excess-complexity findings, deferred constraints]
+    mutation: never
+  verification-strategy:
+    role: support
+    invokedBy: [codepatrol-verify, diagnose-bug, execute-change, writing-plans, solution-simplification]
+    mayInvoke: []
+    consumes: [behavior, risks, impact evidence]
+    produces: [verification matrix and feedback loop]
+    mutation: never
+  writing-plans:
+    role: support
+    invokedBy: [codepatrol-plan, codepatrol-review]
+    mayInvoke: [solution-simplification, verification-strategy]
+    consumes: [decision-complete specification, graph impact]
+    produces: [context-free executable implementation plan]
+    mutation: artifacts

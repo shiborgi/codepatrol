@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Apply"
+  short_description: "Apply an approved Codepatrol package"
+  default_prompt: "Use $codepatrol-apply to validate and execute this approved Codepatrol handoff package."
