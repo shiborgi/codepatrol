@@ -14,12 +14,13 @@
 
 ### In scope
 
-1. Migrate the location of artifact change packages from `.codepatrol/work/<work-id>/` to `.codepatrol/work/<work-id>/`.
+1. Migrate the location of artifact change packages from `.codepatrol/work/<work-id>/` to `.codepatrol/packages/<work-id>/`.
 2. Migrate the location of Architecture Decision Records from `.codepatrol/adr/` to `.codepatrol/adr/`.
 3. Migrate the location of standalone research analyses from `.codepatrol/architecture/` to `.codepatrol/architecture/`.
-4. Update `.gitignore` to ensure `.codepatrol/work/`, `.codepatrol/adr/`, and `.codepatrol/architecture/` are tracked by Git, while maintaining the ignore rules for `.codepatrol/workflows/` and `.codepatrol/code-graph/`.
-5. Update all tool CLI paths, tests, Markdown contracts, skill prompts, and documentation to reference the new paths.
-6. The `docs/wiki/` directory and existing functional markdowns (`artifact-handoff.md`, `smoke-tests.md`, `workflow-memory.md`) remain in `docs/`.
+4. Update `.gitignore` to ensure `.codepatrol/packages/`, `.codepatrol/adr/`, and `.codepatrol/architecture/` are tracked by Git, while maintaining the ignore rules for `.codepatrol/workflows/` and `.codepatrol/code-graph/`.
+5. Update all tool CLI paths, tests, Markdown contracts, skill prompts, and documentation to reference the new `.codepatrol/packages/` path and other relocated directories.
+6. Fix the "agent runaway" workflow execution bug: ensure ALL primary skills (`codepatrol-plan`, `codepatrol-review`, `codepatrol-apply`, `codepatrol-verify`) state explicitly that the agent MUST ONLY execute the requested step and MUST stop and await user instruction (handoff) instead of automatically invoking the next step in the pipeline.
+7. Merge in the fixes for kanban ghost workflows and agent step stamping from the parallel bugfix investigation.
 
 ### Out of scope
 
@@ -36,7 +37,7 @@
 ## Proposed design
 
 **Namespace consolidation.** We will consolidate all agentic process artifacts under `.codepatrol/`. 
-- Packages: `.codepatrol/work/`
+- Packages: `.codepatrol/packages/`
 - ADRs: `.codepatrol/adr/`
 - Research: `.codepatrol/architecture/`
 
@@ -62,12 +63,15 @@ None.
 ## Compatibility and rollout
 
 - This is a breaking change for the physical location of artifacts. The current implementation journal and package files will be moved by `codepatrol-apply` itself during the execution of this very plan. The apply script must carefully move its own package directory and then continue updating files.
-- To safely migrate the active package `2026-07-21-lean-docs`, the implementation task will move `.codepatrol/work/2026-07-21-lean-docs` to `.codepatrol/work/2026-07-21-lean-docs` as the *last* step, and update the execution context so that the final validation runs against the new path.
+- To safely migrate the active package `2026-07-21-lean-docs`, the implementation task will move `.codepatrol/work/2026-07-21-lean-docs` to `.codepatrol/packages/2026-07-21-lean-docs` as the *last* step, and update the execution context so that the final validation runs against the new path.
 
 ## Acceptance criteria
 
-- AC-1: WHEN the `codepatrol artifact validate` or `codepatrol status` CLI commands run, THEY resolve packages from `.codepatrol/work/` instead of `.codepatrol/work/`.
-- AC-2: WHEN `codepatrol-plan` or `domain-modeling` define new artifacts, THEY reference `.codepatrol/work/`, `.codepatrol/adr/`, and `.codepatrol/architecture/`.
+- AC-1: WHEN the `codepatrol artifact validate` or `codepatrol status` CLI commands run, THEY resolve packages from `.codepatrol/packages/` instead of `.codepatrol/work/` or `docs/codepatrol/`.
+- AC-2: WHEN `codepatrol-plan` or `domain-modeling` define new artifacts, THEY reference `.codepatrol/packages/`, `.codepatrol/adr/`, and `.codepatrol/architecture/`.
 - AC-3: `.gitignore` ignores `.codepatrol/workflows/` and `.codepatrol/code-graph/` but permits tracking of packages and ADRs.
-- AC-4: No references to `.codepatrol/work`, `.codepatrol/adr`, or `.codepatrol/architecture` remain in the repository text (except historical commit logs or when explicitly discussing the migration).
+- AC-4: No references to `.codepatrol/work`, `docs/codepatrol/`, `.codepatrol/adr`, or `.codepatrol/architecture` remain in the repository text (except historical commit logs or when explicitly discussing the migration).
 - AC-5: `npm run verify` exits 0 with all tests passing.
+- AC-6: The `codepatrol-status` kanban ignores ledger workflows when generating physical packages.
+- AC-7: ALL primary workflow skill files explicitly instruct the agent to run only the requested step and stop (forbid automatic sequential invocation of downstream skills without user intervention).
+- AC-8: Agent identity (harness and model) accurately reflects the tool performing the step when recording a stage transition.

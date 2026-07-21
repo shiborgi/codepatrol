@@ -1,0 +1,16 @@
+{
+  "summary": "T5 — Migrate the active package directory: complete. Moved .codepatrol/work/2026-07-21-lean-docs/ to .codepatrol/packages/2026-07-21-lean-docs/ and removed the now-empty .codepatrol/work/ directory. Re-validated the package at the new path (all four stages, only `verification` and `plan` are reachable in the implemented state). Re-recorded with the runtime stamp for the `apply` step (harness=pi, model=MiniMax-M3, completed_at=2026-07-21T18:31:14.427Z) — end-to-end proof that the T7 stamping mechanism works in production. Updated implementation.md with the full task journal, deviations, acceptance evidence table, and surface delta; re-recorded again to refresh the implementation.md hash. Final package status: implemented, revision 3, all artifacts hashed.",
+  "artifacts": [
+    ".codepatrol/packages/2026-07-21-lean-docs/handoff.yaml",
+    ".codepatrol/packages/2026-07-21-lean-docs/implementation.md"
+  ],
+  "evidence": {
+    "red_signal": "Pre-T5 the package was still at .codepatrol/work/...; the locally-built CLI (after npm run build) refused to validate that path with the error 'Manifest must be .codepatrol/packages/<work-id>/handoff.yaml'.",
+    "green_after": "node bin/codepatrol.js artifact validate --manifest .codepatrol/packages/2026-07-21-lean-docs/handoff.yaml --stage verification returns valid: true; codepatrol status reports the package with path .codepatrol/packages/2026-07-21-lean-docs/handoff.yaml and status implemented.",
+    "stamping_proof": "This session exported CODEPATROL_HARNESS=pi CODEPATROL_MODEL=MiniMax-M3 CODEPATROL_STEP=apply before invoking artifact record. The recorded manifest now carries steps.apply.harness=pi, steps.apply.model=MiniMax-M3, steps.apply.completed_at=2026-07-21T18:31:14.427Z, demonstrating AC-8 end-to-end.",
+    "package_state": "status=implemented, revision=3, all sha256 hashes current, steps.apply stamped with the runtime tool."
+  },
+  "deviations": [
+    "Bounded: the prior verification.md (rev 2) was not edited. It carries verdict commit and verified_revision=2, but rev 3 is the current package. This gap is recorded as a residual risk in implementation.md and is the job of the upcoming codepatrol-verify to re-verify independently before any commit is performed."
+  ]
+}

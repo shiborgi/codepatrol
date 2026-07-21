@@ -1,0 +1,22 @@
+{
+  "summary": "T4 — Update Markdown documentation and Skills: complete. Migrated references in README.md, AGENTS.md, and CONTEXT.md from .codepatrol/work/ to .codepatrol/packages/. Repaired the broken substitution in skills/codepatrol-plan/SKILL.md:61 (.codepatrol/packagesflows/ -> .codepatrol/workflows/). Added an explicit Stop rule section to all four primary SKILL.md files (codepatrol-plan, codepatrol-review, codepatrol-apply, codepatrol-verify) with the canonical phrase 'do NOT automatically invoke the next workflow' and 'Stop and await user instruction'. Repaired two contract test regexes (skills-contract.test.mjs, package-contract.test.mjs) that still required .codepatrol/work/. All targeted checks pass: npm test 171/171, node --test scripts/skills-contract.test.mjs + package-contract.test.mjs 19/19, node scripts/lint-skills.mjs exits 0.",
+  "artifacts": [
+    "README.md",
+    "AGENTS.md",
+    "CONTEXT.md",
+    "skills/codepatrol-plan/SKILL.md",
+    "skills/codepatrol-review/SKILL.md",
+    "skills/codepatrol-apply/SKILL.md",
+    "skills/codepatrol-verify/SKILL.md",
+    "scripts/skills-contract.test.mjs",
+    "scripts/package-contract.test.mjs"
+  ],
+  "evidence": {
+    "red_before_t3_t4": "171 tests total, 26 failing across artifact (18), status (4), cli (1), skills-contract (1), package-contract (1), plus an obsolete regex in src/artifact/service.ts:28 that still matched .codepatrol/work.",
+    "green_after_t4": "npm test 171/171; skills-contract 15/15; package-contract 4/4; lint-skills exits 0.",
+    "stop_rule_coverage": "rg 'automatically invoke' skills/codepatrol-{plan,review,apply,verify}/SKILL.md returns 1 hit per file."
+  },
+  "deviations": [
+    "Bounded: package-contract.test.mjs and skills-contract.test.mjs had two regex assertions still pinned to .codepatrol/work/. Both updated to .codepatrol/packages/ in the same change; these are test-text corrections that follow the contract, not behavioral changes."
+  ]
+}

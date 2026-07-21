@@ -1,6 +1,6 @@
 # Implementation journal format
 
-Create `.codepatrol/work/<work-id>/implementation.md` before the first code change. This is the append-only execution account; do not tick or rewrite the approved plan.
+Create `.codepatrol/packages/<work-id>/implementation.md` before the first code change. This is the append-only execution account; do not tick or rewrite the approved plan.
 
 ```markdown
 # Implementation — <name>

@@ -25,9 +25,9 @@ function canonicalManifest(workspace: string, manifestPath: string): { absolute:
 	const canonicalWorkspace = realpathSync(workspace);
 	const absolute = resolveInside(canonicalWorkspace, manifestPath);
 	const workspaceRelative = relative(canonicalWorkspace, absolute).split("\\").join("/");
-	const match = /^\.codepatrol\/work\/([^/]+)\/handoff\.yaml$/.exec(workspaceRelative);
+	const match = /^\.codepatrol\/packages\/([^/]+)\/handoff\.yaml$/.exec(workspaceRelative);
 	if (!match || !WORK_ID.test(match[1])) {
-		throw artifactError("Manifest must be .codepatrol/work/<work-id>/handoff.yaml with a portable work id.");
+		throw artifactError("Manifest must be .codepatrol/packages/<work-id>/handoff.yaml with a portable work id.");
 	}
 	if (!existsSync(absolute) || !statSync(absolute).isFile()) throw artifactError(`Artifact manifest does not exist: ${workspaceRelative}`);
 	return { absolute, relative: workspaceRelative, workId: match[1] };
@@ -193,13 +193,13 @@ function load(workspace: string, manifestPath: string): { manifest: ArtifactMani
 
 export function listArtifactPackages(workspace: string): { packages: ArtifactPackageSummary[]; warnings: string[] } {
 	const canonicalWorkspace = realpathSync(workspace);
-	const root = resolveInside(canonicalWorkspace, ".codepatrol/work");
+	const root = resolveInside(canonicalWorkspace, ".codepatrol/packages");
 	const packages: ArtifactPackageSummary[] = [];
 	const warnings: string[] = [];
 	if (!existsSync(root) || !statSync(root).isDirectory()) return { packages, warnings };
 	for (const entry of readdirSync(root, { withFileTypes: true })) {
 		if (!entry.isDirectory()) continue;
-		const portable = `.codepatrol/work/${entry.name}/handoff.yaml`;
+		const portable = `.codepatrol/packages/${entry.name}/handoff.yaml`;
 		const absolute = join(root, entry.name, "handoff.yaml");
 		if (!existsSync(absolute) || !statSync(absolute).isFile()) continue;
 		try {
@@ -225,10 +225,30 @@ export function listArtifactPackages(workspace: string): { packages: ArtifactPac
 export async function recordArtifactPackage(workspace: string, manifestPath: string, signal?: AbortSignal): Promise<ArtifactManifestV1> {	return withWorkspaceLock(workspace, "artifact", "artifact.record", () => {
 		const { manifest, absolute, packageDirectory } = load(workspace, manifestPath);
 		for (const { file } of manifestEntries(manifest)) file.sha256 = hash(filePath(packageDirectory, file));
+		applyRuntimeStepStamp(manifest);
 		manifest.updated_at = new Date().toISOString();
 		atomicWriteFile(absolute, stringifyYaml(manifest));
 		return manifest;
 	}, { signal });
+}
+
+function applyRuntimeStepStamp(manifest: ArtifactManifestV1): void {
+	// When a harness invokes `codepatrol artifact record` it can advertise itself through env vars
+	// (CODEPATROL_HARNESS, CODEPATROL_MODEL, CODEPATROL_STEP). The recorded stamp reflects the
+	// real tool performing the transition instead of a hand-typed string in handoff.yaml.
+	const harness = process.env.CODEPATROL_HARNESS?.trim();
+	const step = process.env.CODEPATROL_STEP?.trim();
+	if (!harness || !step) return;
+	if (!ARTIFACT_STEP_NAMES.includes(step as ArtifactStepName)) return;
+	const model = process.env.CODEPATROL_MODEL?.trim();
+	manifest.steps = {
+		...manifest.steps,
+		[step]: {
+			harness,
+			...(model ? { model } : {}),
+			completed_at: new Date().toISOString(),
+		},
+	};
 }
 
 export function validateArtifactPackage(workspace: string, manifestPath: string, stage: ArtifactStage): ArtifactValidationResult {

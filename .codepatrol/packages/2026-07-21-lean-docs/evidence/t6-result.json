@@ -1,0 +1,15 @@
+{
+  "summary": "T6 — Fix Status Kanban Display: complete. Rewrote src/status/service.ts to correlate every package (not only visible) with its workflow root, then filter ledger-only workflow roots that have no packageWorkId out of the default board. AC-6 of the plan was 'the kanban should not include ledger-only workflows in the packages view'; the actual fix is broader because statusSummary.workflows is the list rendered as a board. Updated src/cli/cli.test.ts:199 to create a physical package alongside the workflow so the assertion that the workflow surfaces in `status` (default) remains meaningful; without the package the workflow is correctly hidden (AC-6).",
+  "artifacts": [
+    "src/status/service.ts",
+    "src/cli/cli.test.ts"
+  ],
+  "evidence": {
+    "red_signal": "After T3/T4: 171/171 green. T6 (kanban) had no failing tests; the fix is preventive against future bug reports. The plan review (rev 3) explicitly notes that the previous implementer left an incomplete comment block describing the fix in src/status/service.ts.",
+    "green_after": "npm test 171/171.",
+    "behavior_change": "statusSummary({all:false}) now hides workflow roots whose packageWorkId is undefined. statusSummary({all:true}) still returns every workflow root, matching the test #141 expectations."
+  },
+  "deviations": [
+    "Bounded test rewrite in src/cli/cli.test.ts:199: the original test created a workflow root without any package and asserted it appeared in the default `status`. The AC-6 of the approved plan requires the kanban to ignore such ledger-only entries, so the test was updated to create a real package that ties to the workflow root and assert the workflow now appears with packageWorkId set. This is a contract-aligned test correction, not a behavioral change."
+  ]
+}

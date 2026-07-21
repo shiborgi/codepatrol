@@ -205,11 +205,37 @@ test("CLI status summarizes open work and validates its options", () => {
 		assert.equal(created.status, 0, created.stderr || created.stdout);
 		const workflow = JSON.parse(created.stdout).data;
 
+		// Ledger-only workflow (no physical package) is intentionally hidden from the default board (AC-6).
+		assert.deepEqual(JSON.parse(run(["status", "--workspace", root, "--format=json"]).stdout).data.workflows, []);
+		const allWithoutPackage = run(["status", "--all", "--workspace", root, "--format=json"]);
+		assert.deepEqual(JSON.parse(allWithoutPackage.stdout).data.workflows.map((item: { id: string }) => item.id), [workflow.id]);
+
+		// Once a physical package ties to the workflow, the default board surfaces it.
+		const packageDir = join(root, ".codepatrol", "packages", "summarize-me");
+		mkdirSync(packageDir, { recursive: true });
+		writeFileSync(join(packageDir, "handoff.yaml"), [
+			"schema_version: 1",
+			"work_id: summarize-me",
+			"origin:",
+			"  skill: propose-codebase",
+			"  mode: feature",
+			"status: ready-for-review",
+			"revision: 1",
+			`workflow_id: ${workflow.id}`,
+			"artifacts:",
+			"  spec:",
+			"    path: spec.md",
+			"  plan:",
+			"    path: plan.md",
+			"",
+		].join("\n"));
+
 		const summary = run(["status", "--workspace", root, "--format=json"]);
 		assert.equal(summary.status, 0, summary.stderr || summary.stdout);
 		const envelope = JSON.parse(summary.stdout);
 		assert.equal(envelope.command, "status");
 		assert.deepEqual(envelope.data.workflows.map((item: { id: string }) => item.id), [workflow.id]);
+		assert.equal(envelope.data.workflows[0].packageWorkId, "summarize-me");
 
 		const closed = run(
 			["workflow", "close", "--id", workflow.id, "--result", "-", "--workspace", root, "--format=json"],
@@ -230,7 +256,7 @@ test("CLI status summarizes open work and validates its options", () => {
 test("CLI records and validates a portable artifact handoff", () => {
 	const root = workspace();
 	try {
-		const directory = join(root, ".codepatrol", "work", "2026-07-18-cache");
+		const directory = join(root, ".codepatrol", "packages", "2026-07-18-cache");
 		mkdirSync(directory, { recursive: true });
 		writeFileSync(join(directory, "spec.md"), "# Cache specification\n");
 		writeFileSync(join(directory, "plan.md"), "# Cache plan\n");
@@ -250,11 +276,11 @@ test("CLI records and validates a portable artifact handoff", () => {
 			"",
 		].join("\n"));
 
-		const recorded = run(["artifact", "record", "--manifest", ".codepatrol/work/2026-07-18-cache/handoff.yaml", "--workspace", root, "--format=json"]);
+		const recorded = run(["artifact", "record", "--manifest", ".codepatrol/packages/2026-07-18-cache/handoff.yaml", "--workspace", root, "--format=json"]);
 		assert.equal(recorded.status, 0, recorded.stderr || recorded.stdout);
 		assert.match(JSON.parse(recorded.stdout).data.artifacts.spec.sha256, /^[a-f0-9]{64}$/);
 
-		const validated = run(["artifact", "validate", "--manifest", ".codepatrol/work/2026-07-18-cache/handoff.yaml", "--stage", "review", "--workspace", root, "--format=json"]);
+		const validated = run(["artifact", "validate", "--manifest", ".codepatrol/packages/2026-07-18-cache/handoff.yaml", "--stage", "review", "--workspace", root, "--format=json"]);
 		assert.equal(validated.status, 0, validated.stderr || validated.stdout);
 		assert.equal(JSON.parse(validated.stdout).data.valid, true);
 	} finally { rmSync(root, { recursive: true, force: true }); }

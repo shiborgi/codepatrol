@@ -12,7 +12,7 @@ function workspace(): string {
 }
 
 function writePackage(root: string, workId: string, fields: Record<string, unknown>): void {
-	const directory = join(root, ".codepatrol", "work", workId);
+	const directory = join(root, ".codepatrol", "packages", workId);
 	mkdirSync(directory, { recursive: true });
 	writeFileSync(join(directory, "handoff.yaml"), stringifyYaml({
 		schema_version: 1,
@@ -71,7 +71,7 @@ test("statusSummary reports malformed manifests as warnings without failing", as
 	const root = workspace();
 	try {
 		writePackage(root, "2026-07-19-good", { status: "draft" });
-		const broken = join(root, ".codepatrol", "work", "2026-07-19-broken");
+		const broken = join(root, ".codepatrol", "packages", "2026-07-19-broken");
 		mkdirSync(broken, { recursive: true });
 		writeFileSync(join(broken, "handoff.yaml"), "{");
 

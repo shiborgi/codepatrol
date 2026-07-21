@@ -10,7 +10,7 @@ import { listArtifactPackages, recordArtifactPackage, validateArtifactPackage } 
 
 function fixture() {
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
-	const directory = join(root, ".codepatrol", "work", "2026-07-18-cache");
+	const directory = join(root, ".codepatrol", "packages", "2026-07-18-cache");
 	mkdirSync(directory, { recursive: true });
 	writeFileSync(join(directory, "spec.md"), "# Specification\n");
 	writeFileSync(join(directory, "plan.md"), "# Plan\n");
@@ -22,7 +22,7 @@ function fixture() {
 		revision: 1,
 		artifacts: { spec: { path: "spec.md" }, plan: { path: "plan.md" } },
 	}));
-	return { root, directory, manifest: ".codepatrol/work/2026-07-18-cache/handoff.yaml", manifestPath: join(directory, "handoff.yaml") };
+	return { root, directory, manifest: ".codepatrol/packages/2026-07-18-cache/handoff.yaml", manifestPath: join(directory, "handoff.yaml") };
 }
 
 const cliEntry = join(import.meta.dirname, "..", "cli", "main.ts");
@@ -225,6 +225,44 @@ test("artifact steps are preserved through record and surfaced in package summar
 	} finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test("recordArtifactPackage stamps the runtime harness when CODEPATROL_HARNESS/STEP are set", async () => {
+	const { root, manifest, manifestPath } = fixture();
+	const previousHarness = process.env.CODEPATROL_HARNESS;
+	const previousModel = process.env.CODEPATROL_MODEL;
+	const previousStep = process.env.CODEPATROL_STEP;
+	process.env.CODEPATROL_HARNESS = "runtime-harness";
+	process.env.CODEPATROL_MODEL = "runtime-model";
+	process.env.CODEPATROL_STEP = "apply";
+	try {
+		const recorded = await recordArtifactPackage(root, manifest);
+		assert.equal(recorded.steps?.apply?.harness, "runtime-harness");
+		assert.equal(recorded.steps?.apply?.model, "runtime-model");
+		assert.match(recorded.steps?.apply?.completed_at ?? "", /^\d{4}-\d{2}-\d{2}T/);
+	} finally {
+		if (previousHarness === undefined) delete process.env.CODEPATROL_HARNESS; else process.env.CODEPATROL_HARNESS = previousHarness;
+		if (previousModel === undefined) delete process.env.CODEPATROL_MODEL; else process.env.CODEPATROL_MODEL = previousModel;
+		if (previousStep === undefined) delete process.env.CODEPATROL_STEP; else process.env.CODEPATROL_STEP = previousStep;
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("recordArtifactPackage ignores invalid CODEPATROL_STEP values", async () => {
+	const { root, manifest, manifestPath } = fixture();
+	const previousHarness = process.env.CODEPATROL_HARNESS;
+	const previousStep = process.env.CODEPATROL_STEP;
+	process.env.CODEPATROL_HARNESS = "runtime-harness";
+	process.env.CODEPATROL_STEP = "ship-it";
+	rewrite(manifestPath, (value) => { value.steps = { plan: { harness: "previous", completed_at: "2026-07-20T18:00:00Z" } }; });
+	try {
+		const recorded = await recordArtifactPackage(root, manifest);
+		assert.deepEqual(recorded.steps, { plan: { harness: "previous", completed_at: "2026-07-20T18:00:00Z" } });
+	} finally {
+		if (previousHarness === undefined) delete process.env.CODEPATROL_HARNESS; else process.env.CODEPATROL_HARNESS = previousHarness;
+		if (previousStep === undefined) delete process.env.CODEPATROL_STEP; else process.env.CODEPATROL_STEP = previousStep;
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
 test("artifact steps reject malformed entries with specific errors", async () => {
 	const cases = [
 		["unknown step", { lint: { harness: "pi", completed_at: "2026-07-20T18:00:00Z" } }, "steps.lint is not a recognized step."],
@@ -366,7 +404,7 @@ test("a missing manifest is artifact state failure rather than an untrusted work
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-missing-"));
 	try {
 		await assert.rejects(
-			recordArtifactPackage(root, ".codepatrol/work/2026-07-18-missing/handoff.yaml"),
+			recordArtifactPackage(root, ".codepatrol/packages/2026-07-18-missing/handoff.yaml"),
 			(error: unknown) => error instanceof CodepatrolError && error.code === "ARTIFACT_INVALID" && error.exitCode === 4,
 		);
 	} finally { rmSync(root, { recursive: true, force: true }); }
@@ -375,7 +413,7 @@ test("a missing manifest is artifact state failure rather than an untrusted work
 test("listArtifactPackages discovers packages leniently and skips malformed manifests", () => {
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
 	try {
-		const good = join(root, ".codepatrol", "work", "2026-07-19-alpha");
+		const good = join(root, ".codepatrol", "packages", "2026-07-19-alpha");
 		mkdirSync(good, { recursive: true });
 		writeFileSync(join(good, "handoff.yaml"), stringifyYaml({
 			schema_version: 1,
@@ -386,7 +424,7 @@ test("listArtifactPackages discovers packages leniently and skips malformed mani
 			revision: 2,
 			artifacts: { spec: { path: "spec.md" }, plan: { path: "plan.md" } },
 		}));
-		const plain = join(root, ".codepatrol", "work", "2026-07-19-beta");
+		const plain = join(root, ".codepatrol", "packages", "2026-07-19-beta");
 		mkdirSync(plain, { recursive: true });
 		writeFileSync(join(plain, "handoff.yaml"), stringifyYaml({
 			schema_version: 1,
@@ -396,24 +434,24 @@ test("listArtifactPackages discovers packages leniently and skips malformed mani
 			revision: 1,
 			artifacts: { spec: { path: "spec.md" }, plan: { path: "plan.md" } },
 		}));
-		const broken = join(root, ".codepatrol", "work", "2026-07-19-broken");
+		const broken = join(root, ".codepatrol", "packages", "2026-07-19-broken");
 		mkdirSync(broken, { recursive: true });
 		writeFileSync(join(broken, "handoff.yaml"), "{");
-		mkdirSync(join(root, ".codepatrol", "work", "2026-07-19-empty"), { recursive: true });
+		mkdirSync(join(root, ".codepatrol", "packages", "2026-07-19-empty"), { recursive: true });
 
 		const { packages, warnings } = listArtifactPackages(root);
 		assert.deepEqual(packages.map((pkg) => pkg.workId), ["2026-07-19-alpha", "2026-07-19-beta"]);
 		assert.equal(packages[0].status, "ready-for-review");
 		assert.equal(packages[0].revision, 2);
 		assert.equal(packages[0].workflowId, "cpw-abc");
-		assert.equal(packages[0].path, ".codepatrol/work/2026-07-19-alpha/handoff.yaml");
+		assert.equal(packages[0].path, ".codepatrol/packages/2026-07-19-alpha/handoff.yaml");
 		assert.equal(packages[1].workflowId, undefined);
 		assert.equal(warnings.length, 1);
-		assert.match(warnings[0], /Skipped malformed artifact manifest: \.codepatrol\/work\/2026-07-19-broken\/handoff\.yaml/);
+		assert.match(warnings[0], /Skipped malformed artifact manifest: \.codepatrol\/packages\/2026-07-19-broken\/handoff\.yaml/);
 	} finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test("listArtifactPackages returns empty lists when .codepatrol/work is absent", () => {
+test("listArtifactPackages returns empty lists when .codepatrol/packages is absent", () => {
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
 	try {
 		assert.deepEqual(listArtifactPackages(root), { packages: [], warnings: [] });
@@ -463,13 +501,13 @@ test("merge alias still validates but emits the deprecation warning", async () =
 test("invalid verdict is still rejected after rename", () => {
 	const raw = `schema_version: 1\nwork_id: 2026-07-21-invalid\nstatus: approved\nrevision: 1\norigin: { skill: improve-codebase, mode: architecture }\nartifacts:\n  spec: { path: spec.md }\n  plan: { path: plan.md }\napproval: { verdict: bogus, reviewed_revision: 1, reviewer: x, reviewed_at: 2026-07-18T12:00:00Z }\n`;
 	const dir = mkdtempSync(join(tmpdir(), "codepatrol-artifact-"));
-	const pkgDir = join(dir, ".codepatrol", "work", "2026-07-21-invalid");
+	const pkgDir = join(dir, ".codepatrol", "packages", "2026-07-21-invalid");
 	mkdirSync(pkgDir, { recursive: true });
 	try {
 		writeFileSync(join(pkgDir, "spec.md"), "");
 		writeFileSync(join(pkgDir, "plan.md"), "");
 		writeFileSync(join(pkgDir, "handoff.yaml"), raw);
-		const validation = validateArtifactPackage(dir, join(".codepatrol/work/2026-07-21-invalid/handoff.yaml"), "plan");
+		const validation = validateArtifactPackage(dir, join(".codepatrol/packages/2026-07-21-invalid/handoff.yaml"), "plan");
 		assert.equal(validation.valid, false);
 		assert.ok(validation.errors.some((error) => /approval.verdict/.test(error)));
 	} finally { rmSync(dir, { recursive: true, force: true }); }

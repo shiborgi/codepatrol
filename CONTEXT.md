@@ -18,7 +18,7 @@
 
 **Support Skill** — a reusable bounded capability invoked behind a Public Workflow; it is not an additional product entry point. _Avoid_: internal command.
 
-**Change Package** — the versioned `.codepatrol/work/<work-id>/` handoff containing the governing specification, plan, review, implementation journal, and durable evidence for one independently reviewable change. _Avoid_: artifact bundle, proposal folder.
+**Change Package** — the versioned `.codepatrol/packages/<work-id>/` handoff containing the governing specification, plan, review, implementation journal, and durable evidence for one independently reviewable change. _Avoid_: artifact bundle, proposal folder.
 
 **Operational Memory** — resumable local workflow state under `.codepatrol/workflows/`; it may be reconstructed and never replaces a Change Package. _Avoid_: progress file, source of truth.
 

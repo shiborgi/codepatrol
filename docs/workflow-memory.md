@@ -1,6 +1,6 @@
 # Workflow memory
 
-Codepatrol stores operational memory in `.codepatrol/workflows/ledger.json`. This is a native Codepatrol schema. It does not require or mirror an external issue tracker.
+Codepatrol stores operational memory in `.codepatrol/packagesflows/ledger.json`. This is a native Codepatrol schema. It does not require or mirror an external issue tracker.
 
 Human-readable artifacts remain authoritative for project decisions and deliverables. The ledger answers: what is the objective, what was decided, what is blocked, what can run now, who claimed it, what evidence exists, and where should an interrupted harness resume?
 
@@ -98,7 +98,7 @@ Query `workflow ready`, claim one returned ID, implement within its scope, and c
 ```json
 {
   "summary": "Compared two designs and selected the segment-based index.",
-  "artifacts": [".codepatrol/work/2026-07-18-search/spec.md"]
+  "artifacts": [".codepatrol/packages/2026-07-18-search/spec.md"]
 }
 ```
 
@@ -114,7 +114,7 @@ Claims are atomic. A competing actor receives `WORKFLOW_CONFLICT` and must selec
   "scope": "project",
   "title": "Reference-project policy",
   "summary": "External projects supply concepts for this target project, never automatic integrations.",
-  "artifacts": [".codepatrol/work/2026-07-18-memory/evidence/reference-concepts.md"]
+  "artifacts": [".codepatrol/packages/2026-07-18-memory/evidence/reference-concepts.md"]
 }
 ```
 
@@ -122,10 +122,10 @@ Use project scope only for knowledge that should appear when other workflows res
 
 `workflow prime` selects the requested workflow, or the most recently updated active workflow when no ID is given. Its token budget is converted to a bounded context containing the objective, project memories, decisions, active/ready/blocked work, recent results, artifacts, and next actions.
 
-Record memory after meaningful events rather than fixed phases: settled decisions, confirmed or rejected hypotheses, blockers, produced artifacts, verification results, interruptions, and safe next actions. A different harness may receive only `.codepatrol/work/<work-id>/`, so the ledger cannot contain a decision required to understand the specification or plan. Never store secrets, raw conversations, large logs, or full delegated-worker output.
+Record memory after meaningful events rather than fixed phases: settled decisions, confirmed or rejected hypotheses, blockers, produced artifacts, verification results, interruptions, and safe next actions. A different harness may receive only `.codepatrol/packages/<work-id>/`, so the ledger cannot contain a decision required to understand the specification or plan. Never store secrets, raw conversations, large logs, or full delegated-worker output.
 
 ## Compaction and recovery
 
-`workflow compact` considers closed tasks and evidence older than 30 days. Before shortening their active representation, it writes the original item to `.codepatrol/workflows/archive/<id>.json`. It preserves identity, relations, result summary, artifacts, timestamps, and the archive reference. Workflow roots, decisions, memories, open work, and blockers are never compacted.
+`workflow compact` considers closed tasks and evidence older than 30 days. Before shortening their active representation, it writes the original item to `.codepatrol/packagesflows/archive/<id>.json`. It preserves identity, relations, result summary, artifacts, timestamps, and the archive reference. Workflow roots, decisions, memories, open work, and blockers are never compacted.
 
 The ledger uses the workspace `workflow` lock and atomic rename. A dead local lock owner is reclaimed by the shared lock implementation. Invalid JSON, unsupported versions, and structurally corrupt items fail explicitly; commands do not continue from guessed memory.

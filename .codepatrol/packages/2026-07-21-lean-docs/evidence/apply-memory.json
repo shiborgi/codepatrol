@@ -1,0 +1,15 @@
+{
+  "workflowId": "cpw-298c772c4edf",
+  "scope": "project",
+  "title": "2026-07-21-lean-docs apply sealed (T1-T7 done; T8 belongs to verify)",
+  "summary": "Apply session for the 2026-07-21-lean-docs package is sealed. T1 and T2 were already complete from a prior interrupted session. T3, T4, T5, T6, T7 were completed in this session with bounded deviations. T8 (final verification + commit decision) is intentionally NOT executed by apply; it belongs to codepatrol-verify in a harness that did not author or implement this package. The prior verification.md (rev 2, verdict commit, verifier claude) does not cover rev 3. Package migrated from .codepatrol/work/ to .codepatrol/packages/, status=implemented, revision=3, all hashes current, steps.apply stamped with harness=pi, model=MiniMax-M3, completed_at=2026-07-21T18:31:14.427Z. Tests: 173/173 node + 15/15 skills-contract + 4/4 package-contract. Lint and build green.",
+  "artifacts": [
+    ".codepatrol/packages/2026-07-21-lean-docs/handoff.yaml",
+    ".codepatrol/packages/2026-07-21-lean-docs/implementation.md",
+    ".codepatrol/packages/2026-07-21-lean-docs/evidence/t3-result.json",
+    ".codepatrol/packages/2026-07-21-lean-docs/evidence/t4-result.json",
+    ".codepatrol/packages/2026-07-21-lean-docs/evidence/t5-result.json",
+    ".codepatrol/packages/2026-07-21-lean-docs/evidence/t6-result.json",
+    ".codepatrol/packages/2026-07-21-lean-docs/evidence/t7-result.json"
+  ]
+}

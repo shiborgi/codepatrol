@@ -1,6 +1,6 @@
 # Analysis evidence format
 
-Write analysis to `.codepatrol/work/<work-id>/evidence/analysis.md`. It is durable evidence for the adjacent `spec.md`, not a second governing specification. Use plain Markdown that reads in a terminal, editor, and Git host; no HTML or remote assets.
+Write analysis to `.codepatrol/packages/<work-id>/evidence/analysis.md`. It is durable evidence for the adjacent `spec.md`, not a second governing specification. Use plain Markdown that reads in a terminal, editor, and Git host; no HTML or remote assets.
 
 ## Architecture mode
 

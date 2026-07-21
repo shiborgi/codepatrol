@@ -1,0 +1,25 @@
+{
+  "workId": "2026-07-21-lean-docs",
+  "workflowId": "cpw-298c772c4edf",
+  "summary": "Apply session sealed: T3, T4, T5, T6, T7 all closed in this session; T1 and T2 were already complete from the prior interrupted session. 173/173 node tests pass; 15/15 skills-contract and 4/4 package-contract pass; npm run build exits 0; node scripts/lint-skills.mjs exits 0. Package migrated to .codepatrol/packages/2026-07-21-lean-docs/, status=implemented, revision=3, all hashes current, steps.apply stamped with harness=pi, model=MiniMax-M3. Removed transient untracked files (up.json, workflow-bug.json, workflow-bug.yaml) that would have been flagged as unplanned leftovers by the verify sweep. The plan's T8 (full verify + commit decision) is intentionally NOT executed by this apply session and belongs to codepatrol-verify in a harness that did not author or implement this package.",
+  "artifacts": [
+    ".codepatrol/packages/2026-07-21-lean-docs/handoff.yaml",
+    ".codepatrol/packages/2026-07-21-lean-docs/implementation.md",
+    ".codepatrol/packages/2026-07-21-lean-docs/evidence/"
+  ],
+  "commands_run": [
+    "codepatrol artifact validate --stage implementation -> valid: true",
+    "codepatrol workflow prime --workflow-id cpw-298c772c4edf",
+    "npm test -> 173/173 pass",
+    "node --test scripts/skills-contract.test.mjs -> 15/15",
+    "node --test scripts/package-contract.test.mjs -> 4/4",
+    "node scripts/lint-skills.mjs -> exits 0",
+    "npm run build -> exits 0",
+    "node bin/codepatrol.js artifact validate --stage verification -> valid: true",
+    "node bin/codepatrol.js artifact record -> ok: true"
+  ],
+  "residual_risks": [
+    "verification.md still records verified_revision=2 (from the prior Claude verification). Revision 3 has no fresh verification; codepatrol-verify must run independently before any commit.",
+    "The /opt/homebrew/bin/codepatrol shim is a stale build from the rev 0 source; users must run `npm run build` and use `node bin/codepatrol.js` (or the local installation) to enforce the .codepatrol/packages/ path. The shim issue is out of scope for this package and tracked separately."
+  ]
+}

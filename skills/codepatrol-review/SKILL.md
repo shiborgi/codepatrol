@@ -9,17 +9,21 @@ Review on contract and evidence axes. Act as the **Gatekeeper** defined in [ROLE
 
 Follow the [artifact handoff contract](../_shared/ARTIFACTS.md), [workflow memory contract](../_shared/WORKFLOW.md), and [portable execution protocol](../_shared/EXECUTION.md). Start with `codepatrol status` to list open work; review only an explicitly chosen work id or change target, otherwise help the user identify one. Resume or create review memory so scope, evidence, findings, artifact adjustments, and next action survive interruption.
 
+## Stop rule (mandatory)
+
+This skill is the gatekeeper. After recording a verdict and closing the review, **do NOT automatically invoke the next workflow** (`codepatrol-apply`, `codepatrol-verify`, or any downstream skill). Stop and await user instruction. The verdict belongs to the user; only the user may advance an approved package into implementation.
+
 ## Bind the review target
 
 State one mode and identify exact inputs from content and user direction, never filename recency:
 
-- **Handoff review** — `.codepatrol/work/<work-id>/handoff.yaml`, `spec.md`, `plan.md`, and declared evidence.
+- **Handoff review** — `.codepatrol/packages/<work-id>/handoff.yaml`, `spec.md`, `plan.md`, and declared evidence.
 - **Change review** — exact diff, branch, ref range, or project checkout plus its governing artifact package. If no governing artifact exists, state the inferred contract and the resulting confidence limit.
 
 For handoff review, begin with:
 
 ```bash
-codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
 ```
 
 A structural or hash failure stops review until provenance is restored. Read the complete spec and plan before exploring code. Reconcile the declared baseline with current source; material drift is a finding.
@@ -48,7 +52,7 @@ Record every adjustment and its reason in `review.md` using [REVIEW-FORMAT.md](R
 
 ## Record the verdict
 
-Write `.codepatrol/work/<work-id>/review.md`, add it to the manifest, and choose exactly one verdict:
+Write `.codepatrol/packages/<work-id>/review.md`, add it to the manifest, and choose exactly one verdict:
 
 - `approve`: the resulting revision is decision-complete and executable;
 - `fix-first`: bounded corrections or evidence still remain;
@@ -57,7 +61,7 @@ Write `.codepatrol/work/<work-id>/review.md`, add it to the manifest, and choose
 For `approve`, set status `approved` and record `approval.verdict: approve`, `approval.reviewed_revision` equal to the current revision, reviewer, and timestamp. Record `steps.review` with your harness, model when known, and the ISO completion time, then run `artifact record` followed by:
 
 ```bash
-codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
 ```
 
 Approval is complete only if it passes.

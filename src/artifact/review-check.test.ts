@@ -167,7 +167,7 @@ test("RV5 requires header metadata and matching reviewed revision", () => {
 	assert.ok(result.some((e) => /reviewed revision 7 but the manifest revision is 1/.test(e)));
 });
 
-// Real-package-directory fixture: builds an actual .codepatrol/work/<work-id>/evidence/ tree
+// Real-package-directory fixture: builds an actual .codepatrol/packages/<work-id>/evidence/ tree
 // under a temporary workspace, set packageDirectory to that real directory, and assert
 // RV6 resolution against the package base (not the workspace root).
 function realPackageDirectory(): { workspace: string; packageDirectory: string } {

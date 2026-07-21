@@ -140,10 +140,10 @@ codepatrol wiki validate --workspace "$PWD" --format json
 codepatrol wiki generate --workspace "$PWD" --format json
 codepatrol wiki record --input result.json --workspace "$PWD" --format json
 
-codepatrol artifact record --manifest .codepatrol/work/2026-07-18-example/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/2026-07-18-example/handoff.yaml --stage plan --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/2026-07-18-example/handoff.yaml --stage review --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/2026-07-18-example/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/packages/2026-07-18-example/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/2026-07-18-example/handoff.yaml --stage plan --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/2026-07-18-example/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/2026-07-18-example/handoff.yaml --stage implementation --workspace "$PWD" --format json
 
 codepatrol workflow create --input workflow.json --workspace "$PWD" --format json
 codepatrol workflow ready --workflow-id cpw-example --workspace "$PWD" --format json
@@ -157,7 +157,7 @@ codepatrol workflow compact --workflow-id cpw-example --workspace "$PWD" --forma
 
 Run `codepatrol --help` for the complete option summary.
 
-`codepatrol status` is the read-only entry point for open work: it lists active workflow roots from the local ledger together with non-`implemented` artifact packages from `.codepatrol/work/`, correlating both by `workflow_id` (`--all` includes closed workflows and implemented packages). When several workflows are active, `codepatrol workflow prime` without `--workflow-id` resumes the most recently updated one and names the others in a warning so the resume target is never a silent guess.
+`codepatrol status` is the read-only entry point for open work: it lists active workflow roots from the local ledger together with non-`implemented` artifact packages from `.codepatrol/packages/`, correlating both by `workflow_id` (`--all` includes closed workflows and implemented packages). When several workflows are active, `codepatrol workflow prime` without `--workflow-id` resumes the most recently updated one and names the others in a warning so the resume target is never a silent guess.
 
 ### JSON contract
 
@@ -242,7 +242,7 @@ The schema, relation direction, status transitions, and payload examples are doc
 The public workflows form one artifact pipeline. They may be performed by the same harness or handed between different harnesses, but the contract is always one version-controlled package in the project:
 
 ```text
-.codepatrol/work/<work-id>/
+.codepatrol/packages/<work-id>/
 ├── handoff.yaml
 ├── spec.md
 ├── plan.md
@@ -315,7 +315,7 @@ Shared state has a provider-neutral home:
 └── version.json
 ```
 
-User-controlled paths must be workspace-relative. Traversal, absolute paths, and symlink escapes are rejected. Artifact entries must additionally remain inside their own package directory. Graph, wiki, artifact, and workflow writers use per-workspace locks, cancellation checks, and atomic files; wiki replacement is additionally recoverable as a transaction. Workflow claims serialize through the ledger lock. Generated `.codepatrol/` state is ignored by this repository; artifact packages under `.codepatrol/work/` are intended for version control.
+User-controlled paths must be workspace-relative. Traversal, absolute paths, and symlink escapes are rejected. Artifact entries must additionally remain inside their own package directory. Graph, wiki, artifact, and workflow writers use per-workspace locks, cancellation checks, and atomic files; wiki replacement is additionally recoverable as a transaction. Workflow claims serialize through the ledger lock. Generated `.codepatrol/` state is ignored by this repository; artifact packages under `.codepatrol/packages/` are intended for version control.
 
 ## Development
 

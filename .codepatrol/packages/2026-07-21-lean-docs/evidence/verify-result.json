@@ -1,0 +1,16 @@
+{
+  "summary": "Verify session sealed: 2026-07-21-lean-docs at revision 3, status=verified, verdict=commit. Re-ran all 8 acceptance criteria independently; ran npm run verify (typecheck, 173/173 tests, build, smoke:cli, lint:skills — all exit 0); graph impact --since-ref a540b66 enumerated 21 dependents at depths 1-5 plus 15 affected test files, every one of which was exercised in this session; no regressions found. All 38 diff entries are covered by spec item 5 or by plan T1-T7. Two minor findings (stale verification.md from rev 2 was not declared as artifact; global codepatrol shim is pre-rev-3) recorded as out-of-scope follow-up. Verifier-independence gap (same harness pi/MiniMax-M3 as apply) recorded as evidence gap, not a finding; the determinism of the AC-8 stamping mechanism and re-execution of every gate in this session are the corroborating evidence.",
+  "verdict": "commit",
+  "verified_revision": 3,
+  "verifier": "pi",
+  "verified_at": "2026-07-21T18:38:00Z",
+  "artifacts": [
+    ".codepatrol/packages/2026-07-21-lean-docs/handoff.yaml",
+    ".codepatrol/packages/2026-07-21-lean-docs/verification.md"
+  ],
+  "residual_risks": [
+    "Verifier independence: this verify ran in the same harness (pi/MiniMax-M3) as the apply session. A second verify pass in a different harness is recommended before any commit, but not strictly required because the gate and the AC-8 stamping mechanism are deterministic and were re-executed in this session.",
+    "Stale verification.md (rev 2) on disk: the new verification.md was declared as an artifact in handoff.yaml and the old file is now redundant; a follow-up cleanup package can remove it.",
+    "Global shim /opt/homebrew/bin/codepatrol is a pre-rev-3 build; users must run npm run build and use node bin/codepatrol.js (or scripts/install-local.mjs) to enforce the new .codepatrol/packages/ path."
+  ]
+}

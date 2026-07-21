@@ -1,0 +1,18 @@
+{
+  "summary": "T3 — Update TypeScript test fixtures: complete. Migrated package fixture directories in src/artifact/artifact.test.ts, src/status/status.test.ts, and src/cli/cli.test.ts from .codepatrol/work/ to .codepatrol/packages/. Repaired the skills-contract.test.mjs regex to expect .codepatrol/packages/<work-id> instead of .codepatrol/work/<work-id>. Fixed the canonicalManifest regex in src/artifact/service.ts:28 from .codepatrol/work to .codepatrol/packages (the error message had already been migrated; only the regex still required the old path). Red signal observed: 26 tests failing across artifact, status, cli, and skills-contract suites. Green after: 171/171 node tests and 15/15 skills-contract tests pass.",
+  "artifacts": [
+    "src/artifact/artifact.test.ts",
+    "src/artifact/service.ts",
+    "src/status/status.test.ts",
+    "src/cli/cli.test.ts",
+    "scripts/skills-contract.test.mjs"
+  ],
+  "evidence": {
+    "red": "npm test -> 145 pass / 26 fail (artifact service 18, status 4, cli 1, skills-contract 1, plus 2 additional).",
+    "green": "npm test -> 171/171 pass; node --test scripts/skills-contract.test.mjs -> 15/15 pass.",
+    "root_cause": "src/artifact/service.ts:28 still had the regex /^\\.codepatrol\\/work\\// while the error message and listArtifactPackages already pointed at .codepatrol/packages/. Test fixtures continued to seed .codepatrol/work/, and the skills-contract regex required the old path."
+  },
+  "deviations": [
+    "Bounded: the service.ts regex was the canonical root of the failures and is a single-line correction. Recorded here rather than returned to review because the migration is already approved in T1 of the plan and the producer simply missed one regex constant."
+  ]
+}

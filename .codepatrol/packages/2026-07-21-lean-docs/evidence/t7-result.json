@@ -1,0 +1,16 @@
+{
+  "summary": "T7 — Fix Agent Identity Stamping: complete. Added a bounded runtime step-stamp mechanism to recordArtifactPackage. When env vars CODEPATROL_HARNESS, CODEPATROL_MODEL, and CODEPATROL_STEP are set, the corresponding steps[step] entry in the manifest is rewritten with the real harness and model instead of relying on a hand-typed string. The mechanism ignores unknown step values, preserves existing step entries, and is opt-in (only fires when the harness exports the env vars). Two focused tests added to src/artifact/artifact.test.ts: one red->green for the env-var path, one for the invalid-step guard. AC-8 of the plan is now observable in the artifact suite.",
+  "artifacts": [
+    "src/artifact/service.ts",
+    "src/artifact/artifact.test.ts"
+  ],
+  "evidence": {
+    "red_signal": "No existing test exercised the env-var stamping path; the prior implementation in recordArtifactPackage only updated hashes and updated_at. AC-8 of the plan required the stamp to reflect the runtime tool, but the prior code had no such mechanism.",
+    "green_after": "npm test 173/173 (171 prior + 2 new for T7). The new test asserts that steps.apply.harness is the value exported via CODEPATROL_HARNESS and steps.apply.completed_at is a fresh ISO timestamp. A guard test asserts invalid step names are silently ignored.",
+    "design_choice": "Used env vars (CODEPATROL_HARNESS, CODEPATROL_MODEL, CODEPATROL_STEP) instead of CLI flags so that any harness can advertise itself by exporting three variables before invoking `codepatrol artifact record`. No CLI flag surface was added; no new dependency; opt-in by design (the variables are unset in 99% of invocations)."
+  },
+  "deviations": [
+    "Bounded: the plan suggested patching the stamp at `artifact validate` or `artifact record`. The implementation only patches at `recordArtifactPackage` because that is the single function that writes the manifest; validating does not write. The plan did not pin a precise location.",
+    "Bounded: the harness and model detection uses env vars rather than introspecting process.argv. The two real harnesses we have (pi/MiniMax-M3, claude/claude-opus-4-8) need to set three env vars in their wrappers. The alternative — auto-detecting from process.argv — would have required platform-specific heuristics and would not have produced the model name reliably."
+  ]
+}

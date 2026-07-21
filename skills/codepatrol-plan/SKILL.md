@@ -9,6 +9,10 @@ Turn intent or improvement scope into a decision-complete package. Act as the **
 
 Follow the [artifact handoff contract](../_shared/ARTIFACTS.md), [workflow memory contract](../_shared/WORKFLOW.md), and [portable execution protocol](../_shared/EXECUTION.md). Use [codebase-design](../codebase-design/SKILL.md) for modules and seams, [domain-modeling](../domain-modeling/SKILL.md) for project language, and [grilling](../grilling/SKILL.md) for unresolved decisions.
 
+## Stop rule (mandatory)
+
+This skill is the producer. After sealing the package at `ready-for-review`, **do NOT automatically invoke the next workflow** (`codepatrol-review`, `codepatrol-apply`, or `codepatrol-verify`). Stop and await user instruction. Sequential pipeline execution is forbidden; the user is the only authority that may advance the lifecycle.
+
 ## Establish or resume the proposal
 
 Start with `codepatrol status` to list open work; resume only an explicitly chosen work id or workflow id, otherwise create a new package. Run `workflow prime` when operational memory exists; otherwise create a bounded proposal workflow. Reconcile memory with Git and durable artifacts. Record meaningful decisions, evidence, blockers, and safe next actions rather than fixed phases.
@@ -18,7 +22,7 @@ Select the origin mode at entry:
 - **Propose codebase** (`origin.skill: propose-codebase`) — choose mode `project` for a new product or `feature` for a bounded addition.
 - **Improve codebase** (`origin.skill: improve-codebase`) — choose mode `architecture` for a structural assessment or `bug` for a specific symptom, failure, or regression.
 
-Create a collision-safe `.codepatrol/work/<work-id>/` package with `handoff.yaml` status `draft`. Record the target baseline and optional workflow id.
+Create a collision-safe `.codepatrol/packages/<work-id>/` package with `handoff.yaml` status `draft`. Record the target baseline and optional workflow id.
 
 For codebase improvements (`improve-codebase`), sync the graph once and read the relevant wiki, `CONTEXT.md`, ADRs, modules, callers, and affected tests. For greenfield work (`project`), state assumptions instead of inventing code evidence. If the idea contains independently shippable systems, scope one independently reviewable package and make later systems explicit out-of-scope work.
 
@@ -43,7 +47,7 @@ Establish purpose, users, outcomes, constraints, non-goals, failure modes, and o
 Collect and record the required evidence:
 
 - **Bug mode** — investigate the symptom through [diagnose-bug](../diagnose-bug/SKILL.md), prove the root cause with a red-capable reproduction, minimize it, rank falsifiable hypotheses, and specify the minimum durable correction. Store the proven cause and correction constraints in `evidence/analysis.md`. Do not edit code or tests during diagnosis.
-- **Architecture mode** — assess the complete system or a bounded structural scope, identify deepening opportunities, and select exactly one top candidate for correction. Write the modules, interfaces, and candidate ranking in `.codepatrol/work/<work-id>/evidence/analysis.md` using [MARKDOWN-REPORT.md](MARKDOWN-REPORT.md).
+- **Architecture mode** — assess the complete system or a bounded structural scope, identify deepening opportunities, and select exactly one top candidate for correction. Write the modules, interfaces, and candidate ranking in `.codepatrol/packages/<work-id>/evidence/analysis.md` using [MARKDOWN-REPORT.md](MARKDOWN-REPORT.md).
 - **Technology reference** — when the user supplies a technology or GitHub reference, or local evidence cannot settle a choice, invoke [research-technology](../research-technology/SKILL.md). Store a durable `Reference Concept Analysis` under the package `evidence/` when it governs the design. Adapt concepts to the target project; direct integration or dependency requires its own explicit decision.
 
 ## Design the specification
@@ -52,11 +56,11 @@ Present two or three genuinely different approaches with trade-offs and a recomm
 
 Invoke [solution-simplification](../solution-simplification/SKILL.md) on the recommended approach (and on the correction candidates when in architecture mode). Prefer eliminating or reusing behavior before new modules, dependencies, files, or configuration. Carry its evidence-backed `Simplicity Decision`, safety floor, surface delta, and trigger-bearing deferred constraints into the spec.
 
-Write `.codepatrol/work/<work-id>/spec.md` using [SPEC-FORMAT.md](../_shared/SPEC-FORMAT.md). Record adopted, adapted, and rejected concepts. Remove placeholders, contradictions, ambiguous requirements, undeclared scope, and conversation-only decisions.
+Write `.codepatrol/packages/<work-id>/spec.md` using [SPEC-FORMAT.md](../_shared/SPEC-FORMAT.md). Record adopted, adapted, and rejected concepts. Remove placeholders, contradictions, ambiguous requirements, undeclared scope, and conversation-only decisions.
 
 ## Write the executable plan
 
-Invoke [writing-plans](../writing-plans/SKILL.md) and write `.codepatrol/work/<work-id>/plan.md`. Every acceptance criterion must map to one or more dependency-ordered tasks, exact files and interfaces, red-capable checks, expected results, and final verification. Another harness with only the repository and package must be able to execute it without guessing.
+Invoke [writing-plans](../writing-plans/SKILL.md) and write `.codepatrol/packages/<work-id>/plan.md`. Every acceptance criterion must map to one or more dependency-ordered tasks, exact files and interfaces, red-capable checks, expected results, and final verification. Another harness with only the repository and package must be able to execute it without guessing.
 
 Do not create the implementation task ledger here: `.codepatrol/workflows/` may not travel to the receiving harness. The implementer rebuilds it from the approved plan.
 
@@ -65,15 +69,15 @@ Do not create the implementation task ledger here: `.codepatrol/workflows/` may 
 Declare `spec`, `plan`, and governing evidence (`evidence/analysis.md`, reference analyses, or bug reproducer) in `handoff.yaml`. Keep status `draft`, record the draft hashes, and run the deterministic content gate before sealing:
 
 ```bash
-codepatrol artifact record --manifest .codepatrol/work/<work-id>/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage plan --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/packages/<work-id>/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/<work-id>/handoff.yaml --stage plan --workspace "$PWD" --format json
 ```
 
 After it passes, set revision `1` and status `ready-for-review`, record `steps.plan` with your harness, model when known, and the ISO completion time, then record and validate the review handoff:
 
 ```bash
-codepatrol artifact record --manifest .codepatrol/work/<work-id>/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/packages/<work-id>/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
 ```
 
 Report the package path, work id, baseline, key risks, selected improvement or features, and recommendations to run `codepatrol-review`. `ready-for-review` is not implementation approval, and this skill never invokes execution or edits production code.

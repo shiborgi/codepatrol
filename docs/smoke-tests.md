@@ -39,13 +39,13 @@ Use a disposable repository for graph/wiki exercises. Never point a rewrite payl
 
 ## Artifact handoff
 
-- Create `.codepatrol/work/<work-id>/` with `handoff.yaml`, `spec.md`, and `plan.md`; run `artifact record` and confirm all declared files receive SHA-256 values.
+- Create `.codepatrol/packages/<work-id>/` with `handoff.yaml`, `spec.md`, and `plan.md`; run `artifact record` and confirm all declared files receive SHA-256 values.
 - Run `artifact validate --stage review`, hash the package before and after, and confirm validation is read-only.
 - Change `plan.md` without recording it and confirm review validation exits `4` with a hash mismatch.
 - Try `../`, an absolute path, a duplicate declaration, and a symlink outside the package; confirm each fails without rewriting the prior manifest.
 - Add `review.md`, status `approved`, verdict `merge`, and a matching `reviewed_revision`; record and confirm implementation validation passes.
 - Change only the manifest revision or use `fix-first`; confirm implementation validation rejects the package.
-- Copy or merge the package into a fresh checkout without `.codepatrol/workflows/`; confirm `codepatrol-apply` can reconstruct its task ledger from `plan.md`.
+- Copy or merge the package into a fresh checkout without `.codepatrol/packagesflows/`; confirm `codepatrol-apply` can reconstruct its task ledger from `plan.md`.
 
 ## Installation
 

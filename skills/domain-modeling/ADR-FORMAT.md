@@ -12,7 +12,7 @@ A title plus 1–3 sentences: the context, the decision, the reason.
 # 0003 — Keep the report as plain markdown
 
 Reviews are read in terminals and on git hosts, not in browsers. We render
-`.codepatrol/work/<work-id>/evidence/analysis.md` with Mermaid fences instead of generating
+`.codepatrol/packages/<work-id>/evidence/analysis.md` with Mermaid fences instead of generating
 HTML; a browser-opening step was rejected because it breaks headless and
 remote sessions.
 ```

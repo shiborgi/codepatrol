@@ -1,0 +1,52 @@
+schema_version: 1
+work_id: 2026-07-21-lean-docs
+origin:
+  skill: improve-codebase
+  mode: architecture
+workflow_id: cpw-298c772c4edf
+status: verified
+revision: 3
+artifacts:
+  spec:
+    path: spec.md
+    sha256: 8c692bec021ffcd3cfbc9817c799501efb32b8304016c22e1449df59b808906e
+  plan:
+    path: plan.md
+    sha256: 357bbe618efc5bfb324000ec460f7c0eb99e9a7e3f02b49c1f14f068105209b3
+  review:
+    path: review.md
+    sha256: 6211cbb5b24ad8cd848b4677836f502a9814fc6d108f1ec28085397209798c3a
+  implementation:
+    path: implementation.md
+    sha256: c4f73184bcfc10237b903d75e086c311c90c9f14484b844505d7f66b4a238f9d
+  verification:
+    path: verification.md
+    sha256: 7d8cf0f37f3639c13588bbc4afd8efb32495d4f06ac808ca187d132d012c2498
+approval:
+  verdict: approve
+  reviewed_revision: 3
+  reviewer: pi
+  reviewed_at: 2026-07-21T16:37:00Z
+updated_at: 2026-07-21T18:39:53.076Z
+steps:
+  plan:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T15:26:00Z
+  review:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T16:37:00Z
+  apply:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T18:31:14.427Z
+  verify:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-21T18:39:53.076Z
+verification:
+  verdict: commit
+  verified_revision: 3
+  verifier: pi
+  verified_at: 2026-07-21T18:38:00Z

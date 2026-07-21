@@ -3,7 +3,7 @@
 Codepatrol separates the work of deciding, reviewing, implementing, and verifying so each step can run in a different harness or session. The portable boundary is one version-controlled directory:
 
 ```text
-.codepatrol/work/<work-id>/
+.codepatrol/packages/<work-id>/
 ├── handoff.yaml
 ├── spec.md
 ├── plan.md
@@ -17,7 +17,7 @@ Codepatrol separates the work of deciding, reviewing, implementing, and verifyin
 
 The spec carries a `Simplicity decision` so this intent also survives a harness handoff. It identifies the earliest solution rung that satisfies the acceptance criteria, evidence against earlier rungs, the retained safety floor, and expected surface delta. A deliberately deferred constraint is valid only with a stable id, known ceiling, observable trigger, and bounded upgrade path. The plan preserves that choice per task, review assesses it on a separate simplicity axis, and implementation reconciles actual surface delta without claiming unmeasured savings.
 
-This package is deliberately independent of `.codepatrol/workflows/ledger.json`. The ledger is local operational memory and can be missing from a receiving checkout or session; the approved plan must contain enough information to reconstruct implementation tasks and dependencies.
+This package is deliberately independent of `.codepatrol/packagesflows/ledger.json`. The ledger is local operational memory and can be missing from a receiving checkout or session; the approved plan must contain enough information to reconstruct implementation tasks and dependencies.
 
 ## Why a directory per change
 
@@ -39,10 +39,10 @@ The `work-id` is `<YYYY-MM-DD>-<slug>` with a numeric suffix on collision. A pac
 The CLI provides two deterministic operations, `record` and `validate`, the latter across three stages:
 
 ```bash
-codepatrol artifact record --manifest .codepatrol/work/<work-id>/handoff.yaml --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
-codepatrol artifact validate --manifest .codepatrol/work/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
+codepatrol artifact record --manifest .codepatrol/packages/<work-id>/handoff.yaml --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/<work-id>/handoff.yaml --stage review --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/<work-id>/handoff.yaml --stage implementation --workspace "$PWD" --format json
+codepatrol artifact validate --manifest .codepatrol/packages/<work-id>/handoff.yaml --stage verification --workspace "$PWD" --format json
 ```
 
 `record` validates the package boundary and atomically writes hashes. `validate` is read-only. Review validation requires a complete, unchanged producer handoff. Implementation validation additionally requires `review.md`, verdict `merge`, and `approval.reviewed_revision` equal to the current governing revision. Verification validation requires status `implemented`, a declared `implementation.md`, and that same intact approval. Absolute paths, traversal, duplicate declarations, missing files, package-escaping symlinks, stale hashes, and invalid lifecycle data fail explicitly.
@@ -61,7 +61,7 @@ The governing revision covers `spec.md`, `plan.md`, and producer evidence. A rev
 
 ## Cross-harness example
 
-1. Claude runs `codepatrol-plan`, commits `.codepatrol/work/2026-07-18-cache/`, and hands off status `ready-for-review`.
+1. Claude runs `codepatrol-plan`, commits `.codepatrol/packages/2026-07-18-cache/`, and hands off status `ready-for-review`.
 2. Codex validates hashes, reviews code evidence, corrects an interface and its task, increments revision 1 to 2, writes `review.md`, and commits status `approved` with `reviewed_revision: 2`.
 3. Pi validates the approved package, reconstructs workflow tasks from `plan.md`, creates `implementation.md`, and executes only the ready dependency frontier.
 4. If Pi finds material baseline drift, it records the evidence and returns the package to `changes-requested`; it does not redesign the interface locally.
