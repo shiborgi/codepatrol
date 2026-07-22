@@ -1,7 +1,7 @@
 /**
  * GraphStore: the persistent, incremental home of the code graph.
  *
- * `.codepatrol/code-graph/graph.json` (inside the analyzed repo) holds per-file
+ * `.codepatrol/runtime/graph/graph.json` holds per-file
  * extraction keyed by content hash — the expensive tree-sitter work. Sync
  * re-extracts only files whose hash changed, prunes deleted ones, then links
  * the whole document in memory. Snapshots are memoized per root by document
@@ -13,7 +13,7 @@ import { setImmediate as yieldToLoop } from "node:timers/promises";
 import { join } from "node:path";
 import { atomicWriteFile, atomicWriteJson } from "../shared/atomic-store.js";
 import { hashContent, hashFile, listFiles } from "../shared/repo-files.js";
-import { graphStatePath, legacyGraphPath, STATE_VERSION, stateRoot } from "../shared/state.js";
+import { graphStatePath, STATE_VERSION, stateRoot } from "../shared/state.js";
 import { extractFile } from "./extract.js";
 import { languageForFile } from "./languages.js";
 import { link, loadTsPaths } from "./link.js";
@@ -67,12 +67,7 @@ function loadAt(path: string): { document: GraphDocument; raw: string } | undefi
 	}
 }
 
-function loadDocument(root: string): { document: GraphDocument; raw: string; legacy: boolean } | undefined {
-	const current = loadAt(graphPath(root));
-	if (current) return { ...current, legacy: false };
-	const legacy = loadAt(legacyGraphPath(root));
-	return legacy ? { ...legacy, legacy: true } : undefined;
-}
+function loadDocument(root: string): { document: GraphDocument; raw: string } | undefined { return loadAt(graphPath(root)); }
 
 function memoizedLink(root: string, document: GraphDocument, raw: string): GraphSnapshot {
 	const docHash = hashContent(raw);
@@ -135,7 +130,7 @@ export async function syncGraph(
 	atomicWriteJson(join(stateRoot(root), "version.json"), {
 		version: STATE_VERSION,
 		updatedAt: new Date().toISOString(),
-		graphMigratedFromLegacy: loaded?.legacy === true,
+		storage: ".codepatrol/runtime",
 	});
 
 	const snapshot = memoizedLink(root, document, raw);

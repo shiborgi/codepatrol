@@ -62,7 +62,7 @@ test("acquireLock removes the orphan lock when writeRecord fails after openNew",
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-lock-orphan-"));
 	try {
 		const path = lockPath(root, "acquire");
-		mkdirSync(join(root, ".codepatrol", "locks"), { recursive: true });
+		mkdirSync(join(root, ".codepatrol", "runtime", "locks"), { recursive: true });
 		let unlinkCalls = 0;
 		const failingIo: LockIo = {
 			openNew: (target) => openSync(target, "wx", 0o600),
@@ -83,7 +83,7 @@ test("acquireLock never unlinks a lock owned by another attempt", async () => {
 	const root = mkdtempSync(join(tmpdir(), "codepatrol-lock-foreign-"));
 	try {
 		const path = lockPath(root, "foreign");
-		mkdirSync(join(root, ".codepatrol", "locks"), { recursive: true });
+		mkdirSync(join(root, ".codepatrol", "runtime", "locks"), { recursive: true });
 		const otherToken = "other-attempt-token";
 		const otherRecord = { token: otherToken, pid: 9_999_999, host: "foreign-host", command: "foreign.command", createdAt: "2026-01-01T00:00:00.000Z" };
 		writeFileSync(path, JSON.stringify(otherRecord), "utf8");

@@ -22,25 +22,19 @@ export interface ParsedArgs {
 	includeAmbiguous?: boolean;
 	input?: string;
 	id?: string;
-	actor?: string;
-	result?: string;
-	status?: string;
-	workflowId?: string;
-	budget?: string;
-	manifest?: string;
-	stage?: string;
 	all?: boolean;
+	asOf?: string;
 }
 
 const BOOLEAN_FLAGS = new Set(["help", "version", "force", "exact", "include-ambiguous", "all"]);
 const REPEATABLE = new Set(["file", "symbol", "relation"]);
 const KNOWN = new Set([
 	"workspace", "format", "help", "version", "force", "path", "query", "exact", "symbol", "file",
-	"relation", "since-ref", "include-ambiguous", "input", "id", "actor", "result", "status", "workflow-id", "budget", "manifest", "stage", "all",
+	"relation", "since-ref", "include-ambiguous", "input", "id", "all", "as-of",
 ]);
 const GLOBAL = new Set(["workspace", "format", "help", "version"]);
 const COMMAND_OPTIONS = new Map<string, Set<string>>([
-	["status", new Set(["all"])],
+	["status", new Set(["all", "as-of"])],
 	["graph.sync", new Set(["force"])],
 	["graph.overview", new Set(["path"])],
 	["graph.outline", new Set(["file"])],
@@ -51,18 +45,12 @@ const COMMAND_OPTIONS = new Map<string, Set<string>>([
 	["wiki.validate", new Set()],
 	["wiki.generate", new Set()],
 	["wiki.record", new Set(["input"])],
-	["workflow.create", new Set(["input"])],
-	["workflow.update", new Set(["id", "input"])],
-	["workflow.show", new Set(["id"])],
-	["workflow.list", new Set(["status", "workflow-id"])],
-	["workflow.ready", new Set(["workflow-id"])],
-	["workflow.claim", new Set(["id", "actor"])],
-	["workflow.close", new Set(["id", "result"])],
-	["workflow.remember", new Set(["input"])],
-	["workflow.prime", new Set(["workflow-id", "budget"])],
-	["workflow.compact", new Set(["workflow-id"])],
-	["artifact.record", new Set(["manifest"])],
-	["artifact.validate", new Set(["manifest", "stage"])],
+	["change.start", new Set(["input"])],
+	["change.inspect", new Set(["id"])],
+	["change.transition", new Set(["id", "input"])],
+	["change.session", new Set(["id", "input"])],
+	["change.doctor", new Set(["id"])],
+	["change.finalize", new Set(["id", "input"])],
 ]);
 
 function fail(message: string): never {
@@ -131,14 +119,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
 		includeAmbiguous: values.has("include-ambiguous"),
 		input: values.get("input")?.[0],
 		id: values.get("id")?.[0],
-		actor: values.get("actor")?.[0],
-		result: values.get("result")?.[0],
-		status: values.get("status")?.[0],
-		workflowId: values.get("workflow-id")?.[0],
-		budget: values.get("budget")?.[0],
-		manifest: values.get("manifest")?.[0],
-		stage: values.get("stage")?.[0],
 		all: values.has("all"),
+		asOf: values.get("as-of")?.[0],
 	};
 }
 

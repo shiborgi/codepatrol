@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { languageForFile } from "../graph/languages.js";
-import { graphStatePath, legacyGraphPath, wikiManifestPath, wikiRoot } from "../shared/state.js";
+import { graphStatePath, wikiManifestPath, wikiRoot } from "../shared/state.js";
 import { listFiles } from "../shared/repo-files.js";
 import { loadManifest, pageFreshness } from "./manifest.js";
 import { validateBundle } from "./validate.js";
@@ -27,7 +27,7 @@ export async function wikiStatus(workspace: string): Promise<WikiStatusData> {
 	const reasons: string[] = [];
 	if (treeExists && !indexExists) reasons.push("docs/wiki exists without a valid root index.md");
 	if (indexExists && !validation.valid) reasons.push(...validation.errors.map((issue) => `${issue.path}: ${issue.message}`));
-	if (indexExists && !manifest) reasons.push(".codepatrol/wiki/manifest.json is absent or incompatible");
+	if (indexExists && !manifest) reasons.push(".codepatrol/runtime/wiki/manifest.json is absent or incompatible");
 	if (indexExists && manifest) {
 		const concepts = new Set(validation.concepts.map((concept) => concept.id));
 		const recorded = new Set(Object.keys(manifest.pages));
@@ -53,7 +53,7 @@ export async function wikiStatus(workspace: string): Promise<WikiStatusData> {
 	const rewriteRequired = indexExists ? reasons.length > 0 : treeExists;
 	const text = [
 		`Wiki: ${indexExists ? "present" : "absent"}${rewriteRequired ? " — full rewrite required" : ""}`,
-		`Graph: ${existsSync(graphStatePath(workspace)) || existsSync(legacyGraphPath(workspace)) ? "present" : "absent"}`,
+		`Graph: ${existsSync(graphStatePath(workspace)) ? "present" : "absent"}`,
 		...(reasons.length ? ["Reasons:", ...reasons.map((reason) => `- ${reason}`)] : []),
 		...(indexExists && !rewriteRequired ? [`Fresh concepts: ${fresh.length}`, `Stale concepts: ${stale.length}`, `Uncovered source files: ${uncoveredSources.length}`] : []),
 	].join("\n");
@@ -62,7 +62,7 @@ export async function wikiStatus(workspace: string): Promise<WikiStatusData> {
 		rewriteRequired,
 		reasons,
 		manifestPath: wikiManifestPath(workspace),
-		graphExists: existsSync(graphStatePath(workspace)) || existsSync(legacyGraphPath(workspace)),
+		graphExists: existsSync(graphStatePath(workspace)),
 		fresh,
 		stale,
 		uncoveredSources,

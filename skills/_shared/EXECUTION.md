@@ -2,7 +2,7 @@
 
 Use the main conversation as the **coordinator**. The coordinator owns decisions, the final synthesis, `codepatrol graph sync`, and every wiki write.
 
-Use the [shared workflow contracts](WORKFLOW.md) for durable memory. Resume an existing workflow before decomposing it, represent dependencies in the native ledger, and claim a write unit before changing its scope.
+Use the [Stage Session contract](SESSION.md) for rebuildable task progress. Inspect the explicit Change before decomposing it, represent dependencies in its current session, and claim one write unit before changing its scope.
 
 For work that can be decomposed, describe each unit with:
 

@@ -1,14 +1,14 @@
 # Verification report format
 
-Write `.codepatrol/packages/<work-id>/verification.md` when verifying an implemented package. Record executed evidence, never restated journal claims.
+Write `.codepatrol/changes/<work-id>/verify/report.md` when verifying an implemented Change. Record executed evidence, never restated journal claims.
 
 ```markdown
 # Verification — <name>
 
-- Package: `<work-id>`
+- Change: `<work-id>`
 - Verified revision: <N>
 - Verifier: <harness or actor>
-- Base ref: <implementation.base_ref>
+- Base ref: <Change base commit>
 - Head ref: <ref or working tree>
 - Evidence date: <ISO timestamp>
 
@@ -65,9 +65,9 @@ behavior, and their consequence.>
 
 `commit` | `improve`
 
-<One paragraph explaining the verdict, the manifest status it sets, and the next
-owner: no one for `commit`, `codepatrol-apply` for a bounded `improve`, or
-`codepatrol-review` for a semantic `improve`.>
+<One paragraph explaining the verdict and next Change transition: `commit`
+advances to Finalize, a bounded `improve` returns to Apply, and a semantic
+`improve` returns to a new Plan attempt.>
 ```
 
 Rules:

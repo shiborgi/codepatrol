@@ -5,7 +5,7 @@ description: (codepatrol) Design risk-based feedback loops and a verification ma
 
 # Verification Strategy
 
-Define the smallest reliable evidence that could falsify the change. Use the [Verification Matrix](../_shared/WORKFLOW.md#verification-matrix) contract and graph impact to include affected callers and tests.
+Define the smallest reliable evidence that could falsify the Change. Record trigger, expected red signal, passing result and durable evidence path; use graph impact to include affected callers and tests.
 
 ## Choose the opening signal
 

@@ -1,0 +1,15 @@
+schema_version: 2
+identity:
+  work_id: 2026-07-22-returned
+  title: Returned change
+  created_at: 2026-07-22T10:00:00.000Z
+  branch: codepatrol/2026-07-22-returned
+  target_branch: main
+  base_commit: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+events:
+  - { id: evt-1, type: change-started, at: 2026-07-22T10:00:00.000Z, actor: codex, stage: plan, attempt: 1, next_action: codepatrol-plan 2026-07-22-returned on codepatrol/2026-07-22-returned }
+  - { id: evt-2, type: run-recorded, at: 2026-07-22T10:01:00.000Z, actor: codex, stage: plan, attempt: 1, run: { id: plan-1, started_at: 2026-07-22T10:00:00.000Z, finished_at: 2026-07-22T10:01:00.000Z, elapsed_ms: 60000, tokens: { status: unavailable, reason: fixture } } }
+  - { id: evt-3, type: stage-checkpointed, at: 2026-07-22T10:01:01.000Z, actor: codex, stage: plan, attempt: 1, result: ready, checkpoint: cccccccccccccccccccccccccccccccccccccccc, artifacts: [], next_action: codepatrol-review 2026-07-22-returned on codepatrol/2026-07-22-returned }
+  - { id: evt-4, type: stage-began, at: 2026-07-22T10:02:00.000Z, actor: reviewer, stage: review, attempt: 1, next_action: complete codepatrol-review 2026-07-22-returned }
+  - { id: evt-5, type: run-recorded, at: 2026-07-22T10:02:59.000Z, actor: reviewer, stage: review, attempt: 1, run: { id: review-return, started_at: 2026-07-22T10:02:00.000Z, finished_at: 2026-07-22T10:02:59.000Z, elapsed_ms: 59000, tokens: { status: unavailable, reason: fixture } } }
+  - { id: evt-6, type: stage-returned, at: 2026-07-22T10:03:00.000Z, actor: reviewer, stage: review, attempt: 1, to_stage: plan, reason: contract defect, next_action: codepatrol-plan 2026-07-22-returned on codepatrol/2026-07-22-returned }

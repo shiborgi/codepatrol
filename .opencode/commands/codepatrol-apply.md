@@ -1,8 +1,6 @@
 ---
-description: (codepatrol) Apply an approved artifact package to production code
+description: (codepatrol) Implement an approved branch-backed Change
 ---
-Load the `codepatrol-apply` skill via the skill tool and execute it for the following approved package:
-
-$ARGUMENTS
-
-Follow the skill's SKILL.md exactly. Validate the implementation stage before mutation, execute the plan test-first via `execute-change`, append concise evidence to `implementation.md`, and refresh project artifacts. Stop and return to review on any semantic deviation.
+Load `codepatrol-apply` for `$ARGUMENTS`. Inspect the explicit work id and
+branch, execute the accepted plan through its scoped Stage Session, record
+elapsed/token coverage and checkpoint a clean candidate to Verify. Stop there.

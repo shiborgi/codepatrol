@@ -1,4 +1,4 @@
 interface:
   display_name: "Codepatrol Status"
-  short_description: "Summarize open workflows and packages"
-  default_prompt: "Use $codepatrol-status to summarize open Codepatrol workflows and artifact packages, then resume one or start new work."
+  short_description: "Render deterministic Change lifecycle status"
+  default_prompt: "Use $codepatrol-status to render the deterministic Change Kanban and exact resume actions."

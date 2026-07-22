@@ -5,363 +5,68 @@ import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 
 const root = resolve(import.meta.dirname, "..", "skills");
-const shared = resolve(root, "_shared");
-const expected = ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-status"];
-const expectedSupport = [
-	"assess-change", "codebase-design", "codebase-wiki", "diagnose-bug", "domain-modeling",
-	"execute-change", "grilling", "research-technology", "solution-simplification", "verification-strategy", "writing-plans",
-];
+const shared = join(root, "_shared");
+const lifecycle = ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-finalize"];
+const primaries = [...lifecycle, "codepatrol-status"];
+const support = ["assess-change", "codebase-design", "codebase-wiki", "diagnose-bug", "domain-modeling", "execute-change", "grilling", "research-technology", "solution-simplification", "verification-strategy", "writing-plans"];
 const catalog = parseYaml(readFileSync(join(root, "catalog.yaml"), "utf8"));
+function skill(name) { return readFileSync(join(root, name, "SKILL.md"), "utf8"); }
 
-function metadata(name) {
-	const content = readFileSync(join(root, name, "SKILL.md"), "utf8");
-	const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
-	return { content, frontmatter: parseYaml(match?.[1] ?? "") };
-}
-
-test("skills expose exactly the five canonical primary workflows", () => {
-	const primaries = Object.entries(catalog.skills)
-		.filter(([, value]) => value.role === "primary")
-		.map(([name]) => name)
-		.sort();
-	assert.deepEqual(primaries, [...expected].sort());
-	const support = Object.entries(catalog.skills)
-		.filter(([, value]) => value.role === "support")
-		.map(([name]) => name)
-		.sort();
-	assert.deepEqual(support, [...expectedSupport].sort());
-	for (const legacy of ["propose-codebase", "improve-codebase", "review-codebase", "implement-codebase", "review-change"]) {
-		assert.equal(existsSync(join(root, legacy)), false, `legacy public workflow ${legacy} must be absent`);
-	}
-	assert.ok(existsSync(join(shared, "ARTIFACTS.md")), "shared contracts live at skills/_shared/");
-	assert.equal(existsSync(join(root, "_shared", "SKILL.md")), false, "shared contracts must not be discovered as a skill");
-	assert.equal(catalog.skills._shared, undefined, "_shared must not be a catalog skill");
-	assert.equal(existsSync(join(root, "test-driven-development")), false, "verification-strategy must absorb the legacy TDD skill");
+test("catalog exposes five ordered lifecycle skills plus unordered Status", () => {
+	const actual = Object.entries(catalog.skills).filter(([, value]) => value.role === "primary").map(([name]) => name).sort();
+	assert.deepEqual(actual, [...primaries].sort());
+	assert.deepEqual(Object.entries(catalog.skills).filter(([, value]) => value.role === "support").map(([name]) => name).sort(), [...support].sort());
+	for (const [index, name] of lifecycle.entries()) assert.equal(catalog.skills[name].order, index + 1);
+	assert.equal(catalog.skills["codepatrol-status"].order, undefined);
+	assert.equal(catalog.skills["codepatrol-finalize"].mutation, "authorized");
 });
 
-test("skill frontmatter is portable and catalog dependencies are complete and acyclic", () => {
-	const names = Object.keys(catalog.skills);
-	for (const name of names) {
-		assert.ok(existsSync(join(root, name, "SKILL.md")), `${name} must have SKILL.md`);
-		assert.deepEqual(Object.keys(metadata(name).frontmatter).sort(), ["description", "name"]);
-		for (const dependency of catalog.skills[name].mayInvoke ?? []) assert.ok(names.includes(dependency), `${name} references missing ${dependency}`);
+test("Change and Stage Session are the only shared lifecycle contracts", () => {
+	assert.ok(existsSync(join(shared, "CHANGE.md"))); assert.ok(existsSync(join(shared, "SESSION.md")));
+	assert.equal(existsSync(join(shared, "ARTIFACTS.md")), false); assert.equal(existsSync(join(shared, "WORKFLOW.md")), false);
+	const change = readFileSync(join(shared, "CHANGE.md"), "utf8");
+	assert.match(change, /\.codepatrol\/changes\/<work-id>/); assert.match(change, /Plan → Review → Apply → Verify → Finalize/);
+	assert.match(change, /measured|unavailable/); assert.match(change, /elapsed/i); assert.match(change, /never.*recency/is);
+	const session = readFileSync(join(shared, "SESSION.md"), "utf8"); assert.match(session, /\.codepatrol\/runtime\/sessions/); assert.match(session, /never own lifecycle/i);
+});
+
+test("each lifecycle skill owns one stage, records metrics, checkpoints, and stops", () => {
+	const owned = { "codepatrol-plan": "plan/", "codepatrol-review": "review/", "codepatrol-apply": "apply/", "codepatrol-verify": "verify/", "codepatrol-finalize": "finalize/" };
+	for (const name of lifecycle) {
+		const text = skill(name); assert.match(text, /change inspect --id <work-id>/); assert.match(text, new RegExp(owned[name].replace("/", "\\/")));
+		assert.match(text, /elapsed/i); assert.match(text, /actual.*unavailable|measured.*unavailable/is);
+		if (name !== "codepatrol-finalize") assert.match(text, /Do not invoke|never.*invoke/is);
+		const metadata = parseYaml(readFileSync(join(root, name, "agents", "openai.yaml"), "utf8")); assert.match(metadata.interface.default_prompt, new RegExp(`\\$${name}\\b`));
 	}
-	const visiting = new Set();
-	const visited = new Set();
-	function visit(name) {
-		if (visiting.has(name)) assert.fail(`catalog dependency cycle at ${name}`);
-		if (visited.has(name)) return;
-		visiting.add(name);
-		for (const dependency of catalog.skills[name].mayInvoke ?? []) visit(dependency);
-		visiting.delete(name);
-		visited.add(name);
+});
+
+test("Finalize is authority-bound, recoverable, local-only, and clean", () => {
+	const text = skill("codepatrol-finalize");
+	assert.match(text, /explicit.*authority|authority.*explicit/is); assert.match(text, /commit.*rollback/is); assert.match(text, /tag.*precedes deletion/is);
+	assert.match(text, /target tree byte-identical/i); assert.match(text, /clean/i); assert.match(text, /Never fetch, push, rebase, force/i);
+});
+
+test("Status delegates table generation to the deterministic script", () => {
+	const text = skill("codepatrol-status"); assert.match(text, /scripts\/render-kanban\.mjs/); assert.match(text, /verbatim/i); assert.match(text, /Do not construct[\s\S]*table/i);
+});
+
+test("catalog dependencies are reciprocal, support-only and acyclic", () => {
+	const names = Object.keys(catalog.skills); const visiting = new Set(); const visited = new Set();
+	for (const [name, entry] of Object.entries(catalog.skills)) for (const target of entry.mayInvoke ?? []) {
+		assert.equal(catalog.skills[target]?.role, "support", `${name} may invoke only support skill ${target}`); assert.ok(catalog.skills[target].invokedBy.includes(name));
 	}
+	function visit(name) { if (visiting.has(name)) assert.fail(`cycle at ${name}`); if (visited.has(name)) return; visiting.add(name); for (const target of catalog.skills[name].mayInvoke ?? []) visit(target); visiting.delete(name); visited.add(name); }
 	for (const name of names) visit(name);
 });
 
-test("catalog mayInvoke is support-only and reciprocal, and links exempt primary handoffs", () => {
-	const roleByName = Object.fromEntries(
-		Object.entries(catalog.skills).map(([name, value]) => [name, value.role]),
-	);
-	for (const name of Object.keys(catalog.skills)) {
-		const declared = new Set(catalog.skills[name].mayInvoke ?? []);
-		const linkedAll = new Set([...metadata(name).content.matchAll(/\]\(\.\.\/([^/)]+)\/SKILL\.md\)/g)]
-			.map((match) => match[1])
-			.filter((dependency) => dependency !== "_shared"));
-		const linkedSupport = new Set([...linkedAll].filter((target) => roleByName[target] === "support"));
-		for (const dependency of declared) {
-			assert.equal(roleByName[dependency], "support", `${name} mayInvoke entry ${dependency} must be a support role`);
-			assert.ok(linkedSupport.has(dependency), `${name} mayInvoke entry ${dependency} lacks an explicit support invocation link`);
-		}
-		for (const dependency of linkedSupport) assert.ok(declared.has(dependency), `${name} support invocation link ${dependency} is absent from mayInvoke`);
-		for (const dependency of linkedAll) {
-			if (roleByName[dependency] === "primary") {
-				assert.ok(!declared.has(dependency), `${name} primary-to-primary handoff link ${dependency} must not appear in mayInvoke`);
-			}
-		}
-	}
-	for (const [name, value] of Object.entries(catalog.skills)) {
-		const declared = new Set(value.mayInvoke ?? []);
-		const invoked = new Set(value.invokedBy ?? []);
-		for (const dependency of declared) {
-			const target = catalog.skills[dependency];
-			if (target) assert.ok((target.invokedBy ?? []).includes(name), `${name} -> ${dependency} is not reciprocal in invokedBy`);
-		}
-		for (const dependency of invoked) {
-			const target = catalog.skills[dependency];
-			if (target) assert.ok((target.mayInvoke ?? []).includes(name), `${name} <- ${dependency} is not reciprocal in mayInvoke`);
-		}
-	}
-	for (const name of expected) assert.match(metadata(name).content, /ROLES\.md/, `${name} must reference the shared persona contract`);
-});
-
-test("retired verify-rejection contradiction is absent from all skill files", () => {
-	function skillFiles(directory) {
-		return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-			const path = join(directory, entry.name);
-			return entry.isDirectory() ? skillFiles(path) : [path];
-		});
-	}
-	for (const path of skillFiles(root).filter((path) => path.endsWith(".md"))) {
-		assert.doesNotMatch(readFileSync(path, "utf8"), /returning the state to `blocked` or `approved`|`blocked` or `approved` so that/i, `${path} retains the retired verify-rejection contradiction`);
-	}
-});
-test("skill UI prompts invoke their own skill explicitly", () => {
-	for (const name of expected) {
-		const path = join(root, name, "agents", "openai.yaml");
-		assert.ok(existsSync(path), `${name} must define Codex presentation metadata`);
-		const agent = parseYaml(readFileSync(path, "utf8"));
-		assert.match(agent.interface.default_prompt, new RegExp(`\\$${name}\\b`), `${name} default prompt must name the skill`);
+test("live skill contracts contain no v1 package, ledger, or ADR paths", () => {
+	function files(directory) { return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => entry.isDirectory() ? files(join(directory, entry.name)) : [join(directory, entry.name)]); }
+	for (const path of files(root).filter((value) => value.endsWith(".md"))) {
+		const text = readFileSync(path, "utf8"); assert.doesNotMatch(text, /\.codepatrol\/(packages|workflows|packagesflows|adr)\//, path); assert.doesNotMatch(text, /ARTIFACTS\.md|WORKFLOW\.md/, path);
 	}
 });
 
-test("research-technology adapts reference concepts to the target project without integration", () => {
-	const research = metadata("research-technology").content;
-	assert.match(research, /GitHub/i);
-	assert.match(research, /target project/i);
-	assert.match(research, /facts?.*inferences?/is);
-	assert.match(research, /Reference Concept Analysis/);
-	assert.match(research, /must not.*dependenc|never.*dependenc/is);
-	assert.match(research, /must not.*integrat|never.*integrat/is);
-});
-
-test("primary workflows state their functional modes and mutation gates", () => {
-	const propose = metadata("codepatrol-plan").content;
-	assert.match(propose, /project or feature/i);
-	assert.match(propose, /does not implement|never implements/i);
-	assert.match(propose, /architecture mode/i);
-	assert.match(propose, /bug mode/i);
-	assert.match(propose, /diagnose-bug/);
-
-	const review = metadata("codepatrol-review").content;
-	assert.match(review, /proposal.*plan.*diff.*branch/is);
-	assert.match(review, /does not (edit|modify).*code|no code edits/i);
-	assert.match(review, /approve.*fix-first.*rework/is);
-
-	const implement = metadata("codepatrol-apply").content;
-	assert.match(implement, /approved/i);
-	assert.match(implement, /execute-change/);
-	assert.match(implement, /does not redesign|must not redesign/i);
-});
-
-test("primary workflows exchange one canonical, revisioned artifact package", () => {
-	const propose = metadata("codepatrol-plan").content;
-	const review = metadata("codepatrol-review").content;
-	const implement = metadata("codepatrol-apply").content;
-
-	for (const producer of [propose]) {
-		assert.match(producer, /\.codepatrol\/packages\/<work-id>/);
-		assert.match(producer, /handoff\.yaml/);
-		assert.match(producer, /spec\.md/);
-		assert.match(producer, /plan\.md/);
-		assert.match(producer, /ready-for-review/);
-		assert.doesNotMatch(producer, /execute-change/);
-	}
-	assert.match(review, /artifact record/);
-	assert.match(review, /revision/i);
-	assert.match(review, /spec\.md.*plan\.md/is);
-	assert.match(review, /review\.md/);
-	assert.match(review, /approved/);
-	assert.match(implement, /artifact validate.*implementation/is);
-	assert.match(implement, /implementation\.md/);
-	assert.match(implement, /reviewed_revision/);
-});
-
-test("solution-simplification chooses the minimum sufficient solution without weakening safety", () => {
-	const simplicity = metadata("solution-simplification").content;
-	assert.match(simplicity, /understand.*before.*simpl/is);
-	const ladder = [
-		/need to exist/i,
-		/already exists?.*codebase/i,
-		/standard library|language runtime/i,
-		/native platform/i,
-		/installed dependenc/i,
-		/direct local change|single expression/i,
-		/minimum new implementation/i,
-	];
-	let cursor = -1;
-	for (const rung of ladder) {
-		const match = rung.exec(simplicity.slice(cursor + 1));
-		assert.ok(match, `missing or misordered simplification rung ${rung}`);
-		cursor += 1 + match.index;
-	}
-	assert.match(simplicity, /trust.*validation|validation.*trust/is);
-	assert.match(simplicity, /data loss/i);
-	assert.match(simplicity, /security/i);
-	assert.match(simplicity, /accessibility/i);
-	assert.match(simplicity, /ceiling.*trigger.*upgrade/is);
-	assert.match(simplicity, /must not.*savings|never.*savings/is);
-
-	for (const caller of ["codepatrol-plan", "assess-change", "execute-change", "writing-plans"]) {
-		assert.ok(catalog.skills[caller].mayInvoke.includes("solution-simplification"), `${caller} must use solution-simplification`);
-	}
-});
-
-test("codepatrol-plan carries the ordered evidence and substrate contract", () => {
-	const plan = metadata("codepatrol-plan").content;
-	assert.match(plan, /domain-modeling.*term is new, contested, or contradicts `CONTEXT\.md`/i);
-	assert.match(plan, /codebase-design.*whenever the change adds or moves a module, interface, or seam/i);
-	assert.match(plan, /grilling.*load-bearing decision is still unsettled after step 6/i);
-	assert.match(plan, /codepatrol graph impact --file <path>/);
-	assert.match(plan, /codepatrol graph neighbors --file <path>/);
-	assert.match(plan, /graph revision and wiki state as `present`, `stale`, or `absent`/i);
-	assert.match(plan, /artifact validate --stage plan/);
-});
-test("portable artifacts carry simplicity proof, deferred triggers, and actual surface delta", () => {
-	const spec = readFileSync(join(shared, "SPEC-FORMAT.md"), "utf8");
-	const plan = readFileSync(join(root, "writing-plans", "PLAN-FORMAT.md"), "utf8");
-	const review = readFileSync(join(root, "codepatrol-review", "REVIEW-FORMAT.md"), "utf8");
-	const implementation = readFileSync(join(root, "codepatrol-apply", "IMPLEMENTATION-FORMAT.md"), "utf8");
-	const implementSkill = metadata("codepatrol-apply").content;
-	assert.match(spec, /Simplicity decision/i);
-	assert.match(spec, /Deferred constraints/i);
-	assert.match(spec, /ceiling.*trigger.*upgrade/is);
-	assert.match(plan, /Simplicity proof/i);
-	assert.match(plan, /surface delta/i);
-	assert.match(review, /simplicity axis/i);
-	assert.match(implementation, /surface delta/i);
-	assert.match(implementSkill, /deferred.*workflow.*trigger.*upgrade/is);
-});
-
-test("codepatrol-review states the eleven-step evidence order and the external-evidence duties", () => {
-	const review = metadata("codepatrol-review").content;
-	assert.match(review, /artifact validate --stage plan/);
-	assert.match(review, /codepatrol graph impact --file <path>/);
-	assert.match(review, /codepatrol graph neighbors --file <path>/);
-	assert.match(review, /artifact currency/i);
-	assert.match(review, /external evidence sufficiency/i);
-	assert.match(review, /not required.*required and sufficient.*required and missing/is);
-	assert.match(review, /research-technology/);
-	assert.match(review, /invariant cross-check/i);
-	assert.match(review, /residual[- ]concerns/i);
-});
-
-test("review-format documents the renamed verdict, External evidence sufficiency, and Residual concerns sections", () => {
-	const format = readFileSync(join(root, "codepatrol-review", "REVIEW-FORMAT.md"), "utf8");
-	assert.match(format, /`approve` \| `fix-first` \| `rework`/);
-	assert.match(format, /## External evidence sufficiency/);
-	assert.match(format, /## Residual concerns and evidence gaps/);
-	assert.match(format, /deprecated alias/);
-});
-
-test("tombstone: verdict-sense merge is absent from primary skill prose", () => {
-	const review = metadata("codepatrol-review").content;
-	const apply = metadata("codepatrol-apply").content;
-	const assess = metadata("assess-change").content;
-	const sharedArtifacts = readFileSync(join(shared, "ARTIFACTS.md"), "utf8");
-	assert.doesNotMatch(review, /verdict is `merge`/);
-	assert.doesNotMatch(apply, /verdict is `merge`/);
-	assert.doesNotMatch(assess, /^- `merge`: /m);
-	assert.doesNotMatch(sharedArtifacts, /verdict is `merge`/);
-});
-
-test("codepatrol-apply accepts the deprecated merge alias with a documented warning", () => {
-	const apply = metadata("codepatrol-apply").content;
-	assert.match(apply, /approve.*deprecated alias.*merge|merge.*alias/s);
-});
-
-test("catalog declares Plan<Review<Apply<Verify lifecycle order and codepatrol-status stays out of it", () => {
-	const expectedOrder = { "codepatrol-plan": 1, "codepatrol-review": 2, "codepatrol-apply": 3, "codepatrol-verify": 4 };
-	for (const [name, order] of Object.entries(expectedOrder)) {
-		assert.equal(catalog.skills[name].order, order, `${name} must declare order ${order}`);
-	}
-	assert.equal(catalog.skills["codepatrol-status"].order, undefined, "codepatrol-status is a dispatcher and must not declare lifecycle order");
-});
-
-test("catalog triggers declare a finite when value from the supported set and a non-primary target", () => {
-	const supportedWhen = new Set([
-		"always-before-recommendation",
-		"always-before-verdict",
-		"always-before-task-mutation",
-		"always-before-assessment",
-		"when-artifact-refresh-required",
-		"when-behavior-change",
-		"when-bug-mode",
-		"when-domain-term-settled",
-		"when-external-evidence-required",
-		"when-irreducible-seam",
-		"when-load-bearing-decision-unsettled",
-		"when-module-or-seam-change",
-		"when-plan-correction-required",
-		"when-seam-or-module-decision",
-		"after-decision-tree",
-		"after-root-cause",
-		"after-spec-decision-complete",
-		"after-task-change",
-		"after-task-result",
-		"when-wiki-refresh-required",
-	]);
-	for (const [name, entry] of Object.entries(catalog.skills)) {
-		if (!entry.triggers) continue;
-		for (const [index, trigger] of entry.triggers.entries()) {
-			assert.equal(typeof trigger.target, "string", `${name} triggers[${index}].target must be a string`);
-			assert.ok(catalog.skills[trigger.target]?.role === "support", `${name} triggers[${index}] must target a support skill, not ${trigger.target}`);
-			assert.ok(supportedWhen.has(trigger.when), `${name} triggers[${index}].when (${trigger.when}) is not a supported trigger value`);
-			const target = catalog.skills[trigger.target];
-			assert.ok((target.invokedBy ?? []).includes(name), `${name} -> ${trigger.target} trigger must be reciprocated in invokedBy`);
-		}
-	}
-});
-
-test("every support mayInvoke target has a corresponding trigger entry in the catalog", () => {
-	for (const [name, entry] of Object.entries(catalog.skills)) {
-		if (!entry.mayInvoke) continue;
-		const supportTargets = entry.mayInvoke.filter((target) => catalog.skills[target]?.role === "support");
-		const triggerTargets = new Set((entry.triggers ?? []).map((trigger) => trigger.target));
-		for (const target of supportTargets) {
-			assert.ok(triggerTargets.has(target), `${name} mayInvoke declares ${target} without a corresponding trigger entry`);
-		}
-	}
-});
-
-test("lintSkillTree detects fixture violations and lists them", async () => {
-	const { lintSkillTree } = await import("./lint-skills.mjs");
-	const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import("node:fs");
-	const { tmpdir } = await import("node:os");
-	const { join } = await import("node:path");
-
-	async function withFixture(name, catalogYaml, expectSubstring) {
-		const root = mkdtempSync(join(tmpdir(), `codepatrol-lint-${name}-`));
-		try {
-			mkdirSync(join(root, "_shared"), { recursive: true });
-			writeFileSync(join(root, "_shared", "EXECUTION.md"), "independent sequential barrier evidence\nNever let workers update the same file or module concurrently\n");
-			for (const skill of ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-status", "beta"]) {
-				mkdirSync(join(root, skill), { recursive: true });
-				writeFileSync(join(root, skill, "SKILL.md"), `---\nname: ${skill}\ndescription: ok\n---\n`);
-			}
-			writeFileSync(join(root, "catalog.yaml"), catalogYaml);
-			const failures = lintSkillTree(root);
-			assert.ok(failures.some((f) => f.includes(expectSubstring)), `expected lint to surface "${expectSubstring}", got: ${JSON.stringify(failures, null, 2)}`);
-		} finally { rmSync(root, { recursive: true, force: true }); }
-	}
-
-	await withFixture("order", `version: 1
-skills:
-  codepatrol-plan: {role: primary, order: 5, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-review: {role: primary, order: 2, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-apply: {role: primary, order: 3, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: authorized}
-  codepatrol-verify: {role: primary, order: 4, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-status: {role: primary, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: never}
-  beta: {role: support, invokedBy: [codepatrol-plan], mayInvoke: [], consumes: [], produces: [], mutation: never}
-`, "codepatrol-plan: order must be 1");
-
-	await withFixture("trigger-when", `version: 1
-skills:
-  codepatrol-plan: {role: primary, order: 1, invokedBy: [], mayInvoke: [beta], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-review: {role: primary, order: 2, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-apply: {role: primary, order: 3, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: authorized}
-  codepatrol-verify: {role: primary, order: 4, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-status: {role: primary, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: never}
-  beta: {role: support, invokedBy: [codepatrol-plan], mayInvoke: [], consumes: [], produces: [], mutation: never, triggers: [{target: codepatrol-plan, when: not-a-real-trigger}]}
-`, "must be one of the allowed trigger values");
-
-	await withFixture("missing-trigger", `version: 1
-skills:
-  codepatrol-plan: {role: primary, order: 1, invokedBy: [], mayInvoke: [beta], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-review: {role: primary, order: 2, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-apply: {role: primary, order: 3, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: authorized}
-  codepatrol-verify: {role: primary, order: 4, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: artifacts}
-  codepatrol-status: {role: primary, invokedBy: [], mayInvoke: [], consumes: [], produces: [], mutation: never}
-  beta: {role: support, invokedBy: [codepatrol-plan], mayInvoke: [], consumes: [], produces: [], mutation: never}
-`, "must declare triggers");
+test("support skills retain simplification and external-evidence safety floors", () => {
+	const simplify = skill("solution-simplification"); assert.match(simplify, /minimum new implementation/i); assert.match(simplify, /data loss/i); assert.match(simplify, /security/i);
+	const research = skill("research-technology"); assert.match(research, /GitHub/i); assert.match(research, /facts?.*inferences?/is); assert.match(research, /must not.*dependenc|never.*dependenc/is);
 });

@@ -2,7 +2,7 @@
   "name": "codepatrol",
   "version": "0.1.0",
   "private": true,
-  "description": "Harness-agnostic code graph, architectural wiki, artifact handoff, workflow memory, and Agent Skills for codebase work.",
+  "description": "Harness-agnostic, branch-backed Change orchestration with deterministic lifecycle state, code graph, wiki, and Agent Skills.",
   "homepage": "https://github.com/shiborgi/codepatrol#readme",
   "repository": {
     "type": "git",
@@ -28,13 +28,16 @@
     "scripts/install-lib.mjs",
     "scripts/install-local.mjs",
     "scripts/uninstall-local.mjs",
-    "scripts/verify-install.mjs"
+    "scripts/verify-install.mjs",
+    "scripts/clean-dist.mjs",
+    "scripts/render-kanban.mjs"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
     "test": "node --test --import jiti/register $(find src .pi scripts -name '*.test.ts' -o -name '*.test.mjs')",
     "typecheck": "tsc --noEmit",
     "lint:skills": "node scripts/lint-skills.mjs",
+	"kanban": "node --import jiti/register scripts/render-kanban.mjs",
     "smoke:cli": "node scripts/smoke-cli.mjs",
     "verify": "npm run typecheck && npm test && npm run build && npm run smoke:cli && npm run lint:skills",
     "prepare": "npm run build"
@@ -42,7 +45,7 @@
   "keywords": [
     "agent-skills",
     "architecture",
-    "artifact-handoff",
+    "change-orchestration",
     "code-graph",
     "okf",
     "pi-package"

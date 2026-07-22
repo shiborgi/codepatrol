@@ -1,6 +1,6 @@
 # Specification format
 
-Write the governing specification to `.codepatrol/packages/<work-id>/spec.md`. It is shared by project proposals, feature proposals, architecture improvements, and bug corrections. The plan reads this file, not the producing conversation.
+Write the governing specification to `.codepatrol/changes/<work-id>/plan/spec.md`. It is shared by project proposals, feature proposals, architecture improvements, and bug corrections. The plan reads this file, not the producing conversation.
 
 ```markdown
 # Specification — <name>
@@ -74,7 +74,7 @@ Say “none” with a reason when a concern does not apply.>
 
 ## Decisions and open questions
 
-<Settled decisions with rationale. A package cannot become ready-for-review
+<Settled decisions with rationale. A Plan attempt cannot checkpoint to Review
 while a question can materially change scope, interfaces, or acceptance.>
 ```
 

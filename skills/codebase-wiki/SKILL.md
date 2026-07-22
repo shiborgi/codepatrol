@@ -5,9 +5,9 @@ description: (codepatrol) Generate or refresh docs/wiki as an OKF v0.1 bundle us
 
 # Codebase Wiki
 
-Maintain `docs/wiki/` as a portable Open Knowledge Format v0.1 bundle. Agents synthesize knowledge; the [Codepatrol CLI](../_shared/CODEPATROL-CLI.md) owns validation, source hashes, staging, rollback, and the freshness manifest at `.codepatrol/wiki/manifest.json`.
+Maintain `docs/wiki/` as a portable Open Knowledge Format v0.1 bundle. Agents synthesize knowledge; the [Codepatrol CLI](../_shared/CODEPATROL-CLI.md) owns validation, source hashes, staging, rollback, and the freshness manifest at `.codepatrol/runtime/wiki/manifest.json`.
 
-The coordinator owns graph sync, the final JSON payload, and the only wiki write. Workers are read-only and follow [EXECUTION.md](../_shared/EXECUTION.md). Use [WORKFLOW.md](../_shared/WORKFLOW.md) to remember the graph revision, updated concepts, warnings, and safe next action without copying page content into operational memory.
+The coordinator owns graph sync, the final JSON payload, and the only wiki write. Workers are read-only and follow [EXECUTION.md](../_shared/EXECUTION.md). Record the graph revision, updated concepts, warnings and safe next action in the invoking [Stage Session](../_shared/SESSION.md) without copying page content.
 
 ## Process
 

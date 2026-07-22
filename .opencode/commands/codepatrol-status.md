@@ -1,6 +1,6 @@
 ---
-description: (codepatrol) Summarize open workflows and packages, then resume or start new work
+description: (codepatrol) Render the deterministic Change Kanban
 ---
-Load the `codepatrol-status` skill via the skill tool and execute it.
-
-Run `codepatrol status`, present the open workflows and artifact packages with their identifiers, and help the user choose one to resume with the matching primary workflow — or start new work. This command never mutates project state.
+Load `codepatrol-status`, execute `scripts/render-kanban.mjs`, reproduce its
+output verbatim and repeat exact resume actions. Never construct the table
+manually or mutate lifecycle state.

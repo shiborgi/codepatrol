@@ -7,7 +7,7 @@ description: (codepatrol) Use when the user picks an architecture-review candida
 
 Stress-test a plan, decision, or design by interviewing the user through its decision tree — one question at a time, until every load-bearing decision is settled and both of you would state the design the same way.
 
-Resume and record settled decisions through [WORKFLOW.md](../_shared/WORKFLOW.md). Do not treat the interview order as fixed phases; follow the actual decision dependencies.
+Record settled decisions in the invoking Change's owned artifact and use its [Stage Session](../_shared/SESSION.md) only for resumable progress. Follow actual decision dependencies.
 
 **Do not implement anything until the design is settled and the user has confirmed it.** Grilling produces decisions, not code.
 
@@ -38,6 +38,9 @@ Decisions crystallise language and sometimes deserve records — follow [domain-
 
 ## Ending the grill
 
-The grill is done when you can state the settled design in a few sentences and the user confirms it. State it, get the confirmation, then record it in the package `spec.md` decisions section (what was decided, what was rejected, and where the seam landed).
+The grill is done when you can state the settled design in a few sentences and
+the user confirms it. State it, get the confirmation, then record it in the
+Change's Plan `spec.md` decisions section (what was decided, what was rejected,
+and where the seam landed).
 
 _Concepts from [mattpocock/skills at commit `ed37663cc5fbef691ddfecd080dff42f7e7e350d`](https://github.com/mattpocock/skills/tree/ed37663cc5fbef691ddfecd080dff42f7e7e350d) (grilling skill); no dependency on it. Adapted to this package's review-candidate workflow and code-graph evidence tools._

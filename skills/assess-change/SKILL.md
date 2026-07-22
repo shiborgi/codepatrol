@@ -5,7 +5,7 @@ description: (codepatrol) Assess a proposal, plan, diff, branch, or implemented 
 
 # Assess Change
 
-Assess without editing. Consume a [Change Package](../_shared/WORKFLOW.md#change-package) and produce an [Assessment Result](../_shared/WORKFLOW.md#assessment-result).
+Assess without editing. Consume the explicit [Change](../_shared/CHANGE.md) and produce severity-ordered findings with exactly one `approve`, `fix-first`, or `rework` conclusion.
 
 ## Bind evidence
 
@@ -35,7 +35,12 @@ Read every cited location. Findings from independent units are leads until the c
 
 ## Simplicity axis
 
-Invoke [solution-simplification](../solution-simplification/SKILL.md) only when the catalog trigger `always-before-assessment` is true. This is the single path that invokes `solution-simplification` from assessment. Verify that the package/change chose the earliest sufficient ladder rung after understanding the real flow, introduced no unjustified dependency, file, public interface, configuration, or runtime state, and preserved every safety-floor requirement.
+Invoke [solution-simplification](../solution-simplification/SKILL.md) only when
+the catalog trigger `always-before-assessment` is true. This is the single path
+that invokes `solution-simplification` from assessment. Verify that the Change
+chose the earliest sufficient ladder rung after understanding the real flow,
+introduced no unjustified dependency, file, public interface, configuration,
+or runtime state, and preserved every safety-floor requirement.
 
 Classify excess as `remove`, `reuse`, `built-in`, `speculative`, or `simplify`. Each finding names the exact removable surface and safe replacement. Validate every deferred constraint's ceiling, observable trigger, and upgrade path. Report actual surface delta; never invent counterfactual savings.
 

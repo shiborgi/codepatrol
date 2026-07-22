@@ -1,16 +1,18 @@
 ---
 name: execute-change
-description: (codepatrol) Execute one claimed task from an codepatrol-apply package using bounded mutation, test-first verification, assessment, and durable resume evidence. Use only behind codepatrol-apply.
+description: (codepatrol) Execute one claimed task from a Change in Apply using bounded mutation, test-first verification, assessment, and durable resume evidence. Use only behind codepatrol-apply.
 ---
 
 # Execute Change
 
-Execute exactly one claimed task from the currently approved package. Follow the [portable execution protocol](../_shared/EXECUTION.md), [artifact contract](../_shared/ARTIFACTS.md), [workflow contracts](../_shared/WORKFLOW.md), and [verification strategy](../verification-strategy/SKILL.md).
+Execute exactly one claimed task from the currently approved Change. Follow the [portable execution protocol](../_shared/EXECUTION.md), [Change contract](../_shared/CHANGE.md), [Stage Session contract](../_shared/SESSION.md), and [verification strategy](../verification-strategy/SKILL.md).
 
 ## Preconditions
 
-- `codepatrol-apply` validated the current manifest for implementation.
-- The task exists verbatim in the approved `plan.md`, its dependencies are closed, and the actor holds its workflow claim.
+- `codepatrol-apply` validated the current Change projection and accepted
+  artifact hashes for implementation.
+- The task exists verbatim in the approved `plan.md`, its dependencies are
+  closed, and the actor holds its Stage Session claim.
 - File ownership, acceptance criteria, expected red/green signal, and governing spec/review are explicit.
 
 If any precondition is false, do not mutate. Return the exact missing contract to `codepatrol-apply`.
@@ -29,4 +31,7 @@ Run the targeted check to green, graph-affected tests, and the task's broader ga
 
 ## Return evidence
 
-Return changed paths, observed red signal, passing commands/results, assessment findings/corrections, deviations, risks, and the safe next action. `codepatrol-apply` appends this to `implementation.md`, records the manifest, and closes the claim only after verifying the evidence.
+Return changed paths, observed red signal, passing commands/results, assessment
+findings/corrections, deviations, risks, and the safe next action.
+`codepatrol-apply` appends this to `apply/journal.md`, hashes it in the Apply
+checkpoint, and closes the Stage Session item only after verifying the evidence.

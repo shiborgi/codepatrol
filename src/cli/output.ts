@@ -2,7 +2,6 @@ import type { GraphImpactData, GraphNeighborsData, GraphOverviewData, OutlineFil
 import type { GraphNode } from "../graph/model.js";
 import { formatTable, mermaidModuleMap } from "../graph/render.js";
 import type { CodepatrolError } from "../shared/errors.js";
-import type { StatusSummary } from "../status/types.js";
 
 export interface SuccessEnvelope {
 	ok: true;
@@ -33,7 +32,15 @@ export function errorEnvelope(command: string, error: CodepatrolError): ErrorEnv
 export const HELP = `codepatrol <group> <command> [options]
 
 Status commands:
-  status [--all]
+  status [--all] [--as-of <ISO>]
+
+Change lifecycle commands:
+  change start --input <file|->
+  change inspect --id <work-id>
+  change transition --id <work-id> --input <file|->
+  change session --id <work-id> --input <file|->
+  change doctor --id <work-id>
+  change finalize --id <work-id> --input <file|->
 
 Graph commands:
   graph sync [--force]
@@ -48,22 +55,6 @@ Wiki commands:
   wiki validate
   wiki generate
   wiki record --input <file|->
-
-Artifact handoff commands:
-  artifact record --manifest <.codepatrol/packages/<work-id>/handoff.yaml>
-  artifact validate --manifest <path> --stage plan|review|implementation|verification
-
-Workflow memory commands:
-  workflow create --input <file|->
-  workflow update --id <id> --input <file|->
-  workflow show --id <id>
-  workflow list [--status <status>] [--workflow-id <id>]
-  workflow ready [--workflow-id <id>]
-  workflow claim --id <id> --actor <harness>
-  workflow close --id <id> --result <file|->
-  workflow remember --input <file|->
-  workflow prime [--workflow-id <id>] [--budget <tokens>]
-  workflow compact [--workflow-id <id>]
 
 Global options:
   --workspace <path>   Explicit workspace (then CODEPATROL_WORKSPACE, then cwd)
@@ -146,23 +137,4 @@ export function renderImpact(data: GraphImpactData): string {
 		...(data.possiblyAffected.length ? ["", `Possibly affected through ambiguous edges: ${data.possiblyAffected.join(", ")}`] : []),
 		...(data.unknownSeeds.length ? ["", `Seeds not in graph: ${data.unknownSeeds.join(", ")}`] : []),
 	].join("\n");
-}
-
-export function renderStatus(data: StatusSummary): string {
-	if (!data.workflows.length && !data.packages.length) return "No open workflows or packages.";
-	const sections: string[] = [];
-	if (data.workflows.length) {
-		sections.push("Workflows:", ...data.workflows.map((workflow) => [
-			`  ${workflow.id} ${workflow.status} — ${workflow.title}`,
-			` (ready: ${workflow.counts.ready}, active: ${workflow.counts.active}, blocked: ${workflow.counts.blocked})`,
-			workflow.nextAction ? ` next: ${workflow.nextAction}` : "",
-			workflow.packageWorkId ? ` [package: ${workflow.packageWorkId}]` : "",
-		].join("")));
-	}
-	if (data.packages.length) {
-		sections.push("Packages:", ...data.packages.map((pkg) =>
-			`  ${pkg.workId} ${pkg.status ?? "unknown"}${pkg.revision !== undefined ? ` rev ${pkg.revision}` : ""}${pkg.workflowId ? ` [workflow: ${pkg.workflowId}]` : ""}`,
-		));
-	}
-	return sections.join("\n");
 }

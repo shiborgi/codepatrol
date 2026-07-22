@@ -4,11 +4,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseYaml } from "yaml";
 
-const primaryWorkflows = ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-status"];
+const primaryWorkflows = ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-finalize", "codepatrol-status"];
 const executionProtocolSkills = new Set([...primaryWorkflows, "codebase-wiki", "diagnose-bug", "execute-change"]);
 const allowedRoles = new Set(["primary", "support"]);
 const allowedMutations = new Set(["never", "artifacts", "authorized"]);
-const PRIMARY_ORDER = { "codepatrol-plan": 1, "codepatrol-review": 2, "codepatrol-apply": 3, "codepatrol-verify": 4 };
+const PRIMARY_ORDER = { "codepatrol-plan": 1, "codepatrol-review": 2, "codepatrol-apply": 3, "codepatrol-verify": 4, "codepatrol-finalize": 5 };
 const ALLOWED_TRIGGER_WHEN = new Set([
 	"always-before-recommendation",
 	"always-before-verdict",
@@ -106,9 +106,9 @@ export function lintSkillTree(skillsRoot, { opencodeCommandsRoot = join(skillsRo
 		for (const field of ["invokedBy", "mayInvoke", "consumes", "produces"]) if (!Array.isArray(entry?.[field])) failures.push(`${name}: ${field} must be an array`);
 
 		if (entry?.role === "primary" && name in PRIMARY_ORDER) {
-			if (entry.order !== PRIMARY_ORDER[name]) failures.push(`${name}: order must be ${PRIMARY_ORDER[name]} (Plan<Review<Apply<Verify)`);
+			if (entry.order !== PRIMARY_ORDER[name]) failures.push(`${name}: order must be ${PRIMARY_ORDER[name]} (Plan<Review<Apply<Verify<Finalize)`);
 		} else if (entry?.order !== undefined) {
-			failures.push(`${name}: order is only valid for the four lifecycle primaries; codepatrol-status must not declare order`);
+			failures.push(`${name}: order is only valid for the five lifecycle primaries; codepatrol-status must not declare order`);
 		}
 
 		const triggers = entry?.triggers;

@@ -1,29 +1,48 @@
 # Domain Glossary
 
-**Public Workflow** — one of the four user-facing Codepatrol entry points that owns a complete lifecycle responsibility. The public workflows are Codepatrol Plan, Codepatrol Review, Codepatrol Apply, and Codepatrol Verify. _Avoid_: primary command, top-level skill.
+**Public Workflow** — one of Plan, Review, Apply, Verify, Finalize or Status.
 
-**Codepatrol Plan** — the producer workflow that turns an intent (new project, feature, architecture scan, or bug symptom) into a decision-complete, reviewable change package. _Avoid_: propose-codebase, improve-codebase, generic scan.
+**Codepatrol Plan** — creates or resumes one branch-backed Change and produces a
+decision-complete specification and executable plan. _Avoid_: proposal package.
 
-**Codepatrol Review** — the gate workflow that assesses a change package or implemented change and returns exactly one auditable verdict. _Avoid_: review-codebase, approval command.
+**Codepatrol Review** — adversarially judges the current Plan attempt and either
+approves it or returns the Change to Plan. _Avoid_: silent plan correction.
 
-**Codepatrol Apply** — the execution workflow that may change production files only for the exact approved revision of a change package. _Avoid_: implement-codebase, unguarded apply.
+**Codepatrol Apply** — executes only the approved current attempt and produces a
+clean candidate checkpoint. _Avoid_: unguarded implementation.
 
-**Approve** — the review verdict that accepts the current revision and sets status `approved`. _Avoid_: merge, accept, sign-off.
+**Codepatrol Verify** — independently audits the candidate commit/tree and
+advances to Finalize or returns the defect. _Avoid_: trusting the Apply journal.
 
-**Fix-first** — the review verdict meaning bounded corrections remain. _Avoid_: changes-requested, revisions-requested.
+**Codepatrol Finalize** — executes an explicitly authorized terminal commit or
+rollback and leaves a recoverable tag plus clean target checkout.
 
-**Rework** — the review verdict meaning the contract, architecture, or verification strategy is materially unsound. _Avoid_: reject, changes-requested.
+**Codepatrol Status** — reproduces the deterministic Kanban and projected resume
+actions without interpreting or mutating them.
 
-**Codepatrol Verify** — the delivery-gate workflow, invoked as `codepatrol-verify`, that independently re-verifies an implemented change package and records a commit or improve verdict. _Avoid_: verify-codebase, post-apply review.
+**Change** — the tracked `.codepatrol/changes/<work-id>/` aggregate containing
+immutable identity, ordered events and stage-owned artifacts for one branch.
 
-**Support Skill** — a reusable bounded capability invoked behind a Public Workflow; it is not an additional product entry point. _Avoid_: internal command.
+**Stage Attempt** — one append-only Plan, Review, Apply, Verify or Finalize
+attempt, including every run and its metrics.
 
-**Change Package** — the versioned `.codepatrol/packages/<work-id>/` handoff containing the governing specification, plan, review, implementation journal, and durable evidence for one independently reviewable change. _Avoid_: artifact bundle, proposal folder.
+**Stage Session** — disposable task progress under
+`.codepatrol/runtime/sessions/` for exactly one attempt. It never owns lifecycle.
 
-**Operational Memory** — resumable local workflow state under `.codepatrol/workflows/`; it may be reconstructed and never replaces a Change Package. _Avoid_: progress file, source of truth.
+**Terminal Outcome** — `committed` or `rolled-back`, always preserved by a
+`codepatrol/<outcome>/<work-id>` Git tag.
 
-**Artifact Producer Origin** — the schema-v1 provenance value stored in a Change Package to distinguish project/feature production from architecture/bug production. The retained values are internal data, not Public Workflow identifiers. _Avoid_: command name, invocation alias.
+**Approve / Fix-first / Rework** — Review verdicts. Approve advances; the other
+two return to Plan with recorded findings.
 
-**Distribution Adapter** — the harness-specific layer that presents a canonical Codepatrol interface to a particular host. The canonical interfaces are the filesystem installer and the Pi native extension; no Codepatrol semantics live in the adapter. _Avoid_: naming harness integrations as separate products or as a marketplace concept.
+**Commit verdict** — Verify result declaring the exact candidate eligible for
+Finalize; it is not authority to integrate automatically.
 
-**Rejected Integration Surface** — an external protocol, hosted agent runtime, provider memory service, coding-agent API, or imported threat model that Codepatrol has assessed and intentionally excludes from its local-only contract: MCP, OpenAI Agents SDK, AWS Bedrock AgentCore Memory SDK, GitHub Copilot Coding Agent, and MITRE ATLAS. _Avoid_: reintroducing these as dependencies, network services, compatible schemas, credential surfaces, or provider-specific workflows; see `.codepatrol/packages/2026-07-21-post-apply-assessment/`.
+**Support Skill** — a bounded capability invoked behind a Public Workflow.
+
+**Distribution Adapter** — a harness-specific presentation/capture layer with
+no independent lifecycle semantics.
+
+**Rejected Integration Surface** — hosted agent runtimes, provider memory,
+external issue trackers and remote Git automation remain outside the local-only
+contract unless a future Change explicitly adopts them.

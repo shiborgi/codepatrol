@@ -1,11 +1,11 @@
 # Handoff review format
 
-Write `.codepatrol/packages/<work-id>/review.md` when reviewing an artifact package.
+Write `.codepatrol/changes/<work-id>/review/report.md` when reviewing Plan artifacts.
 
 ```markdown
 # Review — <name>
 
-- Package: `<work-id>`
+- Change: `<work-id>`
 - Incoming revision: <N>
 - Reviewed revision: <N or N+1 after adjustments>
 - Reviewer: <harness or actor>
@@ -56,7 +56,7 @@ rollback, and context independence. List any unresolved assumption.>
 
 `approve` | `fix-first` | `rework`
 
-<One paragraph explaining the verdict and the manifest status it permits.>
+<One paragraph explaining the verdict and the next permitted Change transition.>
 
 ## External evidence sufficiency
 
@@ -67,8 +67,9 @@ rollback, and context independence. List any unresolved assumption.>
 <Mandatory record of what you could not check and why any noted concern does not block this decision.>
 ```
 
-`approve` means the resulting revision is complete enough for an independent implementer and sets status `approved`. `fix-first` means bounded corrections remain; `rework` means the contract or architecture is materially unsound. Both non-approving verdicts set `changes-requested` and must identify the next owner/action.
-
-`merge` is a deprecated alias for `approve` — it will still validate with a deprecation warning, but new reviews must use `approve`.
+`approve` means the resulting Plan attempt is complete enough for an independent
+implementer and permits the Review checkpoint to advance to Apply. `fix-first`
+and `rework` return the Change to a new Plan attempt and must identify the exact
+next owner/action. No compatibility verdict alias is accepted.
 
 The sections defined above are enforced at the implementation stage. The simplicity axis reports only observable artifact or change surface. Do not claim counterfactual savings without a controlled baseline.

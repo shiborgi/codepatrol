@@ -9,23 +9,11 @@ import { CodepatrolError } from "../shared/errors.js";
 import { resolveInside } from "../shared/workspace.js";
 import type { ParsedArgs } from "./args.js";
 import { requireValue } from "./args.js";
-import { renderFind, renderImpact, renderNeighbors, renderOutline, renderOverview, renderStatus } from "./output.js";
-import {
-	claimWorkflowItem,
-	closeWorkflowItem,
-	compactWorkflow,
-	createWorkflowItem,
-	listWorkflowItems,
-	primeWorkflow,
-	readyWorkflowItems,
-	rememberWorkflow,
-	showWorkflowItem,
-	updateWorkflowItem,
-} from "../workflow/service.js";
-import { WORKFLOW_STATUSES, type CloseWorkflowResult, type CreateWorkflowInput, type RememberWorkflowInput, type UpdateWorkflowInput, type WorkflowItemV1, type WorkflowStatus } from "../workflow/types.js";
-import { recordArtifactPackage, validateArtifactPackage } from "../artifact/service.js";
-import type { ArtifactStage } from "../artifact/types.js";
-import { statusSummary } from "../status/service.js";
+import { renderFind, renderImpact, renderNeighbors, renderOutline, renderOverview } from "./output.js";
+import { finalizeChange, inspectChanges, startChange, transitionChange } from "../change/orchestrator.js";
+import { projectKanban, renderKanbanMarkdown } from "../change/board.js";
+import { claimSessionItem, closeSessionItem, discardAndRebuildSession, primeStageSession } from "../change/session.js";
+import type { FinalizeInput, Stage, StartChangeInput, TransitionIntent } from "../change/types.js";
 
 export interface CommandResult {
 	data: unknown;
@@ -60,25 +48,12 @@ function readJsonInput(workspace: string, input: string, label: string): unknown
 	catch { throw new CodepatrolError("INVALID_ARGUMENT", `${label} input is not valid JSON.`, 2); }
 }
 
-function parseBudget(value: string | undefined): number | undefined {
-	if (value === undefined) return undefined;
-	if (!/^\d+$/.test(value)) throw new CodepatrolError("INVALID_ARGUMENT", "--budget must be an integer.", 2);
-	return Number(value);
-}
-
-function renderWorkflowItem(item: WorkflowItemV1): string {
-	return `${item.id} ${item.kind} ${item.status} — ${item.title}${item.nextAction ? `\nnext: ${item.nextAction}` : ""}`;
-}
-
-function renderWorkflowItems(items: WorkflowItemV1[]): string {
-	return items.length ? items.map(renderWorkflowItem).join("\n") : "No workflow items matched.";
-}
-
 export async function executeCommand(args: ParsedArgs, workspace: string, signal: AbortSignal): Promise<CommandResult> {
 	switch (args.command) {
 		case "status": {
-			const data = statusSummary(workspace, { all: args.all });
-			return { data, warnings: data.warnings, text: renderStatus(data) };
+			if (args.asOf && !Number.isFinite(Date.parse(args.asOf))) throw new CodepatrolError("INVALID_ARGUMENT", "--as-of must be an ISO timestamp.", 2);
+			const data = projectKanban(await inspectChanges(workspace, { all: args.all }, { signal }), { all: args.all, ...(args.asOf ? { asOf: args.asOf } : {}) });
+			return { data, text: renderKanbanMarkdown(data) };
 		}
 		case "graph.sync": {
 			const data = await graphSync(workspace, { force: args.force, signal });
@@ -134,63 +109,36 @@ export async function executeCommand(args: ParsedArgs, workspace: string, signal
 			const data = await wikiRecord(workspace, payload, signal);
 			return { data, warnings: data.warnings, text: data.text };
 		}
-		case "workflow.create": {
-			const payload = readJsonInput(workspace, requireValue(args.input, "input"), "Workflow") as CreateWorkflowInput;
-			const data = await createWorkflowItem(workspace, payload, { signal });
-			return { data, text: renderWorkflowItem(data) };
+		case "change.start": {
+			const data = await startChange(workspace, readJsonInput(workspace, requireValue(args.input, "input"), "Change") as StartChangeInput, { signal });
+			return { data, text: data.nextAction ?? data.identity.work_id };
 		}
-		case "workflow.update": {
-			const payload = readJsonInput(workspace, requireValue(args.input, "input"), "Workflow") as UpdateWorkflowInput;
-			const data = await updateWorkflowItem(workspace, requireValue(args.id, "id"), payload, { signal });
-			return { data, text: renderWorkflowItem(data) };
+		case "change.inspect": {
+			const data = (await inspectChanges(workspace, { workId: requireValue(args.id, "id"), all: true }, { signal }))[0];
+			return { data, text: `${data.identity.work_id} ${data.stage}#${data.attempt} ${data.state}${data.nextAction ? `\nnext: ${data.nextAction}` : ""}` };
 		}
-		case "workflow.show": {
-			const data = await showWorkflowItem(workspace, requireValue(args.id, "id"));
-			return { data, text: renderWorkflowItem(data) };
+		case "change.transition": {
+			const data = await transitionChange(workspace, requireValue(args.id, "id"), readJsonInput(workspace, requireValue(args.input, "input"), "Transition") as TransitionIntent, { signal });
+			return { data, text: data.nextAction ?? `${data.identity.work_id} ${data.state}` };
 		}
-		case "workflow.list": {
-			if (args.status && !WORKFLOW_STATUSES.includes(args.status as WorkflowStatus)) throw new CodepatrolError("INVALID_ARGUMENT", `Unsupported workflow status: ${args.status}.`, 2);
-			const data = await listWorkflowItems(workspace, { workflowId: args.workflowId, status: args.status as WorkflowStatus | undefined });
-			return { data, text: renderWorkflowItems(data) };
+		case "change.session": {
+			const id = requireValue(args.id, "id"); const payload = readJsonInput(workspace, requireValue(args.input, "input"), "Session") as { action: "prime" | "claim" | "close" | "rebuild"; stage: Stage; attempt: number; itemId?: string; actor?: string; result?: string; artifacts?: string[] };
+			let data;
+			if (payload.action === "prime") data = primeStageSession(workspace, id, payload.stage, payload.attempt);
+			else if (payload.action === "claim") data = await claimSessionItem(workspace, id, payload.stage, payload.attempt, requireValue(payload.itemId, "itemId"), requireValue(payload.actor, "actor"));
+			else if (payload.action === "close") data = await closeSessionItem(workspace, id, payload.stage, payload.attempt, requireValue(payload.itemId, "itemId"), requireValue(payload.result, "result"), payload.artifacts);
+			else if (payload.action === "rebuild") data = discardAndRebuildSession(workspace, id, payload.stage, payload.attempt);
+			else throw new CodepatrolError("INVALID_ARGUMENT", "Session action must be prime, claim, close, or rebuild.", 2);
+			return { data, text: data.next_action };
 		}
-		case "workflow.ready": {
-			const data = await readyWorkflowItems(workspace, args.workflowId);
-			return { data, text: renderWorkflowItems(data) };
+		case "change.doctor": {
+			const data = (await inspectChanges(workspace, { workId: requireValue(args.id, "id"), all: true }, { signal }))[0];
+			const session = data.state === "terminal" ? undefined : primeStageSession(workspace, data.identity.work_id, data.stage, data.attempt);
+			return { data: { valid: true, change: data, session }, text: `Change ${data.identity.work_id} is structurally valid; runtime is rebuildable.` };
 		}
-		case "workflow.claim": {
-			const data = await claimWorkflowItem(workspace, requireValue(args.id, "id"), requireValue(args.actor, "actor"), { signal });
-			return { data, text: renderWorkflowItem(data) };
-		}
-		case "workflow.close": {
-			const payload = readJsonInput(workspace, requireValue(args.result, "result"), "Workflow result") as CloseWorkflowResult;
-			const data = await closeWorkflowItem(workspace, requireValue(args.id, "id"), payload, { signal });
-			return { data, text: renderWorkflowItem(data) };
-		}
-		case "workflow.remember": {
-			const payload = readJsonInput(workspace, requireValue(args.input, "input"), "Workflow memory") as RememberWorkflowInput;
-			const data = await rememberWorkflow(workspace, payload, { signal });
-			return { data, text: renderWorkflowItem(data) };
-		}
-		case "workflow.prime": {
-			const data = await primeWorkflow(workspace, { workflowId: args.workflowId, budget: parseBudget(args.budget) });
-			const warnings = data.otherActiveWorkflows?.length
-				? [`Multiple active workflows: ${data.otherActiveWorkflows.map((workflow) => workflow.id).join(", ")}. Resumed most recent: ${data.workflowId}. Pass --workflow-id to select another.`]
-				: [];
-			return { data, warnings, text: data.context };
-		}
-		case "workflow.compact": {
-			const data = await compactWorkflow(workspace, { workflowId: args.workflowId }, { signal });
-			return { data, text: data.compacted.length ? `Compacted: ${data.compacted.join(", ")}` : "No closed workflow items were eligible for compaction." };
-		}
-		case "artifact.record": {
-			const data = await recordArtifactPackage(workspace, requireValue(args.manifest, "manifest"), signal);
-			return { data, text: `Recorded artifact package ${data.work_id} revision ${data.revision}.` };
-		}
-		case "artifact.validate": {
-			const stage = requireValue(args.stage, "stage");
-			if (stage !== "plan" && stage !== "review" && stage !== "implementation" && stage !== "verification") throw new CodepatrolError("INVALID_ARGUMENT", "--stage must be plan, review, implementation, or verification.", 2);
-			const data = validateArtifactPackage(workspace, requireValue(args.manifest, "manifest"), stage as ArtifactStage);
-			return { data, warnings: data.warnings, text: data.text, exitCode: data.valid ? 0 : 4 };
+		case "change.finalize": {
+			const data = await finalizeChange(workspace, requireValue(args.id, "id"), readJsonInput(workspace, requireValue(args.input, "input"), "Finalize") as FinalizeInput, { signal });
+			return { data, text: `${data.outcome} ${data.terminalCommit} (${data.tag})` };
 		}
 		default:
 			throw new CodepatrolError("INVALID_ARGUMENT", `Unknown command: ${args.command || "(none)"}`, 2);

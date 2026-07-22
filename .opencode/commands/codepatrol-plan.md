@@ -1,8 +1,7 @@
 ---
-description: (codepatrol) Plan a new project or feature into a reviewable artifact package
+description: (codepatrol) Start or resume one branch-backed Change Plan
 ---
-Load the `codepatrol-plan` skill via the skill tool and execute it for the following user intent:
-
-$ARGUMENTS
-
-Follow the skill's SKILL.md exactly. Produce the decision-complete `spec.md` and context-free `plan.md` under `.codepatrol/packages/<work-id>/`, record the handoff, validate for review, and stop at `ready-for-review`. Do not implement production code.
+Load `codepatrol-plan` and execute it for `$ARGUMENTS`. Use an explicit work id
+when resuming, create `codepatrol/<work-id>` when starting, write only `plan/`
+artifacts, record run metrics and checkpoint to Review. Stop without production
+edits or invoking the next lifecycle skill.

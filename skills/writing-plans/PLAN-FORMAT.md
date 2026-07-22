@@ -1,6 +1,6 @@
 # Plan format
 
-Write the approved implementation instructions to `.codepatrol/packages/<work-id>/plan.md`. It implements the adjacent `spec.md` and must be usable without conversation history. Execution state belongs in `implementation.md`, so implementation never changes this file.
+Write the accepted implementation instructions to `.codepatrol/changes/<work-id>/plan/plan.md`. It implements the adjacent `spec.md` and must be usable without conversation history. Execution state belongs in `apply/journal.md`, so implementation never changes this file.
 
 ## Header and coverage
 
@@ -40,7 +40,13 @@ performance, accessibility, operability, and forbidden scope that apply to all t
 
 ## Plan-stage content check
 
-Before sealing a producer handoff, run `codepatrol artifact validate --stage plan`. The checker parses the prescribed `### T<id> — ` task headings, `Depends on:` clauses, and backticked `Create:`/`Modify:`/`Delete:` file markers. Keep those markers exact when the rule should be enforced; unclassified lines are ignored conservatively. Placeholder names inside fenced code blocks and inline code spans are exempt from the placeholder scan so the format may document the tokens without failing itself. The gate enforces structural format rules only and does not replace semantic review.
+Before sealing Plan, run `codepatrol change doctor --id <work-id>` and submit
+the Plan checkpoint through `codepatrol change transition`. The transition
+validates the current branch, event order, declared artifact hashes and owned
+directory before creating the checkpoint commit. Keep the prescribed
+`### T<id> — ` headings, `Depends on:` clauses, and `Create:`/`Modify:`/`Delete:`
+markers exact because Review and Apply consume them as the executable contract.
+This structural convention does not replace semantic review.
 
 ## Task structure
 

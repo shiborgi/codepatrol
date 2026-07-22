@@ -5,7 +5,8 @@ description: (codepatrol) Systematically diagnose a bug or regression, prove its
 
 # Diagnose Bug
 
-Find and prove the root cause, then define the minimum correction contract. Implementation belongs to an approved `codepatrol-apply` package.
+Find and prove the root cause, then define the minimum correction contract.
+Implementation belongs to an approved Change in its Apply stage.
 
 ## The iron law
 
@@ -19,7 +20,7 @@ Find and prove the root cause, then define the minimum correction contract. Impl
 
 Emergencies don't suspend the law — systematic is *faster* than guess-and-check thrashing, especially under pressure. Simple-looking bugs have root causes too.
 
-Use the [Codepatrol CLI](../_shared/CODEPATROL-CLI.md) for graph evidence, [EXECUTION.md](../_shared/EXECUTION.md) for portable coordination, and [WORKFLOW.md](../_shared/WORKFLOW.md) for hypotheses, evidence, blockers, and resumable next actions.
+Use the [Codepatrol CLI](../_shared/CODEPATROL-CLI.md) for graph evidence, [EXECUTION.md](../_shared/EXECUTION.md) for portable coordination, the [Change contract](../_shared/CHANGE.md) for durable evidence, and [SESSION.md](../_shared/SESSION.md) for resumable progress.
 
 ## Process
 
@@ -69,7 +70,10 @@ When three or more well-formed correction hypotheses fail under probing, stop tr
 
 Remove every temporary `[DEBUG-…]` probe and throwaway runtime harness. The target project checkout must retain no diagnostic code change.
 
-Return the symptom, minimized reproduction, proven root cause, rejected hypotheses, exact evidence, correction constraints, regression strategy, affected checks, confidence, and limitations. `codepatrol-plan` stores this in package evidence and normalizes it into `spec.md` and `plan.md`.
+Return the symptom, minimized reproduction, proven root cause, rejected
+hypotheses, exact evidence, correction constraints, regression strategy,
+affected checks, confidence, and limitations. `codepatrol-plan` stores this as
+declared Plan evidence and normalizes it into `spec.md` and `plan.md`.
 
 If the cause is genuinely environmental after a complete investigation, document what was ruled out and specify proposed handling and monitoring. Do not disguise an incomplete causal chain as an environmental result.
 

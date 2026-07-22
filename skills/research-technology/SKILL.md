@@ -7,11 +7,11 @@ description: (codepatrol) Research a technology, official source, or GitHub refe
 
 Research for the **target project**: the project being built or analyzed by the calling workflow. Do not optimize Codepatrol itself unless Codepatrol is explicitly the target project.
 
-Use the [shared workflow contracts](../_shared/WORKFLOW.md) for evidence and memory. Produce a **Reference Concept Analysis** following [REFERENCE-CONCEPT-ANALYSIS.md](REFERENCE-CONCEPT-ANALYSIS.md).
+Use the [Change contract](../_shared/CHANGE.md) for durable evidence ownership. Produce a **Reference Concept Analysis** following [REFERENCE-CONCEPT-ANALYSIS.md](REFERENCE-CONCEPT-ANALYSIS.md).
 
 ## Bind the question
 
-Recover from the proposal, wiki, workflow memory, and user request:
+Recover from the Change artifacts, wiki, current Stage Session, and user request:
 
 - the target project and concrete problem;
 - constraints and settled decisions;
@@ -47,6 +47,8 @@ Never add the reference as a dependency, integration, adapter, plugin, compatibl
 
 ## Deliver and remember
 
-When invoked for a Codepatrol work package, write `.codepatrol/packages/<work-id>/evidence/reference-<slug>.md` and declare it in `handoff.yaml`. When used standalone, write `.codepatrol/architecture/reference-<YYYY-MM-DD>-<slug>.md`, using a numeric suffix on collision. The calling primary workflow decides whether recommendations enter a specification or plan; research alone does not change architecture or code.
+When invoked for a Change, write `.codepatrol/changes/<work-id>/<stage>/evidence/reference-<slug>.md` and declare it in that stage checkpoint. When used standalone, write `docs/adr/reference-<YYYY-MM-DD>-<slug>.md`, using a numeric suffix on collision. The calling primary workflow decides whether recommendations enter a specification or plan; research alone does not change architecture or code.
 
-Record the analysis as an evidence item. Record only an accepted, durable conclusion as a decision or project-scoped memory, linking the analysis artifact and exact external revision.
+Record the analysis as a declared evidence item. Put only accepted durable
+conclusions in the owning stage artifact, linking the analysis and exact
+external revision; never create a second project memory.

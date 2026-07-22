@@ -1,13 +1,13 @@
 ---
 name: domain-modeling
-description: (codepatrol) Use when pinning down domain terminology or a ubiquitous language, recording an architectural decision, or when another skill needs the domain model maintained. Builds and sharpens CONTEXT.md and .codepatrol/adr/ inline as decisions crystallise.
+description: (codepatrol) Use when pinning down domain terminology or a ubiquitous language, recording an architectural decision, or when another skill needs the domain model maintained. Builds and sharpens CONTEXT.md and docs/adr/ inline as decisions crystallise.
 ---
 
 # Domain Modeling
 
 Actively build and sharpen the project's domain model as you design: challenge terms, invent edge-case scenarios, and write the glossary and decisions down the moment they crystallise.
 
-Use [WORKFLOW.md](../_shared/WORKFLOW.md) to link a settled term or ADR to the decision that required it. Store the definition in the human-readable artifact, not duplicated in operational memory.
+Use the invoking [Change](../_shared/CHANGE.md) to link a settled term or ADR to the decision that required it. Store the definition in the human-readable artifact, not duplicated in a Stage Session.
 
 Merely *reading* `CONTEXT.md` for vocabulary is not this skill — that's a one-line habit any skill can do. This skill is for **changing** the model, not consuming it.
 
@@ -25,9 +25,9 @@ Most repos have a single context:
 └── src/
 ```
 
-If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts; the map lists each context, where it lives, and how they relate. Each context then has its own `CONTEXT.md` (and optionally its own `.codepatrol/adr/`) inside its area, with the root `.codepatrol/adr/` reserved for system-wide decisions. When multiple contexts exist, infer which one the current topic belongs to before editing.
+If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts; the map lists each context, where it lives, and how they relate. Each context then has its own `CONTEXT.md` and optional `docs/adr/` inside its area, with root `docs/adr/` reserved for system-wide decisions. When multiple contexts exist, infer which one the current topic belongs to before editing.
 
-**Create files lazily** — only when there is something to write. No `CONTEXT.md`? Create it when the first term is resolved. No `.codepatrol/adr/`? Create it when the first ADR is needed. Never scaffold empty structure.
+**Create files lazily** — only when there is something to write. No `CONTEXT.md`? Create it when the first term is resolved. No `docs/adr/`? Create it when the first ADR is needed. Never scaffold empty structure.
 
 ## During the session
 

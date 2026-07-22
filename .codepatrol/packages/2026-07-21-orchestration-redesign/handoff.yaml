@@ -1,0 +1,58 @@
+schema_version: 1
+work_id: 2026-07-21-orchestration-redesign
+origin:
+  skill: improve-codebase
+  mode: architecture
+workflow_id: cpw-e8c46f18a29e
+status: implemented
+revision: 1
+artifacts:
+  spec:
+    path: spec.md
+    sha256: d2c3e72156840b7a92f368fa06558f8c6b41c7f2c991bb8252f5639862f37135
+  plan:
+    path: plan.md
+    sha256: b8645004db4959f2964d7d7528e99f1afebff9fd60e5032b25c83c37a5c61335
+  implementation:
+    path: implementation.md
+    sha256: e5a178563d03bb6d80529436e16610ff75ce63eee7e638bd928d7f97a69ae040
+  verification:
+    path: verification.md
+    sha256: 1987b6f76b7740671e245d657d953f4abf2379808d27b0bcaa86cc16766ec725
+  evidence:
+    - path: evidence/analysis.md
+      sha256: f4f38dd1ddc6eef4c9ebae0f6f092bd1c8b74099947996a8ce97dbcf3b2519de
+  review:
+    path: review.md
+    sha256: 8f2ebd73163429c0d3d6499ef726d49a2bc42989dddde477cc5f3aff4bcfb60e
+approval:
+  verdict: approve
+  reviewed_revision: 1
+  reviewer: pi
+  timestamp: 2026-07-22T09:29:57Z
+implementation:
+  base_ref: 165a8c99cf5f50281605b68846bfef7d8dd04810
+  target: current-checkout
+verification:
+  verdict: commit
+  verified_revision: 1
+  verifier: codex
+  verified_at: 2026-07-22T15:46:47Z
+steps:
+  plan:
+    harness: codex
+    model: gpt-5
+    completed_at: 2026-07-22T02:34:49Z
+  review:
+    harness: pi
+    model: gemini-2.5-pro
+    completed_at: 2026-07-22T09:29:57Z
+  apply:
+    harness: codex
+    model: gpt-5
+    completed_at: 2026-07-22T16:04:28.077Z
+  verify:
+    harness: codex
+    model: gpt-5
+    completed_at: 2026-07-22T18:33:51.458Z
+updated_at: 2026-07-22T18:33:51.458Z

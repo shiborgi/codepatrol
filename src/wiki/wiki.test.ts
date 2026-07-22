@@ -194,7 +194,7 @@ test("recovery rolls back a crash between bundle promotion and manifest commit",
 		await wikiRecord(root, rewritePayload());
 		const oldPage = readFileSync(join(root, "docs", "wiki", "architecture.md"), "utf8");
 		const oldManifest = readFileSync(wikiManifestPath(root), "utf8");
-		const transaction = join(root, ".codepatrol", "wiki", "transactions", "crash-fixture");
+		const transaction = join(root, ".codepatrol", "runtime", "wiki", "transactions", "crash-fixture");
 		mkdirSync(transaction, { recursive: true });
 		renameSync(join(root, "docs", "wiki"), join(transaction, "backup"));
 		mkdirSync(join(root, "docs", "wiki"), { recursive: true });

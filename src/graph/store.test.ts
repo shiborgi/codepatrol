@@ -165,7 +165,7 @@ test("openSnapshot loads without extraction and returns undefined when absent", 
 	}
 });
 
-test("legacy .pi graph is readable and migrates idempotently on sync", async () => {
+test("legacy .pi graph is ignored and runtime graph rebuilds without compatibility state", async () => {
 	const root = fixtureRepo();
 	try {
 		await syncGraph(root);
@@ -174,9 +174,9 @@ test("legacy .pi graph is readable and migrates idempotently on sync", async () 
 		mkdirSync(join(root, ".pi", "code-graph"), { recursive: true });
 		writeFileSync(legacy, readFileSync(current));
 		rmSync(join(root, ".codepatrol"), { recursive: true, force: true });
-		assert.ok((await openSnapshot(root))?.files().includes("src/order.ts"));
+		assert.equal(await openSnapshot(root), undefined);
 		const migrated = await syncGraph(root);
-		assert.equal(migrated.report.extracted, 0);
+		assert.equal(migrated.report.extracted, 6);
 		assert.ok(existsSync(current));
 		assert.ok(existsSync(legacy), "legacy state is read-only and remains in place");
 		const repeat = await syncGraph(root);

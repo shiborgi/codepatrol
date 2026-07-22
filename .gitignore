@@ -2,8 +2,9 @@ node_modules/
 dist/
 .DS_Store
 *.log
-# codepatrol: track the documented process artifacts in /packages, /adr, /architecture;
-# everything else under .codepatrol/ is local-only runtime state.
+# Codepatrol v2: Changes are tracked; all rebuildable state is below runtime.
+.codepatrol/runtime/
+# Bootstrap-only v1 runtime retained until the verified v1-release cutover.
 .codepatrol/workflows/
 .codepatrol/code-graph/
 .codepatrol/locks/

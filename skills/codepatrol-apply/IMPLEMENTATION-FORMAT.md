@@ -1,6 +1,6 @@
 # Implementation journal format
 
-Create `.codepatrol/packages/<work-id>/implementation.md` before the first code change. This is the append-only execution account; do not tick or rewrite the approved plan.
+Create `.codepatrol/changes/<work-id>/apply/journal.md` before the first code change. This is the append-only execution account; do not tick or rewrite the accepted plan.
 
 ```markdown
 # Implementation — <name>
@@ -32,7 +32,7 @@ Create `.codepatrol/packages/<work-id>/implementation.md` before the first code 
 ## Deviations
 
 <What differed from the plan. “None” is explicit. Semantic deviations require
-status changes-requested and a return to review before more production edits.>
+a return transition to a new Plan attempt before more production edits.>
 
 ## Acceptance evidence
 
@@ -52,4 +52,6 @@ observed surface only, never unmeasured savings.>
 <Affected checks, full relevant gate, graph/wiki/domain refresh, residual risks.>
 ```
 
-Keep commands and concise results, not full logs. On interruption, update the current task, status, deviation/blocker, and safe next action in workflow memory before yielding.
+Keep commands and concise results, not full logs. On interruption, update the
+current Stage Session item and append a block event with the exact safe next
+action before yielding.

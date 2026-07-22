@@ -171,7 +171,7 @@ function buildPayload(snapshot: GraphSnapshot, timestamp: string, updateAgentsPo
 			type: "Software Architecture",
 			title: "Architecture",
 			description: "Graph-backed map of entry points, architectural modules, dependencies, and tests.",
-			resource: ".codepatrol/code-graph/graph.json",
+			resource: ".codepatrol/runtime/graph/graph.json",
 			tags: ["architecture", "generated"],
 			timestamp,
 		}),

@@ -1,4 +1,4 @@
 interface:
   display_name: "Codepatrol Review"
-  short_description: "Review a package, diff, branch, or change"
-  default_prompt: "Use $codepatrol-review to assess this Codepatrol package or code change and return an auditable verdict."
+  short_description: "Review one Change Plan and record a verdict"
+  default_prompt: "Use $codepatrol-review to review this explicit Change Plan and record an auditable verdict."

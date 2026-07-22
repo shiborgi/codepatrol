@@ -1,6 +1,6 @@
 # Analysis evidence format
 
-Write analysis to `.codepatrol/packages/<work-id>/evidence/analysis.md`. It is durable evidence for the adjacent `spec.md`, not a second governing specification. Use plain Markdown that reads in a terminal, editor, and Git host; no HTML or remote assets.
+Write analysis to `.codepatrol/changes/<work-id>/plan/evidence/analysis.md`. It is durable evidence for the adjacent `spec.md`, not a second governing specification. Use plain Markdown that reads in a terminal, editor, and Git host; no HTML or remote assets.
 
 ## Architecture mode
 
@@ -36,7 +36,10 @@ limitations, and why this scope was selected.>
 out of scope or separate work ids.>
 ```
 
-Order candidates by recommendation strength. Every number names its command source, every `file:line` was read, and graph ambiguity is confirmed from source. A candidate too large for one independently reviewable package must be split.
+Order candidates by recommendation strength. Every number names its command
+source, every `file:line` was read, and graph ambiguity is confirmed from
+source. A candidate too large for one independently reviewable Change must be
+split.
 
 ## Bug mode
 
