@@ -25,3 +25,5 @@
 **Artifact Producer Origin** — the schema-v1 provenance value stored in a Change Package to distinguish project/feature production from architecture/bug production. The retained values are internal data, not Public Workflow identifiers. _Avoid_: command name, invocation alias.
 
 **Distribution Adapter** — the harness-specific layer that presents a canonical Codepatrol interface to a particular host. The canonical interfaces are the filesystem installer and the Pi native extension; no Codepatrol semantics live in the adapter. _Avoid_: naming harness integrations as separate products or as a marketplace concept.
+
+**Rejected Integration Surface** — an external protocol, hosted agent runtime, provider memory service, coding-agent API, or imported threat model that Codepatrol has assessed and intentionally excludes from its local-only contract: MCP, OpenAI Agents SDK, AWS Bedrock AgentCore Memory SDK, GitHub Copilot Coding Agent, and MITRE ATLAS. _Avoid_: reintroducing these as dependencies, network services, compatible schemas, credential surfaces, or provider-specific workflows; see `.codepatrol/packages/2026-07-21-post-apply-assessment/`.
