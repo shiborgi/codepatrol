@@ -1,0 +1,87 @@
+schema_version: 1
+work_id: 2026-07-21-post-apply-assessment
+origin:
+  skill: improve-codebase
+  mode: architecture
+workflow_id: cpw-17ed330821d9
+status: verified
+revision: 3
+artifacts:
+  spec:
+    path: spec.md
+    sha256: 9cb80f120a48df0ba765b360cbdf37f60a9ded2ad74395190bc33c7619a23144
+  plan:
+    path: plan.md
+    sha256: 65c3a944c818da545db1540a7b3630a3967d07f9ae0be5f40f3cd9c94eff6238
+  review:
+    path: review.md
+    sha256: 7e7c2e61b48f6a635bb25f689534de307f2af25617e357b9365d39a878164dfc
+  implementation:
+    path: implementation.md
+    sha256: c21198a5554d54b88e4484217aee48f8adacf9f9c21ec68c42dc23c5f11395be
+  verification:
+    path: verification.md
+    sha256: b85973d77a87152d2e71775f2022052e7438198a79e45c8751fb67d719376a4f
+  evidence:
+    - path: evidence/analysis.md
+      sha256: 07275db5b2cc0eed5b36f72c656ca69913bd5b2bbdc2c098f00108a7f964b0e5
+    - path: evidence/reference-concepts.md
+      sha256: e1ee0b7f7f174288303583a612fb6affb1f115cde118ad3f95595840dbd36b93
+implementation:
+  base_ref: 89892a3
+  target: current-checkout
+approval:
+  verdict: approve
+  reviewed_revision: 3
+  reviewer: pi
+  reviewed_at: 2026-07-22T01:36:42Z
+verification:
+  verdict: commit
+  verified_revision: 3
+  verifier: pi
+  verified_at: 2026-07-22T01:49:33Z
+steps:
+  plan:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-22T01:32:13Z
+  review:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-22T01:36:42Z
+  apply:
+    harness: pi
+    model: MiniMax-M3
+    started_at: 2026-07-22T01:42:00Z
+    completed_at: 2026-07-22T01:44:00Z
+  verify:
+    harness: pi
+    model: MiniMax-M3
+    completed_at: 2026-07-22T01:49:33Z
+updated_at: 2026-07-22T01:50:22.401Z
+revision_history:
+  - revision: 1
+    status: ready-for-review
+    note: Initial draft.
+  - revision: 2
+    status: approved
+    note: Review applied two bounded mechanical corrections (simpleness ->
+      simplicity; bare AgentCore -> AWS Bedrock AgentCore Memory SDK) and
+      stamped steps.review.
+  - revision: 3
+    status: approved
+    note: "Producer bounded correction at this revision: replaced the loose Observed
+      concepts narrative in evidence/reference-concepts.md with a per-concept
+      table (six rows) and a separate Rejected integration surfaces table (eight
+      rows) covering all source families named anywhere in the spec. Spec, plan,
+      review, implementation, verification, and evidence/analysis.md hashes
+      unchanged. No production code change. Producer gates (plan and review
+      stages) passed. Verifier had returned improve (contract-defect: AC-3
+      required a per-concept table). At this review: re-ran the AC-3 table-shape
+      check (16 data rows, decision values constrained, all spec-named source
+      families covered), re-ran npm run verify (185/185 tests, typecheck, build,
+      smoke, lint green), independently confirmed MCP 2025-06-18 and 2026-07-28
+      release candidate existence, and re-stamped steps.review. One minor
+      wording observation recorded in review.md (spec-internal source count
+      inconsistency: 6 vs 7 vs 8 vs 9 across spec.md lines) is inherited from
+      rev 2 and does not block approval. Verdict: approve."
