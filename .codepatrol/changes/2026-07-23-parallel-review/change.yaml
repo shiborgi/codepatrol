@@ -28,3 +28,20 @@ events:
       tokens:
         status: unavailable
         reason: Agent tokens not tracked in this harness
+  - id: 2a333c0b-a464-4270-bc72-1eb79785bf9f
+    at: 2026-07-23T22:47:34.509Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    type: stage-checkpointed
+    result: ready
+    checkpoint: 03c5f31d617ba2cfd5893891518972edb9446a05
+    tree: 960acdbc5065f72743a56c88b3accca13b5c53bb
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-parallel-review/plan/spec.md
+        sha256: 679bb8de53730c7a0d845b38d0ff975dd20dc3bca34e9ad8c9c038df7437c801
+        intent: create
+      - path: .codepatrol/changes/2026-07-23-parallel-review/plan/plan.md
+        sha256: 5c9124863746ef48ba026e9f7b16b92fd1050458717f18a4bb67c28a709e28e0
+        intent: create
+    next_action: codepatrol-review 2026-07-23-parallel-review on codepatrol/2026-07-23-parallel-review
