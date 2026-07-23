@@ -69,3 +69,12 @@ events:
       tokens:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
+  - id: 2b4e524a-1a87-4a97-b83e-d947b8a31a78
+    at: 2026-07-23T16:42:25.609Z
+    actor: opencode
+    stage: review
+    attempt: 1
+    type: stage-returned
+    to_stage: plan
+    reason: Plan rewrites completeFinalization as a 4-line body that drops four safety checks (targetHead reconciliation, branch checkout, CHANGE_DRIFT rejection, clean-worktree postcondition). Spec Risks section requires preserving those checks; existing src/change/git.test.ts cases (lines 134, 144, 213, 240, 241) encode them. AC-1 verification is manual review, not red-capable. Findings laid out in .codepatrol/changes/2026-07-23-finalize-merge/review/report.md.
+    next_action: codepatrol-plan 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
