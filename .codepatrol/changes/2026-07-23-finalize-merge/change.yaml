@@ -161,3 +161,20 @@ events:
     attempt: 1
     type: stage-began
     next_action: execute plan tasks
+  - id: 47e997a8-a70b-4bb6-86ac-ccbd9921d7c3
+    at: 2026-07-23T17:51:08.672Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: run-recorded
+    run:
+      id: apply-1
+      started_at: 2026-07-23T17:15:00Z
+      finished_at: 2026-07-23T17:20:00Z
+      elapsed_ms: 300000
+      tokens:
+        status: measured
+        source: provider
+        input: 1500
+        output: 500
+        total: 2000
