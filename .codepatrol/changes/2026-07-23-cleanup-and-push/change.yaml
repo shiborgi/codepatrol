@@ -14,3 +14,17 @@ events:
     stage: plan
     attempt: 1
     next_action: codepatrol-plan 2026-07-23-cleanup-and-push
+  - id: 4a15be14-7c6d-4f38-9e94-8474933672e0
+    at: 2026-07-23T23:21:30.327Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    type: run-recorded
+    run:
+      id: run-1
+      started_at: 2026-07-23T23:18:46.634Z
+      finished_at: 2026-07-23T23:21:22.204Z
+      elapsed_ms: 155570
+      tokens:
+        status: unavailable
+        reason: Opencode does not expose authoritative tokens via standard API
