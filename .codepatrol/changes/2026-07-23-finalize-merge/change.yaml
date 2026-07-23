@@ -119,3 +119,10 @@ events:
         sha256: b3e0a1014b11cd54c1a759e6a40d8e6eff3e6fa54e298084bcd68544ae79f9a6
         intent: modify
     next_action: codepatrol-review 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
+  - id: fb506ec6-f402-48d6-bc3c-023a9ad0b57e
+    at: 2026-07-23T17:12:04.807Z
+    actor: opencode
+    stage: review
+    attempt: 2
+    type: stage-began
+    next_action: Complete review report and record approve verdict.
