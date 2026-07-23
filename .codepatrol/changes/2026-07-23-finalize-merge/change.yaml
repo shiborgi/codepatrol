@@ -31,3 +31,20 @@ events:
         input: 1000
         output: 500
         total: 1500
+  - id: b297910f-535d-498a-b66e-883959838805
+    at: 2026-07-23T16:31:08.066Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    type: stage-checkpointed
+    result: ready
+    checkpoint: 1878eff06d2128fe0dc8f66c72469ae75af14702
+    tree: 17764e3121545220ef3d855a33751d22b0f2207e
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-finalize-merge/plan/spec.md
+        sha256: 95caba3ac5084b82bdf00c596c50d77eecc447b14b99b096512ea550ade40303
+        intent: create
+      - path: .codepatrol/changes/2026-07-23-finalize-merge/plan/plan.md
+        sha256: 3b09ac782abd51e9e0931db4db593e91429c624070992a94fb39000147b0864f
+        intent: create
+    next_action: codepatrol-review 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
