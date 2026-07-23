@@ -1,0 +1,16 @@
+schema_version: 2
+identity:
+  work_id: 2026-07-23-parallel-review
+  title: Parallel review and verify of a work id
+  created_at: 2026-07-23T22:43:06.100Z
+  branch: codepatrol/2026-07-23-parallel-review
+  target_branch: main
+  base_commit: 9dbe8db91b516dd0926c7cd6f37ed5ba96e7b905
+events:
+  - id: c91d5c1b-8dd0-4230-b558-c183c13750f7
+    type: change-started
+    at: 2026-07-23T22:43:06.100Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    next_action: codepatrol-plan 2026-07-23-parallel-review on codepatrol/2026-07-23-parallel-review
