@@ -66,3 +66,17 @@ events:
       tokens:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
+  - id: 7d50e441-bad8-43fa-adda-b2871ecdfbc4
+    at: 2026-07-23T23:23:54.658Z
+    actor: opencode
+    stage: review
+    attempt: 1
+    type: stage-checkpointed
+    result: approve
+    checkpoint: 3c0675289adb14f4760d618215006220c576e480
+    tree: f9633e47c2304aba67f652c561a4f0c877085d25
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-cleanup-and-push/review/report.md
+        sha256: c6e5198e1a0dc93db0a59b65e4538085b2ffe6688e36b03549bdedaeb046f4e8
+        intent: create
+    next_action: codepatrol-apply 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
