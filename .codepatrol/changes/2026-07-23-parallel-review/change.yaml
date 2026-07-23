@@ -165,3 +165,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-close 2026-07-23-parallel-review commit|rollback on codepatrol/2026-07-23-parallel-review
+  - id: fd772738-0479-4bf0-9970-a43ab568a7ee
+    at: 2026-07-23T23:12:52.889Z
+    actor: opencode
+    stage: close
+    attempt: 1
+    type: run-recorded
+    run:
+      id: close-20260723T231043Z
+      started_at: 2026-07-23T23:10:43.000Z
+      finished_at: 2026-07-23T23:12:29.000Z
+      elapsed_ms: 106000
+      tokens:
+        status: unavailable
+        reason: Close produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
