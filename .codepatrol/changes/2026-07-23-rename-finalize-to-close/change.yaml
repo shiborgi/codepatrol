@@ -52,3 +52,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-review 2026-07-23-rename-finalize-to-close on codepatrol/2026-07-23-rename-finalize-to-close
+  - id: 36322321-ee93-476c-bd3e-2b52cffc350d
+    at: 2026-07-23T20:54:23.115Z
+    actor: opencode-MiniMax-M3
+    stage: review
+    attempt: 1
+    type: run-recorded
+    run:
+      id: run-002
+      started_at: 2026-07-23T20:52:11.000Z
+      finished_at: 2026-07-23T20:54:13.000Z
+      elapsed_ms: 122000
+      tokens:
+        status: unavailable
+        reason: Token metrics unavailable in opencode environment
+        harness: opencode
