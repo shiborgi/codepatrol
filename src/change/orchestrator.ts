@@ -343,10 +343,19 @@ async function completeFinalization(git: GitAdapter, view: ChangeView, outcome: 
 	const current = await git.currentBranch(signal);
 	if (current !== view.identity.branch && current !== view.identity.target_branch) throw new CodepatrolError("CHANGE_CONFLICT", `Finalize recovery found unrelated branch ${current}.`, 4);
 	if (current !== view.identity.target_branch) await git.checkout(view.identity.target_branch, signal);
-	const checkedOutHead = await git.head("HEAD", signal);
-	if (outcome === "commit" && checkedOutHead === view.identity.base_commit) await git.mergeFf(tag, signal);
-	else if (outcome === "commit" && checkedOutHead !== terminalCommit) throw new CodepatrolError("TARGET_ADVANCED", "Target changed during Finalize.", 4);
-	else if (outcome === "rollback" && checkedOutHead !== view.identity.base_commit) throw new CodepatrolError("TARGET_ADVANCED", "Target changed during rollback.", 4);
-	if (await git.branchExists(view.identity.branch, signal)) await git.deleteBranch(view.identity.branch, terminalCommit, signal);
+	if (outcome === "commit") {
+		await closeWork(git, view, tag, terminalCommit, signal);
+	} else if (outcome === "rollback") {
+		const checkedOutHead = await git.head("HEAD", signal);
+		if (checkedOutHead !== view.identity.base_commit) throw new CodepatrolError("TARGET_ADVANCED", "Target changed during rollback.", 4);
+		if (await git.branchExists(view.identity.branch, signal)) await git.deleteBranch(view.identity.branch, terminalCommit, signal);
+	}
 	if (parseStatusPaths(await git.status(signal)).length) throw new CodepatrolError("CHANGE_CONFLICT", "Finalize postcondition requires a clean worktree.", 4);
+}
+
+async function closeWork(git: GitAdapter, view: ChangeView, tag: string, terminalCommit: string, signal?: AbortSignal): Promise<void> {
+	const checkedOutHead = await git.head("HEAD", signal);
+	if (checkedOutHead === view.identity.base_commit) await git.mergeFf(tag, signal);
+	else if (checkedOutHead !== terminalCommit) throw new CodepatrolError("TARGET_ADVANCED", "Target changed during Finalize.", 4);
+	if (await git.branchExists(view.identity.branch, signal)) await git.deleteBranch(view.identity.branch, terminalCommit, signal);
 }
