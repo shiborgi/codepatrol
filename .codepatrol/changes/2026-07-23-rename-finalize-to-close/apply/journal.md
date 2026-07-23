@@ -28,3 +28,14 @@
 - `node scripts/lint-skills.mjs` and contract tests passed.
 - `codepatrol graph find --query finalize` returns no matches.
 - Smoke tests ran perfectly with `change close` working as expected.
+
+---
+
+## Attempt 2 (Return from Verify)
+
+The change was returned by Verify due to a contract defect: historical records using `stage: finalize` fail to parse because `foldChange` strictly validated against `STAGES`. We will implement task `T1a` to add a backward-compatibility normalization shim. Tasks `T1`, `T2`, `T3`, `T4`, and `T5` remain complete.
+
+### T1a — Backward-compatibility normalization shim
+
+**Completed:** Added normalization shim in `src/change/model.ts` inside `foldChange` to read-time migrate `stage: "finalize"`, `type: "change-finalized"`, and `receipt: "finalize/receipt.md"`.
+**Evidence:** `codepatrol change inspect --id 2026-07-23-rename-finalize-to-close` executes successfully instead of throwing the invalid stage error for historical records.

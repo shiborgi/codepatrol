@@ -55,7 +55,10 @@ export function foldChange(record: ChangeRecordV2): ChangeView {
 	};
 
 	for (let index = 0; index < record.events.length; index++) {
-		const event = record.events[index] as ChangeEvent;
+		const event = record.events[index] as any;
+		if (event.stage === "finalize") event.stage = "close";
+		if (event.type === "change-finalized") event.type = "change-closed";
+		if (event.receipt === "finalize/receipt.md") event.receipt = "close/receipt.md";
 		if (!event.id || ids.has(event.id)) invalid(`Event id is missing or duplicated at index ${index}.`);
 		ids.add(event.id); iso(event.at, `events[${index}].at`);
 		const at = Date.parse(event.at); if (at < previousAt) invalid("Events must be chronologically ordered."); previousAt = at;
@@ -105,7 +108,7 @@ export function foldChange(record: ChangeRecordV2): ChangeView {
 				stage = next(stage)!; attempt = (attempts[stage].at(-1)?.attempt ?? 0) + 1; attempts[stage].push({ attempt, status: "ready", runs: [], artifacts: [] }); state = "ready"; nextAction = event.next_action; break;
 			}
 			case "change-closed":
-				if (state !== "active" || stage !== "close" || event.stage !== "close" || event.attempt !== attempt || !["committed", "rolled-back"].includes(event.outcome) || !/^[0-9a-f]{40}$/.test(event.commit) || event.tag !== `codepatrol/${event.outcome}/${record.identity.work_id}` || event.receipt !== "close/receipt.md") invalid("Finalize event is not valid for the active close attempt.");
+				if (state !== "active" || stage !== "close" || event.stage !== "close" || event.attempt !== attempt || !["committed", "rolled-back"].includes(event.outcome) || !/^[0-9a-f]{40}$/.test(event.commit) || event.tag !== `codepatrol/${event.outcome}/${record.identity.work_id}` || event.receipt !== "close/receipt.md") invalid("Close event is not valid for the active close attempt.");
 				current().status = "completed"; current().result = event.outcome; state = "terminal"; outcome = event.outcome; terminalCommit = event.commit; nextAction = undefined; break;
 			default: invalid(`Unknown event type ${(event as ChangeEvent).type}.`);
 		}
