@@ -215,3 +215,17 @@ events:
       tokens:
         status: unavailable
         reason: Verify produced no measurable provider tokens; metric is intentionally not estimated.
+  - id: c5358560-5574-4843-8702-2db8480aac35
+    at: 2026-07-23T17:56:47.547Z
+    actor: opencode
+    stage: verify
+    attempt: 1
+    type: stage-checkpointed
+    result: commit
+    checkpoint: d7e3795794f61a68d5eba024767e0cf85d4aabae
+    tree: c5f67eba72d3be2095f4231a7b571877391b8808
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-finalize-merge/verify/report.md
+        sha256: 1111d58c2b8fc38bff8e3989287d6546e3561f2a9283b735c055aada20507615
+        intent: create
+    next_action: codepatrol-finalize 2026-07-23-finalize-merge commit on codepatrol/2026-07-23-finalize-merge
