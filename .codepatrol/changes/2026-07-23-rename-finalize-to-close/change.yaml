@@ -14,3 +14,17 @@ events:
     stage: plan
     attempt: 1
     next_action: codepatrol-plan on codepatrol/2026-07-23-rename-finalize-to-close
+  - id: a894517e-092b-4a39-b591-a3fe174e3400
+    at: 2026-07-23T20:40:43.993Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    type: run-recorded
+    run:
+      id: run-001
+      started_at: 2026-07-23T12:00:00.000Z
+      finished_at: 2026-07-23T12:05:00.000Z
+      elapsed_ms: 300000
+      tokens:
+        status: unavailable
+        reason: Token metrics unavailable in opencode environment
