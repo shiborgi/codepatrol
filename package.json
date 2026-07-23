@@ -1,0 +1,80 @@
+{
+  "name": "codepatrol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Harness-agnostic, branch-backed Change orchestration with deterministic lifecycle state, code graph, wiki, and Agent Skills.",
+  "homepage": "https://github.com/shiborgi/codepatrol#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiborgi/codepatrol.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shiborgi/codepatrol/issues"
+  },
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "codepatrol": "./bin/codepatrol.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "docs",
+    "skills",
+    ".opencode/commands",
+    "scripts/install-lib.mjs",
+    "scripts/install-local.mjs",
+    "scripts/uninstall-local.mjs",
+    "scripts/verify-install.mjs",
+    "scripts/clean-dist.mjs",
+    "scripts/render-kanban.mjs"
+  ],
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "test": "node --test --import jiti/register $(find src .pi scripts -name '*.test.ts' -o -name '*.test.mjs')",
+    "typecheck": "tsc --noEmit",
+    "lint:skills": "node scripts/lint-skills.mjs",
+	"kanban": "node --import jiti/register scripts/render-kanban.mjs",
+    "smoke:cli": "node scripts/smoke-cli.mjs",
+    "verify": "npm run typecheck && npm test && npm run build && npm run smoke:cli && npm run lint:skills",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "agent-skills",
+    "architecture",
+    "change-orchestration",
+    "code-graph",
+    "okf",
+    "pi-package"
+  ],
+  "pi": {
+    "extensions": [
+      "./dist/.pi/index.js"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.80.8"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@vscode/tree-sitter-wasm": "^0.3.1",
+    "mdast-util-from-markdown": "^2.0.2",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.80.8",
+    "@types/node": "^22.0.0",
+    "jiti": "^2.7.0",
+    "typescript": "^5.6.0"
+  }
+}

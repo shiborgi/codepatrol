@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Plan"
+  short_description: "Start and plan a branch-backed Change"
+  default_prompt: "Use $codepatrol-plan to start or resume a branch-backed Change and produce its Plan artifacts."

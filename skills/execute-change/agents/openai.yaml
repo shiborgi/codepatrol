@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute Change"
+  short_description: "Execute approved work with verification"
+  default_prompt: "Use $execute-change to claim and implement the next approved work item with verification."

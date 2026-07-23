@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Verify"
+  short_description: "Independently verify an implemented Change"
+  default_prompt: "Use $codepatrol-verify to independently verify this Change candidate and advance or return it."

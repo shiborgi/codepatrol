@@ -1,0 +1,4 @@
+interface:
+  display_name: "Solution Simplification"
+  short_description: "Choose the minimum sufficient solution"
+  default_prompt: "Use $solution-simplification to find the minimum sufficient solution without weakening safety."

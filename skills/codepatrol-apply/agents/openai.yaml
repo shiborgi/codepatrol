@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Apply"
+  short_description: "Implement an approved branch-backed Change"
+  default_prompt: "Use $codepatrol-apply to implement this explicitly selected approved Change."

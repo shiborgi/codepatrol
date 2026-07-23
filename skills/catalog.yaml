@@ -1,0 +1,189 @@
+version: 1
+skills:
+  codepatrol-plan:
+    role: primary
+    order: 1
+    invokedBy: []
+    mayInvoke: [codebase-design, diagnose-bug, domain-modeling, grilling, research-technology, solution-simplification, writing-plans]
+    consumes: [user intent, local project evidence, reference concept analyses]
+    produces: [Plan artifacts, Change events, Plan run metrics]
+    mutation: artifacts
+    triggers:
+      - target: codebase-design
+        when: when-module-or-seam-change
+      - target: diagnose-bug
+        when: when-bug-mode
+      - target: domain-modeling
+        when: when-domain-term-settled
+      - target: grilling
+        when: when-load-bearing-decision-unsettled
+      - target: research-technology
+        when: when-external-evidence-required
+      - target: solution-simplification
+        when: always-before-recommendation
+      - target: writing-plans
+        when: after-spec-decision-complete
+  codepatrol-review:
+    role: primary
+    order: 2
+    invokedBy: []
+    mayInvoke: [assess-change, research-technology]
+    consumes: [explicit Change, Plan artifacts, local evidence]
+    produces: [Review report, verdict event, Review run metrics]
+    mutation: artifacts
+    triggers:
+      - target: assess-change
+        when: always-before-verdict
+      - target: research-technology
+        when: when-external-evidence-required
+  codepatrol-apply:
+    role: primary
+    order: 3
+    invokedBy: []
+    mayInvoke: [execute-change]
+    consumes: [approved Change, accepted plan, Apply Stage Session]
+    produces: [candidate implementation, Apply journal, Change checkpoint, Apply run metrics]
+    mutation: authorized
+    triggers:
+      - target: execute-change
+        when: always-before-task-mutation
+  codepatrol-verify:
+    role: primary
+    order: 4
+    invokedBy: []
+    mayInvoke: [assess-change, verification-strategy]
+    consumes: [implemented Change, candidate commit and tree, graph impact, project gates]
+    produces: [Verify report, commit or return event, Verify run metrics]
+    mutation: artifacts
+    triggers:
+      - target: assess-change
+        when: always-before-verdict
+      - target: verification-strategy
+        when: always-before-verdict
+  codepatrol-finalize:
+    role: primary
+    order: 5
+    invokedBy: []
+    mayInvoke: []
+    consumes: [verified Change, explicit user authority, unchanged target ref]
+    produces: [terminal receipt, recoverable tag, committed or rolled-back outcome, Finalize run metrics]
+    mutation: authorized
+  codepatrol-status:
+    role: primary
+    invokedBy: []
+    mayInvoke: []
+    consumes: [Change projections, active branches, terminal tags]
+    produces: [deterministic Kanban, exact resume actions]
+    mutation: never
+  assess-change:
+    role: support
+    invokedBy: [codepatrol-review, codepatrol-verify, execute-change]
+    mayInvoke: [solution-simplification]
+    consumes: [Change artifacts and candidate diff]
+    produces: [assessment result]
+    mutation: never
+    triggers:
+      - target: solution-simplification
+        when: always-before-assessment
+  codebase-design:
+    role: support
+    invokedBy: [codepatrol-plan, domain-modeling, grilling, solution-simplification]
+    mayInvoke: []
+    consumes: [requirements, code evidence, domain language]
+    produces: [module and interface design]
+    mutation: never
+  codebase-wiki:
+    role: support
+    invokedBy: [execute-change]
+    mayInvoke: []
+    consumes: [code graph, verified source evidence]
+    produces: [OKF wiki bundle]
+    mutation: artifacts
+  diagnose-bug:
+    role: support
+    invokedBy: [codepatrol-plan]
+    mayInvoke: [verification-strategy]
+    consumes: [symptom, reproduction, graph and runtime evidence]
+    produces: [root-cause diagnosis, regression strategy]
+    mutation: artifacts
+    triggers:
+      - target: verification-strategy
+        when: after-root-cause
+  domain-modeling:
+    role: support
+    invokedBy: [codepatrol-plan, execute-change, grilling]
+    mayInvoke: [codebase-design]
+    consumes: [settled terminology and decisions]
+    produces: [CONTEXT.md updates, ADRs]
+    mutation: artifacts
+    triggers:
+      - target: codebase-design
+        when: when-seam-or-module-decision
+  execute-change:
+    role: support
+    invokedBy: [codepatrol-apply]
+    mayInvoke: [assess-change, codebase-wiki, domain-modeling, solution-simplification, verification-strategy]
+    consumes: [approved plan or correction, claimed Stage Session item]
+    produces: [verified task change, updated Change artifacts and session evidence]
+    mutation: authorized
+    triggers:
+      - target: assess-change
+        when: after-task-result
+      - target: codebase-wiki
+        when: when-wiki-refresh-required
+      - target: domain-modeling
+        when: when-domain-term-settled
+      - target: solution-simplification
+        when: always-before-task-mutation
+      - target: verification-strategy
+        when: when-behavior-change
+  grilling:
+    role: support
+    invokedBy: [codepatrol-plan]
+    mayInvoke: [domain-modeling, codebase-design]
+    consumes: [open design decisions, local evidence]
+    produces: [settled decisions]
+    mutation: artifacts
+    triggers:
+      - target: domain-modeling
+        when: after-decision-tree
+      - target: codebase-design
+        when: when-seam-or-module-decision
+  research-technology:
+    role: support
+    invokedBy: [codepatrol-plan, codepatrol-review]
+    mayInvoke: []
+    consumes: [target-project problem, external primary sources or GitHub reference]
+    produces: [reference concept analysis]
+    mutation: artifacts
+  solution-simplification:
+    role: support
+    invokedBy: [codepatrol-plan, assess-change, execute-change, writing-plans]
+    mayInvoke: [codebase-design, verification-strategy]
+    consumes: [acceptance criteria, verified flow evidence, proposed solution or change]
+    produces: [simplicity decision, excess-complexity findings, deferred constraints]
+    mutation: never
+    triggers:
+      - target: codebase-design
+        when: when-irreducible-seam
+      - target: verification-strategy
+        when: always-before-recommendation
+  verification-strategy:
+    role: support
+    invokedBy: [codepatrol-verify, diagnose-bug, execute-change, writing-plans, solution-simplification]
+    mayInvoke: []
+    consumes: [behavior, risks, impact evidence]
+    produces: [verification matrix and feedback loop]
+    mutation: never
+  writing-plans:
+    role: support
+    invokedBy: [codepatrol-plan]
+    mayInvoke: [solution-simplification, verification-strategy]
+    consumes: [decision-complete specification, graph impact]
+    produces: [context-free executable implementation plan]
+    mutation: artifacts
+    triggers:
+      - target: solution-simplification
+        when: always-before-recommendation
+      - target: verification-strategy
+        when: always-before-recommendation

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Review"
+  short_description: "Review one Change Plan and record a verdict"
+  default_prompt: "Use $codepatrol-review to review this explicit Change Plan and record an auditable verdict."

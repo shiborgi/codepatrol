@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+# Codepatrol v2: Changes are tracked; all rebuildable state is below runtime.
+.codepatrol/runtime/
+# Bootstrap-only v1 runtime retained until the verified v1-release cutover.
+.codepatrol/workflows/
+.codepatrol/code-graph/
+.codepatrol/locks/
+.codepatrol/eval-runs/
+.codepatrol/wiki/
+.codepatrol/main-consolidation-*.json
+.codepatrol/scan-overview.json
+.codepatrol/version.json
