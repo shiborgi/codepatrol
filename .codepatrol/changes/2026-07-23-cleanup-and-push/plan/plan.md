@@ -6,111 +6,113 @@
 
 ## Goal and approach
 
-Introduce a push option during the `close` step, switch token counting to use character lengths instead of API tokens, and perform a comprehensive legacy cleanup of code and skills.
+Refactor the token counting logic to measure string character length, renaming all associated fields to `characters` for accuracy. Additionally, remove a legacy CLI test assertion for the old `workflow prime` command.
 
 ## Global constraints
 
-Maintain safety floors: do not break existing test coverage; ensure git push only happens after a successful commit.
+Maintain safety floors: ensure backward compatibility or graceful fallbacks if old `.yaml` files still use the `tokens` field. Do not introduce new dependencies.
 
 ## Simplicity proof
 
 - Selected rung: direct local change
-- Reused capabilities: Existing git execution layer and Pi extension layer.
-- Forbidden speculative surface: No new CLI arguments for push yet, just adding the underlying capability and testing it. (The CLI can pass it via JSON).
-- Expected surface delta: Modifying `src/change/types.ts`, `src/change/git.ts`, `src/change/orchestrator.ts`, `.pi/index.ts`. Deleting unused skills and dead code.
+- Reused capabilities: Existing metric pipeline.
+- Forbidden speculative surface: No automatic git push (out of scope per remote-operation rules).
+- Expected surface delta: Modify `src/change/types.ts`, `src/change/usage.ts`, `.pi/index.ts`, `src/change/model.ts`, `src/cli/cli.test.ts`.
 
 ## Acceptance mapping
 
 | Criterion | Task(s) | Verification |
 |---|---|---|
-| AC-1 | T1, T2 | Check `close` works with push. |
-| AC-2 | T3 | Check token usage metric reflects character length. |
-| AC-3 | T4 | Verify `skills/` and `src/` for unused code. |
+| AC-1 | T1, T2, T3 | Run `npm run typecheck` and `npm run test` for usage metrics. |
+| AC-2 | T4 | Run `npm run test` and check for absence of `workflow prime` failure. |
 
 ## Dependency order
 
-`T1 → T2`; `T3` is independent; `T4` is independent.
+`T1 → T2 → T3`; `T4` is independent.
 
-### T1 — Git push capability
+### T1 — Type renaming
 
-**Purpose:** Satisfies AC-1 by allowing git pushes.
+**Purpose:** Satisfies AC-1 by renaming `tokens` to `characters`.
 
 **Depends on:** None
 
 **Files:**
-- Modify: `src/change/git.ts`
-
-**Interfaces:**
-- Produces: `push(branch: string, signal?: AbortSignal): Promise<void>` in `GitAdapter`
-
-**Simplicity proof:** Add standard `git push origin <branch>` execution.
-
-**Surface delta:** 1 file modified.
-
-**Steps:**
-1. Add `push` to the `GitAdapter` interface and implementation.
-2. Ensure it runs `["push", "origin", branch]`.
-
-### T2 — Close step push option
-
-**Purpose:** Satisfies AC-1 by conditionally pushing after commit.
-
-**Depends on:** T1
-
-**Files:**
 - Modify: `src/change/types.ts`
-- Modify: `src/change/orchestrator.ts`
+- Modify: `src/change/usage.ts`
 
 **Interfaces:**
-- Modify: `CloseInput` adds `push?: boolean`.
+- Modify: Rename `TokenUsage` to `CharacterUsage`. Rename `RunUsage.tokens` to `RunUsage.characters`. Rename `UsageSummary.tokens` to `UsageSummary.characters`.
 
-**Simplicity proof:** Minimal branching logic in `completeFinalization`.
+**Simplicity proof:** Pure semantic rename.
 
 **Surface delta:** 2 files modified.
 
 **Steps:**
-1. Add `push?: boolean` to `CloseInput` in `types.ts`.
-2. In `orchestrator.ts`, if `push` is true and outcome is `commit`, call `git.push(view.identity.target_branch, signal)` inside or after `completeFinalization`.
+1. In `types.ts`, rename `TokenUsage` to `CharacterUsage`.
+2. In `RunUsage`, rename `tokens` to `characters`.
+3. In `UsageSummary`, rename `tokens` to `characters`.
+4. Update `validateRun` and `aggregateUsage` in `usage.ts` to reference `run.characters` instead of `run.tokens`. Update string literals checking for "tokens.input", etc., to "characters.input".
 
-### T3 — Token counting via character length
+### T2 — Model event renaming
 
-**Purpose:** Satisfies AC-2 by ignoring LLM API tokens and using character counts.
+**Purpose:** Satisfies AC-1 by migrating the event schemas and tests.
+
+**Depends on:** T1
+
+**Files:**
+- Modify: `src/change/model.ts`
+- Modify: `src/change/change.test.ts`
+- Modify: `src/change/git.test.ts`
+
+**Interfaces:**
+- Modify: The `recordFromYaml` logic might need to map `tokens` to `characters`. Test fixtures must be updated.
+
+**Simplicity proof:** Update tests to match the new type shapes.
+
+**Surface delta:** 3 files modified.
+
+**Steps:**
+1. In `change.test.ts`, `git.test.ts`, and `board.test.ts`, rename `tokens: { ... }` to `characters: { ... }` in all run usage mock objects.
+2. Ensure no typescript errors remain in the test suite for `tokens`.
+
+### T3 — Character counting via string length
+
+**Purpose:** Satisfies AC-1 by dropping API usage reading and summing string lengths.
+
+**Depends on:** T2
+
+**Files:**
+- Modify: `.pi/index.ts`
+- Modify: `.pi/index.test.ts`
+
+**Interfaces:**
+- Modify: `sumPiUsage` returns `characters` instead of tokens.
+
+**Simplicity proof:** Iterating messages and summing `message.content?.length` is simpler and matches the spec exactly.
+
+**Surface delta:** 2 files modified.
+
+**Steps:**
+1. In `.pi/index.ts` `sumPiUsage`, loop over messages. If `role` is `user` or `system`, add `String(message.content || "").length` to `input`. If `role` is `assistant`, add to `output`.
+2. Update the returned object to map these to `characters` fields instead of `totalTokens`.
+3. Update `index.test.ts` to assert the correct string length sum.
+
+### T4 — Legacy cleanup
+
+**Purpose:** Satisfies AC-2 by removing dead test code.
 
 **Depends on:** None
 
 **Files:**
-- Modify: `.pi/index.ts`
+- Modify: `src/cli/cli.test.ts`
 
 **Interfaces:**
-- Modify: `sumPiUsage`
+- Deletes obsolete test line.
 
-**Simplicity proof:** Replace property access with `message.content?.length`.
+**Simplicity proof:** Deletion of an unused block.
 
 **Surface delta:** 1 file modified.
 
 **Steps:**
-1. In `sumPiUsage`, iterate messages. If role is `user` or `system`, add `String(message.content || "").length` to `input`. If role is `assistant`, add to `output`.
-2. `total` becomes `input + output`.
-3. Stop reading `message.usage`.
-
-### T4 — Legacy cleanup
-
-**Purpose:** Satisfies AC-3 by evaluating and deleting obsolete files/code.
-
-**Depends on:** None
-
-**Files:**
-- Modify: `skills/` (delete obsolete skills)
-- Modify: `src/` (clean up unused exports or old method names)
-
-**Interfaces:**
-- Deletes obsolete internal functions or unused skills.
-
-**Simplicity proof:** Pure deletion and rename to lean down the codebase.
-
-**Surface delta:** Multiple files potentially modified or deleted.
-
-**Steps:**
-1. Scan `skills/catalog.yaml` vs directory contents. Delete skills not listed or no longer useful.
-2. Run a full codebase lint/typecheck to find unused methods/variables.
-3. Remove old code patterns or refactor leftovers.
+1. Delete the `legacy` block in `src/cli/cli.test.ts` that tests `run(["workflow", "prime", ...])`.
+2. Run `npm run test` to verify `cli.test.ts` continues to pass cleanly.

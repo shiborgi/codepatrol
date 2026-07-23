@@ -5,70 +5,63 @@
 - Origin: improve-codebase
 - Mode: feature
 - Target baseline: main
-- Governing constraints: None — isolated enhancements and cleanups
+- Governing constraints: None — internal refactoring and metric field renaming
 - Substrate state: absent
-- Problem: The `close` step requires a manual push of the branch after committing; step token counts rely on LLM API metrics which do not accurately reflect the actual string characters of inputs/outputs; there is legacy code left over from a recent refactor.
-- Outcome: The `close` step allows an option to push after commit; step token counting is based on character counts for input and output; legacy skills, dead code, and old method names are eliminated.
+- Problem: The step token counts currently rely on LLM API output which does not accurately represent the character counts used by the local harness. Also, a legacy test block for the old `workflow prime` command is still in `cli.test.ts`, causing confusion.
+- Outcome: Token metrics are calculated by character length instead of API tokens, and all corresponding metric fields in the typings are renamed from "tokens" to "characters" for semantic correctness. The legacy `workflow prime` leftover test is removed.
 
 ## Scope
 
 ### In scope
 
-- Update `CloseInput` to support an optional `push` flag.
-- Update `closeChangeLocked` and `completeFinalization` to perform a push if requested.
-- Update `sumPiUsage` or equivalent token tracking in `.pi/index.ts` to calculate `input` and `output` tokens based on character length of the messages (e.g. `role === "user"` vs `role === "assistant"`).
-- Evaluate `skills/` and `src/` to identify and remove unused code, old method names, and leftover files from the recent lifecycle refactor.
+- Modify `sumPiUsage` in `.pi/index.ts` to calculate `input` and `output` characters based on message string length rather than API `totalTokens`.
+- Rename `tokens` to `characters` in `RunUsage` and `UsageSummary`. Rename `TokenUsage` to `CharacterUsage` in `src/change/types.ts`.
+- Remove the legacy `workflow prime` CLI test assertions in `src/cli/cli.test.ts`.
 
 ### Out of scope
 
-- Re-architecting the token usage reporting schema (we will reuse the `input`/`output` fields in `UsageSummary`).
+- Automatic git push on close is out of scope (violates `AGENTS.md` remote-operations rule and `codepatrol-close` SKILL.md never-fetch/push rule).
 
 ## Current evidence
 
-- `src/change/orchestrator.ts` contains `closeChangeLocked`, which is the entry point for finalizing a change.
-- `src/change/git.ts` may need an `await git.push(branch, signal)` method if one does not exist.
 - `.pi/index.ts` calculates `sumPiUsage` using `message.usage.input` and `message.usage.output`.
-- The `skills/catalog.yaml` defines the active skills, but there may be unused skills in the folder (e.g., if old skills were replaced by `codepatrol-*`).
+- `src/change/types.ts` defines `TokenUsage` and uses a `tokens` field in `RunUsage` and `UsageSummary`.
+- `src/cli/cli.test.ts` line 39 contains `run(["workflow", "prime", ...])` which tests a legacy naming scheme.
 
 ## Proposed design
 
-1. **Push option in Close**: Add `push?: boolean` to `CloseInput` in `src/change/types.ts`. In `src/change/orchestrator.ts` during `completeFinalization`, if `outcome === "commit"` and `push` is true, execute a `git push origin <target_branch>`. Add a `push` method to `GitAdapter` in `src/change/git.ts`.
-2. **Token tracking**: In `.pi/index.ts`'s `sumPiUsage`, instead of relying on `message.usage`, we will sum the string length of `message.content` (if available) for `input` (user/system roles) and `output` (assistant role). 
-3. **Legacy cleanup**: We will manually evaluate all skills in `skills/`, comparing them against `catalog.yaml`, and scan `src/` for unused exports, old names, and dead tests to remove them.
+1. **Token tracking rename and logic**: In `.pi/index.ts`, `sumPiUsage` will measure string character lengths of `message.content` instead of pulling `.usage`. In `src/change/types.ts` and `src/change/usage.ts`, rename `TokenUsage` to `CharacterUsage`, and rename the `tokens` property inside `RunUsage` and `UsageSummary` to `characters`. Update `usage.ts` logic to operate on the `characters` field.
+2. **Legacy cleanup**: Delete the block in `src/cli/cli.test.ts` testing the `workflow` command.
 
 ## Alternatives
 
-- Keeping tokens as API tokens: Rejected because the user specifically requested character length for input/output.
-- Prompting the user to push manually: Rejected because the user wants a push option directly in the close step.
+- Retaining the name `tokens` while counting characters: Rejected because it's semantically misleading (Review defect 4).
+- Keeping `workflow prime` test: Rejected because the command was renamed and this is dead test code.
 
 ## Simplicity decision
 
 - Selected rung: direct local change
-- Earlier rungs: N/A, we are modifying local behaviors.
-- Irreducible complexity: Git interactions must be safely handled, handling network failures during push gracefully.
-- Safety floor: Push must only happen if the close commit was successful. Token calculation must not crash if messages lack text content.
-- Expected surface delta: ~3 files modified (`git.ts`, `orchestrator.ts`, `.pi/index.ts`), various legacy files deleted.
+- Earlier rungs: N/A, we are modifying local behaviors directly.
+- Irreducible complexity: Typescript type adjustments across the pipeline (`usage.ts`, `types.ts`, `orchestrator.ts` if affected, `.pi/index.ts`).
+- Safety floor: Metric collection must not crash if messages lack text content.
+- Expected surface delta: ~4 files modified (`types.ts`, `usage.ts`, `.pi/index.ts`, `cli.test.ts`).
 
 ## Deferred constraints
 
-| ID | Chosen simplification | Known ceiling | Observable trigger | Upgrade path |
-|---|---|---|---|---|
-| DC-1 | None | N/A | N/A | N/A |
+None — No deferred constraints.
 
 ## Compatibility and rollout
 
-- Transparent to existing sessions. `push` defaults to false.
+- Metric records will shift from `tokens` to `characters` fields. `codepatrol status` might need slight adjustments if it references `usage.tokens`.
 
 ## Risks and mitigations
 
-- Push might fail if remote has advanced. The user handles git resolution if push fails.
-- Changing token calculation changes the scale of "tokens" to "characters", but since it's just a metric, it shouldn't affect system stability.
+- Older change YAMLs might have `tokens` instead of `characters`, causing parsers to fail. Mitigation: update YAML parser mapping or safely fallback.
 
 ## Acceptance criteria
 
-- AC-1: `CloseInput` allows `push: boolean`, and when set to true and outcome is `commit`, the target branch is pushed to origin.
-- AC-2: Step token counting uses characters of input/output instead of API return metrics.
-- AC-3: Legacy code, obsolete skills, and old method names are removed, ensuring the codebase is completely lean for its current architecture.
+- AC-1: Step metric counting uses string lengths of inputs/outputs instead of API return metrics, and the metric field is correctly renamed to `characters` in the type definitions and aggregations.
+- AC-2: The legacy `workflow` command test code is successfully removed from `src/cli/cli.test.ts`.
 
 ## Decisions and open questions
 
