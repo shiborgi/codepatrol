@@ -126,3 +126,17 @@ events:
     attempt: 2
     type: stage-began
     next_action: Complete review report and record approve verdict.
+  - id: b18284b4-2fd0-4c6d-b2a9-0a735d7f35ce
+    at: 2026-07-23T17:12:07.435Z
+    actor: opencode
+    stage: review
+    attempt: 2
+    type: run-recorded
+    run:
+      id: review-2
+      started_at: 2026-07-23T17:04:00Z
+      finished_at: 2026-07-23T17:05:00Z
+      elapsed_ms: 60000
+      tokens:
+        status: unavailable
+        reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
