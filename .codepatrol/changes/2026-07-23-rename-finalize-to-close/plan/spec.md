@@ -23,6 +23,7 @@
 - Adjusting tests and fixtures containing `finalize` stage references.
 - Renaming opencode commands (`.opencode/commands/codepatrol-finalize.md` to `codepatrol-close.md`) and Pi-extension command registrations (`.pi/index.ts`).
 - Renaming the owned artifact directory from `.codepatrol/changes/<work-id>/finalize/` to `close/` in orchestrator hardcodes and skills-contract map.
+- Adding a backward-compatibility normalization shim to `foldChange` (`src/change/model.ts`) to gracefully parse historical events with `stage: "finalize"` and `type: "change-finalized"` as `"close"` and `"change-closed"`.
 
 ### Out of scope
 
@@ -42,6 +43,7 @@
 ## Proposed design
 
 - Update `STAGES` in `src/change/types.ts` from `["plan", "review", "apply", "verify", "finalize"]` to `["plan", "review", "apply", "verify", "close"]`.
+- Add normalization logic in `src/change/model.ts` (`foldChange`) to intercept and migrate legacy `finalize` / `change-finalized` string literals at read-time.
 - Update events like `ChangeFinalizedEvent` to `ChangeClosedEvent` with `type: "change-closed"`.
 - Update orchestration logic: `finalizeChange` to `closeChange` in `src/change/orchestrator.ts`.
 - Update CLI parser in `src/cli/commands.ts` and `src/cli/args.ts` to map `change close` to `closeChange`.
@@ -71,7 +73,7 @@
 
 ## Compatibility and rollout
 
-- Existing changes in `.codepatrol/changes/` that are actively in the `finalize` state will be technically broken unless migrated. Because this is an agent harness with short-lived changes, this is acceptable for the project scope.
+- Historical `change.yaml` records containing `stage: "finalize"` and `type: "change-finalized"` will be seamlessly supported via a read-time normalization shim in `foldChange`. This avoids mutating immutable historical `change.yaml` records while keeping the harness fully usable.
 
 ## Risks and mitigations
 
@@ -83,6 +85,7 @@
 - AC-2: The `STAGES` array in `src/change/types.ts` uses `"close"` instead of `"finalize"`.
 - AC-3: All tests pass and `tsc` reports no errors.
 - AC-4: Documentation and skill descriptions use "close" and the `codepatrol-close` skill exists.
+- AC-5: Historical change records with `finalize` events parse successfully without throwing invalid stage errors.
 
 ## Decisions and open questions
 

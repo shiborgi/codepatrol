@@ -28,10 +28,11 @@ Rename the `finalize` lifecycle stage to `close` across the entire Codepatrol co
 | AC-2 | T1 | `cat src/change/types.ts | grep STAGES` |
 | AC-3 | T3, T5 | `npm run test` and `npx tsc -p tsconfig.build.json --noEmit` |
 | AC-4 | T4 | `ls skills/codepatrol-close` and `ls .opencode/commands/codepatrol-close.md` |
+| AC-5 | T1a | `codepatrol change inspect --id 2026-07-23-rename-finalize-to-close` executes without invalid stage error |
 
 ## Dependency order
 
-`T1 → T2 → T3 → T4 → T5`
+`T1 → T1a → T2 → T3 → T4 → T5`
 
 ### T1 — Core types and schema
 
@@ -62,6 +63,36 @@ Rename the `finalize` lifecycle stage to `close` across the entire Codepatrol co
    - Rename `FinalizeResult` to `CloseResult`.
 2. In `src/change/model.ts` and `src/change/board.ts`, update type names and properties accordingly.
 3. Run `npx tsc -p tsconfig.build.json --noEmit`. Expected red: many TS errors due to broken references.
+
+
+### T1a — Backward-compatibility normalization shim
+
+**Purpose:** Satisfies AC-5 by migrating legacy `finalize` and `change-finalized` events at read-time so that historical change records parse successfully.
+
+**Depends on:** T1
+
+**Files:**
+- Modify: `src/change/model.ts`
+
+**Interfaces:**
+- Consumes: JSON-parsed YAML event objects from `change.yaml`
+- Produces: Normalizes `event.stage` to `"close"` and `event.type` to `"change-closed"` if they match legacy literals.
+
+**Simplicity proof:** Direct local change in `foldChange`. Avoids dangerous and complex on-disk data migrations of immutable historical tags.
+
+**Surface delta:** 1 file modified (`src/change/model.ts`).
+
+**Steps:**
+1. In `src/change/model.ts`, inside `foldChange`, locate the event iteration loop: `for (let index = 0; index < record.events.length; index++) {`
+2. At the beginning of the loop, intercept the event object and normalize legacy strings:
+   ```typescript
+   const event = record.events[index] as any;
+   if (event.stage === "finalize") event.stage = "close";
+   if (event.type === "change-finalized") event.type = "change-closed";
+   ```
+   *(Ensure TypeScript understands the event type after this normalization or use `as ChangeEvent` after normalizing).*
+3. Run `npm run build` and then `codepatrol change inspect --id 2026-07-23-rename-finalize-to-close`.
+   Expected green: The CLI correctly parses the historical record and projects the stage.
 
 ### T2 — Orchestrator and CLI
 
