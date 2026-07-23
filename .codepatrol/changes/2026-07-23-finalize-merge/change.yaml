@@ -236,3 +236,17 @@ events:
     attempt: 1
     type: stage-began
     next_action: Run Finalize preflight and call change finalize commit.
+  - id: eb9df1bb-721b-49c0-a0cc-63c3c7bdbd5e
+    at: 2026-07-23T18:03:42.567Z
+    actor: opencode
+    stage: finalize
+    attempt: 1
+    type: run-recorded
+    run:
+      id: finalize-preflight
+      started_at: 2026-07-23T17:30:00Z
+      finished_at: 2026-07-23T17:31:00Z
+      elapsed_ms: 60000
+      tokens:
+        status: unavailable
+        reason: Finalize preflight produced no measurable provider tokens; metric is intentionally not estimated.
