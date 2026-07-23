@@ -5,46 +5,51 @@
 - Origin: improve-codebase
 - Mode: feature
 - Target baseline: main
-- Governing constraints: None — internal refactoring and metric field renaming
+- Governing constraints: None
 - Substrate state: absent
-- Problem: The step token counts currently rely on LLM API output which does not accurately represent the character counts used by the local harness. Also, a legacy test block for the old `workflow prime` command is still in `cli.test.ts`, causing confusion.
-- Outcome: Token metrics are calculated by character length instead of API tokens, and all corresponding metric fields in the typings are renamed from "tokens" to "characters" for semantic correctness. The legacy `workflow prime` leftover test is removed.
+- Problem: The `close` step requires a manual push of the branch after committing. Step token counts rely on LLM API metrics which do not reflect local proxy interactions, and the `actor` field does not surface the harness or model. There is also a legacy test for the old `workflow prime` command.
+- Outcome: `AGENTS.md` and `codepatrol-close` are amended to allow git pushes; `close` accepts an optional push flag; tokens are approximated locally via character count division; the `actor` field records the harness and model; and the legacy `workflow prime` test is removed.
 
 ## Scope
 
 ### In scope
 
-- Modify `sumPiUsage` in `.pi/index.ts` to calculate `input` and `output` characters based on message string length rather than API `totalTokens`.
-- Rename `tokens` to `characters` in `RunUsage` and `UsageSummary`. Rename `TokenUsage` to `CharacterUsage` in `src/change/types.ts`.
+- Amend `AGENTS.md` and `skills/codepatrol-close/SKILL.md` to permit optional remote push.
+- Add `push?: boolean` to `CloseInput` and implement `git push` during `completeFinalization`.
+- Modify `sumPiUsage` in `.pi/index.ts` to calculate tokens approximately (`Math.ceil(chars / 4)`).
+- Modify the `codepatrol_record_run` Pi tool to inject the harness and model into the `actor` string of the transition intent.
 - Remove the legacy `workflow prime` CLI test assertions in `src/cli/cli.test.ts`.
 
 ### Out of scope
 
-- Automatic git push on close is out of scope (violates `AGENTS.md` remote-operations rule and `codepatrol-close` SKILL.md never-fetch/push rule).
+- Renaming metric fields (e.g., `tokens` to `characters`). We will retain the existing `TokenUsage` interface to preserve compatibility.
 
 ## Current evidence
 
-- `.pi/index.ts` calculates `sumPiUsage` using `message.usage.input` and `message.usage.output`.
-- `src/change/types.ts` defines `TokenUsage` and uses a `tokens` field in `RunUsage` and `UsageSummary`.
+- `AGENTS.md` restricts remote operations. `skills/codepatrol-close/SKILL.md` says "never fetch, push...".
+- `.pi/index.ts` records runs using `actor: "pi"` and tracks tokens from API returns.
 - `src/cli/cli.test.ts` line 39 contains `run(["workflow", "prime", ...])` which tests a legacy naming scheme.
 
 ## Proposed design
 
-1. **Token tracking rename and logic**: In `.pi/index.ts`, `sumPiUsage` will measure string character lengths of `message.content` instead of pulling `.usage`. In `src/change/types.ts` and `src/change/usage.ts`, rename `TokenUsage` to `CharacterUsage`, and rename the `tokens` property inside `RunUsage` and `UsageSummary` to `characters`. Update `usage.ts` logic to operate on the `characters` field.
-2. **Legacy cleanup**: Delete the block in `src/cli/cli.test.ts` testing the `workflow` command.
+1. **Policy update**: Update `AGENTS.md` to remove the prohibition on remote operations for `Close`. Update `codepatrol-close/SKILL.md` to explicitly allow pushing when requested.
+2. **Push feature**: Add `push` to `CloseInput`. If `push: true` and outcome is `commit`, call `git.push(targetBranch)`. Add `push(branch: string)` to `GitAdapter`.
+3. **Token approximation**: In `.pi/index.ts`'s `sumPiUsage`, sum the string length of `message.content`, divide by 4, and use `Math.ceil` to estimate tokens. This preserves the `RunUsage.tokens` schema and avoids massive YAML fixture migrations.
+4. **Actor tracking**: In `.pi/index.ts`, when transitioning usage, format the `actor` field as `` `${harness} (${model || 'unknown'})` `` or similar, surfacing this metadata in the workflow.
+5. **Legacy cleanup**: Delete the `workflow` test block in `cli.test.ts`.
 
 ## Alternatives
 
-- Retaining the name `tokens` while counting characters: Rejected because it's semantically misleading (Review defect 4).
-- Keeping `workflow prime` test: Rejected because the command was renamed and this is dead test code.
+- Renaming `tokens` to `characters`: Rejected because it requires widespread schema and fixture migrations and violates the semantic of standard token logging.
+- Keeping push out of scope: Rejected because the user specifically requested modifying the governance to allow it.
 
 ## Simplicity decision
 
 - Selected rung: direct local change
-- Earlier rungs: N/A, we are modifying local behaviors directly.
-- Irreducible complexity: Typescript type adjustments across the pipeline (`usage.ts`, `types.ts`, `orchestrator.ts` if affected, `.pi/index.ts`).
-- Safety floor: Metric collection must not crash if messages lack text content.
-- Expected surface delta: ~4 files modified (`types.ts`, `usage.ts`, `.pi/index.ts`, `cli.test.ts`).
+- Earlier rungs: N/A, modifying core CLI logic and policy docs directly.
+- Irreducible complexity: Minimal parsing for token approximation and conditional branching for git push.
+- Safety floor: Push only occurs if the commit succeeds. Token approximation guarantees a safe integer.
+- Expected surface delta: ~5 files modified (`AGENTS.md`, `SKILL.md`, `git.ts`, `orchestrator.ts`, `.pi/index.ts`, `cli.test.ts`).
 
 ## Deferred constraints
 
@@ -52,16 +57,18 @@ None — No deferred constraints.
 
 ## Compatibility and rollout
 
-- Metric records will shift from `tokens` to `characters` fields. `codepatrol status` might need slight adjustments if it references `usage.tokens`.
+- Retaining the `tokens` schema guarantees 100% backward compatibility for all existing YAML change records. The `actor` field is a free-form string, so adding model info is fully backward-compatible.
 
 ## Risks and mitigations
 
-- Older change YAMLs might have `tokens` instead of `characters`, causing parsers to fail. Mitigation: update YAML parser mapping or safely fallback.
+- Push might fail if remote has advanced. Mitigation: let git throw and user handles resolution.
 
 ## Acceptance criteria
 
-- AC-1: Step metric counting uses string lengths of inputs/outputs instead of API return metrics, and the metric field is correctly renamed to `characters` in the type definitions and aggregations.
-- AC-2: The legacy `workflow` command test code is successfully removed from `src/cli/cli.test.ts`.
+- AC-1: Policy documents allow push, and `CloseInput` implements a `push: boolean` capability that pushes to the target branch.
+- AC-2: Token metrics are approximated locally by character length / 4, avoiding API reliance while retaining the `tokens` schema field.
+- AC-3: The `actor` string recorded for the run includes both the harness and model name.
+- AC-4: The legacy `workflow` command test code is successfully removed from `src/cli/cli.test.ts`.
 
 ## Decisions and open questions
 
