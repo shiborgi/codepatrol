@@ -241,3 +241,12 @@ events:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
+  - id: 24c16cee-6a4f-4a30-a0b9-0455882ea629
+    at: 2026-07-23T23:44:57.466Z
+    actor: opencode
+    stage: review
+    attempt: 3
+    type: stage-returned
+    to_stage: plan
+    reason: "Fix-first required: Plan attempt 3 correctly resolved all four prior Review defects (AC-1 push removed, AC-3 narrowed, DC-1 dropped, AC-2 rename made explicit). Remaining defects are bounded file-list omissions: (1) src/change/board.ts:8 reads usage.tokens.* and is missing from T1's Files — will fail typecheck after T1. (2) src/change/fixtures/{committed,returned,rolled-back}-change.yaml use tokens: keys and are missing from any task — will fail change.test.ts via validateRun. (3) src/change/board.test.ts is mentioned in T2 step 1 prose but absent from T2's Files list. (4) spec.md Risks promises a YAML migration mitigation with no implementing T task. See review/report.md for exact corrections."
+    next_action: codepatrol-plan 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
