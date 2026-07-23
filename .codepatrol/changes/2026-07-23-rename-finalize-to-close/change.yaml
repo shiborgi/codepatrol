@@ -462,3 +462,13 @@ events:
         status: unavailable
         reason: Token metrics unavailable in opencode environment
         harness: opencode
+  - id: e70d93f7-bd28-4f48-ab29-d4108e0763f3
+    at: 2026-07-23T22:30:56.159Z
+    actor: opencode
+    stage: close
+    attempt: 1
+    type: change-closed
+    outcome: committed
+    commit: 94580ec90d6400c6d648a85f63f3bbf40a802181
+    tag: codepatrol/committed/2026-07-23-rename-finalize-to-close
+    receipt: close/receipt.md
