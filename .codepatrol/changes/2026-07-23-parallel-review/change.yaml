@@ -158,3 +158,10 @@ events:
         sha256: a3c43d7cd75e691bec64374226da48442f38aa366b3916e0a7bd989b71b0414d
         intent: create
     next_action: codepatrol-close 2026-07-23-parallel-review commit|rollback on codepatrol/2026-07-23-parallel-review
+  - id: 035e68a0-7278-407a-8b49-c8af709f299e
+    at: 2026-07-23T23:12:25.737Z
+    actor: opencode
+    stage: close
+    attempt: 1
+    type: stage-began
+    next_action: codepatrol-close 2026-07-23-parallel-review commit|rollback on codepatrol/2026-07-23-parallel-review
