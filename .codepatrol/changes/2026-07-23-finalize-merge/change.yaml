@@ -85,3 +85,20 @@ events:
     attempt: 2
     type: stage-began
     next_action: rewrite plan.md
+  - id: 798b6d8c-809c-4e82-8d61-04c81c8b7418
+    at: 2026-07-23T16:51:22.745Z
+    actor: opencode
+    stage: plan
+    attempt: 2
+    type: run-recorded
+    run:
+      id: plan-2
+      started_at: 2026-07-23T16:50:00Z
+      finished_at: 2026-07-23T17:00:00Z
+      elapsed_ms: 600000
+      tokens:
+        status: measured
+        source: provider
+        input: 1000
+        output: 500
+        total: 1500
