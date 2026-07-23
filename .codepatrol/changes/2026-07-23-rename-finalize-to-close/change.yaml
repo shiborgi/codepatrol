@@ -171,3 +171,56 @@ events:
       tokens:
         status: unavailable
         reason: Tokens metrics unavailable in this environment
+
+  - id: 4d7bce24-c178-4ea3-af12-5fdb17cec027
+    at: "2026-07-23T21:34:45.243Z"
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: stage-checkpointed
+    result: implemented
+    checkpoint: f1a330267e1e1b904f60fa13111a1028c48b7417
+    tree: a5b934b7480fc18d1f6233dbae5e0ad14837d364
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-rename-finalize-to-close/apply/journal.md
+        sha256: a492e9d848a151d8ff8a46713bb59263ea3c2594a4d1e0392d9b01df65602d17
+        intent: create
+    changes:
+      - .opencode/commands/codepatrol-close.md
+      - .opencode/commands/codepatrol-verify.md
+      - .pi/index.test.ts
+      - .pi/index.ts
+      - AGENTS.md
+      - CONTEXT.md
+      - docs/change-lifecycle.md
+      - docs/smoke-tests.md
+      - README.md
+      - scripts/lint-skills.mjs
+      - scripts/package-contract.test.mjs
+      - scripts/skills-contract.test.mjs
+      - scripts/smoke-cli.mjs
+      - skills/_shared/CHANGE.md
+      - skills/_shared/CODEPATROL-CLI.md
+      - skills/_shared/ROLES.md
+      - skills/catalog.yaml
+      - skills/codepatrol-apply/SKILL.md
+      - skills/codepatrol-close/agents/openai.yaml
+      - skills/codepatrol-close/CLOSE-FORMAT.md
+      - skills/codepatrol-close/SKILL.md
+      - skills/codepatrol-finalize/agents/openai.yaml
+      - skills/codepatrol-status/SKILL.md
+      - skills/codepatrol-verify/SKILL.md
+      - skills/codepatrol-verify/VERIFICATION-FORMAT.md
+      - src/change/board.test.ts
+      - src/change/board.ts
+      - src/change/change.test.ts
+      - src/change/fixtures/committed-change.yaml
+      - src/change/fixtures/rolled-back-change.yaml
+      - src/change/git.test.ts
+      - src/change/model.ts
+      - src/change/orchestrator.ts
+      - src/change/types.ts
+      - src/cli/args.ts
+      - src/cli/commands.ts
+      - src/cli/output.ts
+    next_action: codepatrol-verify 2026-07-23-rename-finalize-to-close on codepatrol/2026-07-23-rename-finalize-to-close
