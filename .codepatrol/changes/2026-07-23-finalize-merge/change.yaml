@@ -140,3 +140,17 @@ events:
       tokens:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
+  - id: c5122cdc-c24c-45c4-a6da-ceba74b7f78c
+    at: 2026-07-23T17:12:18.531Z
+    actor: opencode
+    stage: review
+    attempt: 2
+    type: stage-checkpointed
+    result: approve
+    checkpoint: c5f05e61a0b387cdc1c3b1d1518beccc95bc5494
+    tree: 7b9a5e000cf45023058da74062e9ba8d7fd2e0d3
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-finalize-merge/review/report.md
+        sha256: 3004bae8a5acc9b44aefd8ad57d069e5f441e1b73c9526b453bbcc31a945a07b
+        intent: create
+    next_action: codepatrol-apply 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
