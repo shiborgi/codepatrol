@@ -21,6 +21,8 @@
 - Updating `catalog.yaml` to register `codepatrol-close` instead of `codepatrol-finalize`.
 - Adjusting all documentation (`README.md`, `CONTEXT.md`, `docs/`, `skills/_shared/`) referencing the finalize stage.
 - Adjusting tests and fixtures containing `finalize` stage references.
+- Renaming opencode commands (`.opencode/commands/codepatrol-finalize.md` to `codepatrol-close.md`) and Pi-extension command registrations (`.pi/index.ts`).
+- Renaming the owned artifact directory from `.codepatrol/changes/<work-id>/finalize/` to `close/` in orchestrator hardcodes and skills-contract map.
 
 ### Out of scope
 
@@ -32,7 +34,10 @@
 - Code uses `finalize` in `src/change/types.ts`, `src/change/orchestrator.ts`, `src/cli/commands.ts`.
 - Skill exists at `skills/codepatrol-finalize`.
 - Documentation refers to Finalize as the last stage.
-- Grep shows ~32 files affected by the term.
+- Grep shows ~47 files affected by the term.
+- `src/change/orchestrator.ts` hardcodes `.codepatrol/changes/${workId}/finalize/receipt.md`.
+- `scripts/skills-contract.test.mjs` maps ownership to `finalize/`.
+- `.pi/index.ts` and `.pi/index.test.ts` references command `codepatrol-finalize`.
 
 ## Proposed design
 
@@ -42,7 +47,9 @@
 - Update CLI parser in `src/cli/commands.ts` and `src/cli/args.ts` to map `change close` to `closeChange`.
 - Rename `skills/codepatrol-finalize` to `skills/codepatrol-close`, updating its internals.
 - Migrate references in all `.md` and `.yaml` files.
-- Tests in `src/change/change.test.ts` and scripts like `scripts/smoke-cli.mjs` will be updated to reflect the new state.
+- Tests in `src/change/change.test.ts`, `scripts/smoke-cli.mjs`, and `.pi/index.test.ts` will be updated to reflect the new state.
+- Rename `.codepatrol/changes/<work-id>/finalize/` path strings to `close/` in the orchestrator and skills-contract.
+- Rename `.opencode/commands/codepatrol-finalize.md` to `.opencode/commands/codepatrol-close.md`.
 
 ## Alternatives
 
@@ -53,8 +60,8 @@
 - Selected rung: direct local change
 - Earlier rungs: N/A, this is a vocabulary refactoring.
 - Irreducible complexity: N/A
-- Safety floor: Typescript compilation and unit/smoke tests must pass.
-- Expected surface delta: ~32 files modified, 1 skill directory renamed. No new dependencies.
+- Safety floor: TypeScript compilation (`npx tsc -p tsconfig.build.json --noEmit`), unit/smoke tests (`npm run test`, `node scripts/smoke-cli.mjs`), and skill linter (`node scripts/lint-skills.mjs`) must pass.
+- Expected surface delta: ~26 files modified, 1 skill directory renamed, 1 opencode command renamed. No new dependencies.
 
 ## Deferred constraints
 
@@ -68,15 +75,16 @@
 
 ## Risks and mitigations
 
-- Incomplete rename leading to type errors or missing skill references. Mitigation: Full TypeScript check, running `npm run lint` and `npm run test`, and running the smoke tests.
+- Incomplete rename leading to type errors or missing skill references. Mitigation: Full TypeScript check via `npx tsc -p tsconfig.build.json --noEmit`, running `node scripts/lint-skills.mjs` and `npm run test`, and running the smoke tests.
 
 ## Acceptance criteria
 
 - AC-1: CLI command `codepatrol change close` works correctly and `codepatrol change finalize` is removed.
 - AC-2: The `STAGES` array in `src/change/types.ts` uses `"close"` instead of `"finalize"`.
-- AC-3: All tests pass and `npm run check` reports no TS errors.
+- AC-3: All tests pass and `tsc` reports no errors.
 - AC-4: Documentation and skill descriptions use "close" and the `codepatrol-close` skill exists.
 
 ## Decisions and open questions
 
 - Decided to rename all structural events (e.g., `ChangeFinalizedEvent` to `ChangeClosedEvent`) to ensure complete consistency.
+- Decided to rename the owned artifact directory from `finalize/` to `close/` (and update hardcoded paths in orchestrator/tests) to preserve complete consistency. Historical `finalize/` directories from merged changes will be ignored on disk.
