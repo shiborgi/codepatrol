@@ -97,3 +97,20 @@ events:
       tokens:
         status: unavailable
         reason: Token metrics unavailable in opencode environment
+  - id: 9a698f60-56b5-472f-8819-9956fdc8b3a7
+    at: 2026-07-23T21:07:00.223Z
+    actor: opencode
+    stage: plan
+    attempt: 2
+    type: stage-checkpointed
+    result: ready
+    checkpoint: 174c31b917879c6124e515da89dd5b44d87f6530
+    tree: 3698bf6ff9a674d80b7091b67286146953c6f3df
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-rename-finalize-to-close/plan/spec.md
+        sha256: 7045cd5a8e3ac35714f500de27c88bd6a56e943047fca89aedbf2311abec7921
+        intent: modify
+      - path: .codepatrol/changes/2026-07-23-rename-finalize-to-close/plan/plan.md
+        sha256: 2cf8875f574362f9742f81821984357f08bb14a92a064c3a0307c81731949dac
+        intent: modify
+    next_action: codepatrol-review 2026-07-23-rename-finalize-to-close on codepatrol/2026-07-23-rename-finalize-to-close
