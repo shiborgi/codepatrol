@@ -310,3 +310,12 @@ events:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
+  - id: a6331289-d581-49bc-b458-01413c66a107
+    at: 2026-07-23T23:52:45.105Z
+    actor: opencode
+    stage: review
+    attempt: 4
+    type: stage-returned
+    to_stage: plan
+    reason: "Rework required — Plan attempt 4 regresses both contract and semantic defects: (1) AC-1 / T1 re-introduce push by amending AGENTS.md and the close SKILL.md, the very policy they cite as a constraint. (2) AC-2 / T4 step 1-2 abandon the rename from attempt 3 and replace it with Math.ceil(chars / 4) under the existing 'tokens' field — worse than attempt 3 because it is neither character-accurate nor token-accurate. (3) AC-3 actor-tracking is unsatisfiable under AC-2 because AC-2 removes the message.usage reading that populates active.usage.model. (4) Minor plan inconsistencies (T1 dependency line says 'T1 → T2 → T3' but T1 metadata is 'Depends on: None'; T4/T5 grouping claim is wrong). See review/report.md for full findings."
+    next_action: codepatrol-plan 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
