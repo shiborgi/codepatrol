@@ -178,3 +178,19 @@ events:
         input: 1500
         output: 500
         total: 2000
+  - id: d505021e-1903-4639-a89b-07962f197f0a
+    at: 2026-07-23T17:51:45.743Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: stage-checkpointed
+    result: implemented
+    checkpoint: 79aa155582a7d8cbb7d32a6af2c301d2b5576940
+    tree: 5eacafac6eae139f4cc1d83fe8d8c7c0f60750e8
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-finalize-merge/apply/journal.md
+        sha256: 88d2bbc97f64d317ef6483eaee78c1377b90e422189301243e4237f6e18e9045
+        intent: create
+    changes:
+      - src/change/orchestrator.ts
+    next_action: codepatrol-verify 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
