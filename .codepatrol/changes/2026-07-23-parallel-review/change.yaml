@@ -52,3 +52,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-review 2026-07-23-parallel-review on codepatrol/2026-07-23-parallel-review
+  - id: e13161f1-3216-405c-a5f8-6af5eb893882
+    at: 2026-07-23T22:54:26.846Z
+    actor: opencode
+    stage: review
+    attempt: 1
+    type: run-recorded
+    run:
+      id: review-20260723T225245Z
+      started_at: 2026-07-23T22:52:45.000Z
+      finished_at: 2026-07-23T22:54:15.000Z
+      elapsed_ms: 90000
+      tokens:
+        status: unavailable
+        reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
