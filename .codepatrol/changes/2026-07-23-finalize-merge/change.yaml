@@ -201,3 +201,17 @@ events:
     attempt: 1
     type: stage-began
     next_action: Re-run focused and full gates, audit diff, then commit verdict.
+  - id: aad6fb83-dad5-41f1-b4ce-c28ab885ed80
+    at: 2026-07-23T17:56:44.845Z
+    actor: opencode
+    stage: verify
+    attempt: 1
+    type: run-recorded
+    run:
+      id: verify-1
+      started_at: 2026-07-23T17:25:00Z
+      finished_at: 2026-07-23T17:27:00Z
+      elapsed_ms: 120000
+      tokens:
+        status: unavailable
+        reason: Verify produced no measurable provider tokens; metric is intentionally not estimated.
