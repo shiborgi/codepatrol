@@ -194,3 +194,10 @@ events:
     changes:
       - src/change/orchestrator.ts
     next_action: codepatrol-verify 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
+  - id: 5111a174-f07e-4bd4-81af-5709f9c7c494
+    at: 2026-07-23T17:56:42.835Z
+    actor: opencode
+    stage: verify
+    attempt: 1
+    type: stage-began
+    next_action: Re-run focused and full gates, audit diff, then commit verdict.
