@@ -102,3 +102,12 @@ events:
         status: unavailable
         reason: Apply not started — re-review requested by user; recorded only to satisfy return run requirement.
         harness: opencode
+  - id: 774849ec-0220-48f8-829f-1fb5c2c491d8
+    at: 2026-07-23T23:28:46.589Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: stage-returned
+    to_stage: plan
+    reason: "Contract defects identified during pre-apply re-review requested by user: AC-1 (push option on CloseInput) contradicts AGENTS.md remote-out-of-scope rule and codepatrol-close SKILL.md 'never fetch, push, rebase, force' rule. AC-3 (legacy cleanup) is unbounded and lacks a concrete target list. AC-2 changes token metric semantics without renaming the field. Need a new Plan attempt that resolves these."
+    next_action: codepatrol-plan 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
