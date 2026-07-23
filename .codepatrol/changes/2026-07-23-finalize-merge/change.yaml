@@ -78,3 +78,10 @@ events:
     to_stage: plan
     reason: Plan rewrites completeFinalization as a 4-line body that drops four safety checks (targetHead reconciliation, branch checkout, CHANGE_DRIFT rejection, clean-worktree postcondition). Spec Risks section requires preserving those checks; existing src/change/git.test.ts cases (lines 134, 144, 213, 240, 241) encode them. AC-1 verification is manual review, not red-capable. Findings laid out in .codepatrol/changes/2026-07-23-finalize-merge/review/report.md.
     next_action: codepatrol-plan 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
+  - id: f4c27151-02ad-4272-9074-62a78a9c14ea
+    at: 2026-07-23T16:51:16.836Z
+    actor: opencode
+    stage: plan
+    attempt: 2
+    type: stage-began
+    next_action: rewrite plan.md
