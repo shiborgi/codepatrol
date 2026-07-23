@@ -331,3 +331,10 @@ events:
         sha256: 0c42281c9d6eb18cd0c7024d0bb645b6919eef23fbef8d12ae171e2d554a9c66
         intent: modify
     next_action: codepatrol-apply 2026-07-23-rename-finalize-to-close on codepatrol/2026-07-23-rename-finalize-to-close
+  - id: 0065334b-4308-4aa0-8fed-6450374d2772
+    at: 2026-07-23T22:11:34.578Z
+    actor: opencode
+    stage: apply
+    attempt: 2
+    type: stage-began
+    next_action: execute-change 2026-07-23-rename-finalize-to-close on codepatrol/2026-07-23-rename-finalize-to-close
