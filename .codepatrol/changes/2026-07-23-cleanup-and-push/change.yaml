@@ -226,3 +226,18 @@ events:
     attempt: 3
     type: stage-began
     next_action: codepatrol-review 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
+  - id: ccefca5f-c7b8-4e8f-838f-acb189bf9618
+    at: 2026-07-23T23:44:49.607Z
+    actor: opencode
+    stage: review
+    attempt: 3
+    type: run-recorded
+    run:
+      id: review-20260723T233500Z
+      started_at: 2026-07-23T23:35:00.000Z
+      finished_at: 2026-07-23T23:44:44.000Z
+      elapsed_ms: 584000
+      tokens:
+        status: unavailable
+        reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
