@@ -45,3 +45,10 @@ events:
         sha256: 5c9124863746ef48ba026e9f7b16b92fd1050458717f18a4bb67c28a709e28e0
         intent: create
     next_action: codepatrol-review 2026-07-23-parallel-review on codepatrol/2026-07-23-parallel-review
+  - id: 1146c36c-d6da-43f6-9c8d-91c2c1030abf
+    at: 2026-07-23T22:52:51.926Z
+    actor: opencode
+    stage: review
+    attempt: 1
+    type: stage-began
+    next_action: codepatrol-review 2026-07-23-parallel-review on codepatrol/2026-07-23-parallel-review
