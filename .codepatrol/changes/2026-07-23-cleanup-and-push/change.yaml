@@ -87,3 +87,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-apply 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
+  - id: b24e5268-7e69-41cd-9bbe-8847aa863264
+    at: 2026-07-23T23:28:42.018Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: run-recorded
+    run:
+      id: apply-restart-20260723T232839Z
+      started_at: 2026-07-23T23:27:00.000Z
+      finished_at: 2026-07-23T23:28:39.000Z
+      elapsed_ms: 99000
+      tokens:
+        status: unavailable
+        reason: Apply not started — re-review requested by user; recorded only to satisfy return run requirement.
+        harness: opencode
