@@ -250,3 +250,13 @@ events:
       tokens:
         status: unavailable
         reason: Finalize preflight produced no measurable provider tokens; metric is intentionally not estimated.
+  - id: 3dae5144-ebd8-4434-a48f-3e9aacb90fec
+    at: 2026-07-23T18:03:45.155Z
+    actor: opencode
+    stage: finalize
+    attempt: 1
+    type: change-finalized
+    outcome: committed
+    commit: 749faabf4c21a66d637eb8a58228c0ffc9b8c49b
+    tag: codepatrol/committed/2026-07-23-finalize-merge
+    receipt: finalize/receipt.md
