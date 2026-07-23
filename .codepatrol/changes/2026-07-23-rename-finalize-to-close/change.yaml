@@ -275,3 +275,20 @@ events:
       tokens:
         status: unavailable
         reason: Tokens metrics unavailable in this environment
+  - id: 8ed34990-0e93-4659-9d14-4feb918fb3fd
+    at: 2026-07-23T21:54:46.596Z
+    actor: opencode
+    stage: plan
+    attempt: 3
+    type: stage-checkpointed
+    result: ready
+    checkpoint: 3ee8a6b7b79af12923baf4c78fba79da3037a2fd
+    tree: d8d9602e0825ed3b1b8bdc10c486f5182ea6a2c5
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-rename-finalize-to-close/plan/spec.md
+        sha256: 73c7e9cd5d1b5878ff2ec7ace14c119fb1b1326883771a9da20d01d15ffcbbd6
+        intent: modify
+      - path: .codepatrol/changes/2026-07-23-rename-finalize-to-close/plan/plan.md
+        sha256: 1459dd279fa7bb2382e325aa25f6dfeeb7305e4453e37d6a4b7bd544f3e2ef5e
+        intent: modify
+    next_action: codepatrol-review 2026-07-23-rename-finalize-to-close on codepatrol/2026-07-23-rename-finalize-to-close
