@@ -88,3 +88,17 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-apply 2026-07-23-parallel-review on codepatrol/2026-07-23-parallel-review
+  - id: cf739467-ec86-4956-82b4-9a616d4364e2
+    at: 2026-07-23T22:59:39.957Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: run-recorded
+    run:
+      id: apply-run-1
+      started_at: 2026-07-23T22:57:00.000Z
+      finished_at: 2026-07-23T23:00:00.000Z
+      elapsed_ms: 180000
+      tokens:
+        status: unavailable
+        reason: Agent tokens not tracked in this harness
