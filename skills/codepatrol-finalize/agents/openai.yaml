@@ -1,4 +1,0 @@
-interface:
-  display_name: "Codepatrol Finalize"
-  short_description: "Commit or roll back a verified Change"
-  default_prompt: "Use $codepatrol-finalize to finish this verified Change with an explicit commit or rollback."

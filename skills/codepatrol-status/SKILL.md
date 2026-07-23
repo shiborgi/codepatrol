@@ -1,6 +1,6 @@
 ---
 name: codepatrol-status
-description: (codepatrol) Render the deterministic Change Kanban with Plan, Review, Apply, Verify and Finalize columns plus token/time totals, then report exact resume actions. Use to inspect lifecycle state; never mutate it.
+description: (codepatrol) Render the deterministic Change Kanban with Plan, Review, Apply, Verify and Close columns plus token/time totals, then report exact resume actions. Use to inspect lifecycle state; never mutate it.
 ---
 
 # Codepatrol Status
@@ -14,8 +14,8 @@ when the user explicitly wants active intervals advanced to that time.
 
 Reproduce the script output verbatim. Do not construct, reorder, embellish or
 repair the table manually. Each row is one work id; columns are Work, Branch,
-Plan, Review, Apply, Verify, Finalize and Total. Stage cells include attempt,
-result/state, tokens with measured-run coverage and elapsed time. Finalize shows
+Plan, Review, Apply, Verify, Close and Total. Stage cells include attempt,
+result/state, tokens with measured-run coverage and elapsed time. Close shows
 commit or rollback; Total distinguishes summed active time from cycle time.
 
 After the table, repeat each projected `nextAction` exactly. If there are no

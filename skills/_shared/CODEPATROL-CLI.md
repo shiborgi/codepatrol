@@ -9,7 +9,7 @@ codepatrol change inspect --id <work-id> --workspace "$PWD" --format json
 codepatrol change transition --id <work-id> --input transition.json --workspace "$PWD" --format json
 codepatrol change session --id <work-id> --input session.json --workspace "$PWD" --format json
 codepatrol change doctor --id <work-id> --workspace "$PWD" --format json
-codepatrol change finalize --id <work-id> --input finalize.json --workspace "$PWD" --format json
+codepatrol change close --id <work-id> --input close.json --workspace "$PWD" --format json
 node --import jiti/register scripts/render-kanban.mjs --workspace "$PWD" --format markdown
 
 codepatrol graph sync --workspace "$PWD" --format json

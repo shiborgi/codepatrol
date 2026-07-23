@@ -10,7 +10,7 @@ import { aggregateUsage } from "./usage.js";
 import { primeStageSession, claimSessionItem, closeSessionItem, discardAndRebuildSession } from "./session.js";
 import { writeChangeRecord } from "./store.js";
 import { stageSessionPath } from "../shared/state.js";
-import { finalizeChange, transitionChange } from "./orchestrator.js";
+import { closeChange, transitionChange } from "./orchestrator.js";
 import { validateArtifactBindings } from "./validation.js";
 import { CodepatrolError } from "../shared/errors.js";
 import type { ChangeRecordV2 } from "./types.js";
@@ -52,7 +52,7 @@ test("invalid transition and terminal payloads fail before touching Git", async 
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-invalid-input-"));
 	await assert.rejects(transitionChange(workspace, "2026-07-22-invalid", { type: "mystery" } as never), (error: unknown) => error instanceof CodepatrolError && error.code === "INVALID_ARGUMENT");
 	await assert.rejects(transitionChange(workspace, "2026-07-22-invalid", { type: "checkpoint", actor: "codex", stage: "plan", result: "ready", artifacts: [{ path: ".codepatrol/changes/2026-07-22-invalid/plan/spec.md", sha256: "a".repeat(64) }], nextAction: "review" } as never), (error: unknown) => error instanceof CodepatrolError && error.code === "INVALID_ARGUMENT");
-	await assert.rejects(finalizeChange(workspace, "2026-07-22-invalid", { outcome: "destroy", actor: "codex", authority: "yes" } as never), (error: unknown) => error instanceof CodepatrolError && error.code === "INVALID_ARGUMENT");
+	await assert.rejects(closeChange(workspace, "2026-07-22-invalid", { outcome: "destroy", actor: "codex", authority: "yes" } as never), (error: unknown) => error instanceof CodepatrolError && error.code === "INVALID_ARGUMENT");
 });
 
 test("usage timestamps and elapsed time must agree", () => {

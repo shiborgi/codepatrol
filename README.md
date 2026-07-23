@@ -8,7 +8,7 @@ deterministic CLI supplies validation, projection and orchestration.
 ## The lifecycle
 
 ```text
-Plan → Review → Apply → Verify → Finalize → committed | rolled-back
+Plan → Review → Apply → Verify → Close → committed | rolled-back
  ↑       │          ↑       │
  └───────┘          └───────┘ implementation defect
  └─────────────────────────── contract defect
@@ -28,7 +28,7 @@ is no second mutable status or global workflow ledger.
 │   ├── review/{report.md,evidence/}
 │   ├── apply/{journal.md,evidence/}
 │   ├── verify/{report.md,evidence/}
-│   └── finalize/receipt.md
+│   └── close/receipt.md
 └── runtime/
     ├── graph/graph.json
     ├── wiki/{manifest.json,transactions/}
@@ -53,7 +53,7 @@ live in `docs/adr/`; the generated OKF wiki lives in `docs/wiki/`.
   `apply/journal.md`, production changes and a clean candidate checkpoint.
 - `$codepatrol-verify` independently audits the candidate and writes
   `verify/report.md`, then advances or returns it without production edits.
-- `$codepatrol-finalize` performs only an explicitly authorized fast-forward
+- `$codepatrol-close` performs only an explicitly authorized fast-forward
   commit or recoverable rollback and writes the terminal receipt/tag.
 - `$codepatrol-status` reproduces the deterministic Kanban and exact resume
   actions without mutation.
@@ -71,7 +71,7 @@ codepatrol change inspect --id 2026-07-22-example --workspace "$PWD" --format js
 codepatrol change transition --id 2026-07-22-example --input transition.json --workspace "$PWD" --format json
 codepatrol change session --id 2026-07-22-example --input session.json --workspace "$PWD" --format json
 codepatrol change doctor --id 2026-07-22-example --workspace "$PWD" --format json
-codepatrol change finalize --id 2026-07-22-example --input finalize.json --workspace "$PWD" --format json
+codepatrol change close --id 2026-07-22-example --input close.json --workspace "$PWD" --format json
 npm run kanban -- --workspace "$PWD" --format markdown
 ```
 
@@ -88,7 +88,7 @@ Session. It never edits events, refreshes hashes, repairs source or mutates refs
 
 `scripts/render-kanban.mjs` and `codepatrol status` use the same pure projector.
 Rows sort by creation timestamp then work id. Columns are fixed: Work, Branch,
-Plan, Review, Apply, Verify, Finalize and Total. Each stage shows attempt,
+Plan, Review, Apply, Verify, Close and Total. Each stage shows attempt,
 result/state, token coverage and elapsed time; Total shows all-attempt tokens,
 summed active time and terminal cycle time. Default output never advances an
 active clock. Pass an explicit `--as-of <ISO>` when that projection is wanted.
@@ -97,19 +97,19 @@ active clock. Pass an explicit `--as-of <ISO>` when that projection is wanted.
 
 Every finished run records start, finish and non-negative elapsed milliseconds.
 Runs belong only to the current active stage attempt; checkpoint, return and
-Finalize sealing all require a finished run.
+Close sealing all require a finished run.
 Token usage is either actual provider/harness measurement (input, output,
 cache, reasoning and authoritative total) or `unavailable` with a reason.
 Codepatrol never estimates tokens from text or elapsed time. Totals sum measured
 runs exactly once and display `measured/total` coverage; cache/reasoning
 dimensions are not added again to a provider total. Pi accumulates only numeric
 provider dimensions in memory and exposes `codepatrol_record_run`; each primary
-calls it exactly once before checkpoint or Finalize so one measured or
+calls it exactly once before checkpoint or Close so one measured or
 explicitly unavailable run is recorded without storing messages.
 
-### Finalize safety
+### Close safety
 
-Finalize requires explicit work id/action/authority, a Verify `commit` verdict,
+Close requires explicit work id/action/authority, a Verify `commit` verdict,
 the recorded candidate branch, an unchanged target ref and a clean tree.
 
 - `commit` writes receipt/event, creates

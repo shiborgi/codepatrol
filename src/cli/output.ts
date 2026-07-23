@@ -40,7 +40,7 @@ Change lifecycle commands:
   change transition --id <work-id> --input <file|->
   change session --id <work-id> --input <file|->
   change doctor --id <work-id>
-  change finalize --id <work-id> --input <file|->
+  change close --id <work-id> --input <file|->
 
 Graph commands:
   graph sync [--force]

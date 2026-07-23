@@ -1,6 +1,6 @@
 ---
 name: codepatrol-verify
-description: (codepatrol) Independently verify the exact candidate checkpoint of an implemented branch-backed Change, audit acceptance and blast radius, and advance to Finalize or return defects. Use for the Verify stage; never edit production code.
+description: (codepatrol) Independently verify the exact candidate checkpoint of an implemented branch-backed Change, audit acceptance and blast radius, and advance to Close or return defects. Use for the Verify stage; never edit production code.
 ---
 
 # Codepatrol Verify
@@ -26,9 +26,9 @@ tokens. Choose exactly one route:
 
 - `commit`: checkpoint Verify with result `commit`, binding the candidate
   commit/tree, and next action
-  `codepatrol-finalize <work-id> commit|rollback on codepatrol/<work-id>`;
+  `codepatrol-close <work-id> commit|rollback on codepatrol/<work-id>`;
 - implementation defect: return to Apply with an exact next action;
 - contract defect: return to Plan with an exact next action.
 
 Report evidence, findings, residual risks, candidate binding and coverage. Do
-not edit production code, invoke Finalize, merge, push or delete refs.
+not edit production code, invoke Close, merge, push or delete refs.

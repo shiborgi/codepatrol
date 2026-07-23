@@ -60,13 +60,13 @@ skills:
         when: always-before-verdict
       - target: verification-strategy
         when: always-before-verdict
-  codepatrol-finalize:
+  codepatrol-close:
     role: primary
     order: 5
     invokedBy: []
     mayInvoke: []
     consumes: [verified Change, explicit user authority, unchanged target ref]
-    produces: [terminal receipt, recoverable tag, committed or rolled-back outcome, Finalize run metrics]
+    produces: [terminal receipt, recoverable tag, committed or rolled-back outcome, Close run metrics]
     mutation: authorized
   codepatrol-status:
     role: primary

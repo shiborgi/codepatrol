@@ -37,4 +37,4 @@ action `codepatrol-verify <work-id> on codepatrol/<work-id>`. The checkpoint
 must leave a clean tree.
 
 Report checks actually run, deviations, residual risks, checkpoint and metrics.
-Do not invoke Verify, merge, push or finalize.
+Do not invoke Verify, merge, push or close.

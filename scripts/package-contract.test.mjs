@@ -62,7 +62,7 @@ test("project development uses branch-backed Changes and deterministic lifecycle
 	assert.match(readme, /codepatrol-plan.*plan\/spec\.md.*plan\/plan\.md/is);
 	assert.match(readme, /codepatrol-review.*review\/report\.md/is);
 	assert.match(readme, /codepatrol-apply.*apply\/journal\.md/is);
-	assert.match(readme, /codepatrol-finalize/i);
+	assert.match(readme, /codepatrol-close/i);
 	assert.match(readme, /\$codepatrol-plan/);
 	assert.doesNotMatch(readme, /\/codepatrol:codepatrol-plan|marketplace/);
 	assert.match(readme, /\$codepatrol-plan/);

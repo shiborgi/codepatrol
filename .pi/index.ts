@@ -14,12 +14,12 @@ const COMMANDS: CommandSpec[] = [
 	{ name: "codepatrol-review", skill: "codepatrol-review", description: "Review an explicit Change Plan" },
 	{ name: "codepatrol-apply", skill: "codepatrol-apply", description: "Implement an approved Change" },
 	{ name: "codepatrol-verify", skill: "codepatrol-verify", description: "Independently verify a Change candidate" },
-	{ name: "codepatrol-finalize", skill: "codepatrol-finalize", description: "Commit or roll back a verified Change" },
+	{ name: "codepatrol-close", skill: "codepatrol-close", description: "Commit or roll back a verified Change" },
 	{ name: "codepatrol-status", skill: "codepatrol-status", description: "Render the deterministic Change Kanban" },
 ];
 
 const STAGE_BY_COMMAND: Record<string, Stage | undefined> = {
-	"codepatrol-plan": "plan", "codepatrol-review": "review", "codepatrol-apply": "apply", "codepatrol-verify": "verify", "codepatrol-finalize": "finalize",
+	"codepatrol-plan": "plan", "codepatrol-review": "review", "codepatrol-apply": "apply", "codepatrol-verify": "verify", "codepatrol-close": "close",
 };
 
 export function sumPiUsage(messages: unknown[]): { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; total: number; model?: string } {
@@ -38,7 +38,7 @@ export function kickoff(skill: string, args: string, runId?: string): string {
 		"Follow its portable sequential fallback because Pi does not provide native delegation.",
 		args ? `User input: ${args}` : "If essential intent is missing, ask one focused question before continuing.",
 	];
-	if (runId) lines.push(`Before sealing the stage or invoking Finalize, call \`codepatrol_record_run\` exactly once for the work id. It owns run \`${runId}\`; do not submit a separate usage transition.`);
+	if (runId) lines.push(`Before sealing the stage or invoking Close, call \`codepatrol_record_run\` exactly once for the work id. It owns run \`${runId}\`; do not submit a separate usage transition.`);
 	return lines.join("\n");
 }
 
@@ -79,7 +79,7 @@ export function installCodepatrolPiExtension(pi: ExtensionAPI, dependencies: PiE
 	pi.registerTool({
 		name: "codepatrol_record_run",
 		label: "Record Codepatrol run",
-		description: "Record the one authoritative Pi token/time envelope for the active Codepatrol stage before checkpoint or Finalize.",
+		description: "Record the one authoritative Pi token/time envelope for the active Codepatrol stage before checkpoint or Close.",
 		parameters: { type: "object", properties: { workId: { type: "string", description: "Explicit Codepatrol work id" } }, required: ["workId"], additionalProperties: false },
 		executionMode: "sequential",
 		execute: async (_toolCallId: string, params: { workId: string }, signal: AbortSignal | undefined, _onUpdate: unknown, ctx: { cwd: string }) => {

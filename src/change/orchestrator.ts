@@ -9,7 +9,7 @@ import { foldChange } from "./model.js";
 import { changeRecordPath, listWorkingTreeChangeIds, readChangeRecord, writeChangeRecord, appendChangeEvent } from "./store.js";
 import { validateStageArtifacts, validateStageArtifactsFromReader, type ArtifactReader, type BaselineReader } from "./validation.js";
 import { validateRun } from "./usage.js";
-import type { ArtifactBinding, ChangeEvent, ChangeQuery, ChangeRecordV2, ChangeView, FinalizeInput, FinalizeResult, OperationOptions, Stage, StageAttempt, StartChangeInput, TransitionIntent } from "./types.js";
+import type { ArtifactBinding, ChangeEvent, ChangeQuery, ChangeRecordV2, ChangeView, CloseInput, CloseResult, OperationOptions, Stage, StageAttempt, StartChangeInput, TransitionIntent } from "./types.js";
 import { STAGES } from "./types.js";
 
 function now(options: OperationOptions): Date { return options.now ?? new Date(); }
@@ -52,7 +52,7 @@ function assertTransitionIntent(intent: TransitionIntent): void {
 	if (type === "usage") validateRun(value.run as never);
 	if (type === "return" && value.toStage !== "plan" && value.toStage !== "apply") throw new CodepatrolError("INVALID_ARGUMENT", "toStage must be plan or apply.", 2);
 	if (type === "checkpoint") {
-		if (value.stage === "finalize" || !Array.isArray(value.artifacts)) throw new CodepatrolError("INVALID_ARGUMENT", "Checkpoint stage/artifacts are invalid.", 2);
+		if (value.stage === "close" || !Array.isArray(value.artifacts)) throw new CodepatrolError("INVALID_ARGUMENT", "Checkpoint stage/artifacts are invalid.", 2);
 		const expected = { plan: "ready", review: "approve", apply: "implemented", verify: "commit" } as const;
 		if (value.result !== expected[value.stage as keyof typeof expected]) throw new CodepatrolError("INVALID_ARGUMENT", `Checkpoint result is invalid for ${String(value.stage)}.`, 2);
 		for (const raw of value.artifacts) {
@@ -65,9 +65,9 @@ function assertTransitionIntent(intent: TransitionIntent): void {
 		if (value.changes !== undefined && (!Array.isArray(value.changes) || value.changes.some((path) => typeof path !== "string"))) throw new CodepatrolError("INVALID_ARGUMENT", "changes must be an array of paths.", 2);
 	}
 }
-function assertFinalizeInput(input: FinalizeInput): void {
-	const value = requireObject(input, "Finalize"); exactInput(value, ["outcome", "actor", "authority"], "Finalize");
-	if (value.outcome !== "commit" && value.outcome !== "rollback") throw new CodepatrolError("INVALID_ARGUMENT", "Finalize outcome must be commit or rollback.", 2);
+function assertCloseInput(input: CloseInput): void {
+	const value = requireObject(input, "Close"); exactInput(value, ["outcome", "actor", "authority"], "Close");
+	if (value.outcome !== "commit" && value.outcome !== "rollback") throw new CodepatrolError("INVALID_ARGUMENT", "Close outcome must be commit or rollback.", 2);
 	textInput(value.actor, "actor"); textInput(value.authority, "authority");
 }
 function eventMatchesIntent(event: ChangeEvent | undefined, intent: TransitionIntent): boolean {
@@ -125,7 +125,7 @@ async function validateAcceptedRefArtifacts(git: GitAdapter, record: ChangeRecor
 
 async function assertVerifiedCandidate(git: GitAdapter, view: ChangeView, ref: string, allowedPaths: string[], signal?: AbortSignal): Promise<void> {
 	const verified = view.attempts.verify.filter((item) => item.status === "completed" && item.result === "commit").at(-1);
-	if (!verified?.checkpoint || !verified.tree) throw new CodepatrolError("CHANGE_DRIFT", "Finalize requires an accepted Verify checkpoint and tree.", 4);
+	if (!verified?.checkpoint || !verified.tree) throw new CodepatrolError("CHANGE_DRIFT", "Close requires an accepted Verify checkpoint and tree.", 4);
 	if (await git.tree(verified.checkpoint, signal) !== verified.tree) throw new CodepatrolError("CHANGE_DRIFT", "Verify checkpoint tree does not match the recorded tree.", 4);
 	const allowed = new Set(allowedPaths); const drift = (await git.changedPaths(verified.checkpoint, ref, signal)).filter((path) => !allowed.has(path));
 	if (drift.length) throw new CodepatrolError("CHANGE_DRIFT", `Candidate changed after Verify: ${drift.join(", ")}.`, 4);
@@ -194,7 +194,7 @@ export async function transitionChange(workspace: string, workId: string, intent
 async function transitionChangeLocked(workspace: string, workId: string, intent: TransitionIntent, options: OperationOptions): Promise<ChangeView> {
 	const git = gitFor(workspace, options); await git.assertTrusted(options.signal);
 	let record = readChangeRecord(workspace, workId); let view = foldChange(record); await assertCurrentBranch(git, view, options.signal); await validateCheckpointLineage(git, record, "HEAD", options.signal);
-	if (intent.stage === "finalize") await assertVerifiedCandidate(git, view, "HEAD", [relativeRecord(workId)], options.signal);
+	if (intent.stage === "close") await assertVerifiedCandidate(git, view, "HEAD", [relativeRecord(workId)], options.signal);
 	if (eventMatchesIntent(record.events.at(-1), intent)) {
 		const statusPaths = parseStatusPaths(await git.status(options.signal));
 		if (statusPaths.length === 0) return view;
@@ -274,12 +274,12 @@ export async function inspectChanges(workspace: string, query: ChangeQuery = {},
 	return filtered.sort((a, b) => a.identity.created_at.localeCompare(b.identity.created_at) || a.identity.work_id.localeCompare(b.identity.work_id));
 }
 
-export async function finalizeChange(workspace: string, workId: string, input: FinalizeInput, options: OperationOptions = {}): Promise<FinalizeResult> {
-	assertFinalizeInput(input);
-	return withWorkspaceLock(workspace, "change-git", "change.finalize", () => finalizeChangeLocked(workspace, workId, input, options), { signal: options.signal });
+export async function closeChange(workspace: string, workId: string, input: CloseInput, options: OperationOptions = {}): Promise<CloseResult> {
+	assertCloseInput(input);
+	return withWorkspaceLock(workspace, "change-git", "change.close", () => closeChangeLocked(workspace, workId, input, options), { signal: options.signal });
 }
 
-async function finalizeChangeLocked(workspace: string, workId: string, input: FinalizeInput, options: OperationOptions): Promise<FinalizeResult> {
+async function closeChangeLocked(workspace: string, workId: string, input: CloseInput, options: OperationOptions): Promise<CloseResult> {
 	const git = gitFor(workspace, options); await git.assertTrusted(options.signal);
 	const requestedOutcome = input.outcome === "commit" ? "committed" : "rolled-back";
 	const requestedTag = `codepatrol/${requestedOutcome}/${workId}`;
@@ -297,14 +297,14 @@ async function finalizeChangeLocked(workspace: string, workId: string, input: Fi
 	let view = foldChange(record); await validateCheckpointLineage(git, record, existingTag ?? "HEAD", options.signal);
 	if (view.state === "terminal") {
 		if (view.outcome !== requestedOutcome) throw new CodepatrolError("CHANGE_CONFLICT", `Change is already ${view.outcome}.`, 4);
-		await assertVerifiedCandidate(git, view, existingTag ?? "HEAD", [relativeRecord(workId), `.codepatrol/changes/${workId}/finalize/receipt.md`], options.signal);
+		await assertVerifiedCandidate(git, view, existingTag ?? "HEAD", [relativeRecord(workId), `.codepatrol/changes/${workId}/close/receipt.md`], options.signal);
 		const recoveryPaths = parseStatusPaths(await git.status(options.signal)); const allowedRecovery = existingTag ? new Set<string>() : new Set([relativeRecord(workId)]); const unexpectedRecovery = recoveryPaths.filter((path) => !allowedRecovery.has(path));
-		if (unexpectedRecovery.length) throw new CodepatrolError("CHANGE_CONFLICT", `Finalize recovery found unrelated worktree paths: ${unexpectedRecovery.join(", ")}.`, 4);
+		if (unexpectedRecovery.length) throw new CodepatrolError("CHANGE_CONFLICT", `Close recovery found unrelated worktree paths: ${unexpectedRecovery.join(", ")}.`, 4);
 		let tag = existingTag;
 		if (!tag) {
 			await assertCurrentBranch(git, view, options.signal);
 			const statusPaths = parseStatusPaths(await git.status(options.signal));
-			if (statusPaths.some((path) => path !== relativeRecord(workId))) throw new CodepatrolError("CHANGE_CONFLICT", `Finalize recovery found unrelated worktree paths: ${statusPaths.join(", ")}.`, 4);
+			if (statusPaths.some((path) => path !== relativeRecord(workId))) throw new CodepatrolError("CHANGE_CONFLICT", `Close recovery found unrelated worktree paths: ${statusPaths.join(", ")}.`, 4);
 			if (statusPaths.length) await commitMetadata(git, workId, `chore(codepatrol): ${requestedOutcome} ${workId}`, options.signal);
 			const terminalHead = await git.head("HEAD", options.signal);
 			await git.tag(requestedTag, terminalHead, options.signal);
@@ -319,29 +319,29 @@ async function finalizeChangeLocked(workspace: string, workId: string, input: Fi
 		return { outcome: requestedOutcome, workId, targetBranch: view.identity.target_branch, terminalCommit, tag };
 	}
 	await assertCurrentBranch(git, view, options.signal);
-	if (view.stage !== "finalize" || view.state !== "active" || !view.attempts.finalize.at(-1)?.runs.some((run) => run.finished_at)) throw new CodepatrolError("CHANGE_CONFLICT", "Finalize must be active with a finished run.", 4);
+	if (view.stage !== "close" || view.state !== "active" || !view.attempts.close.at(-1)?.runs.some((run) => run.finished_at)) throw new CodepatrolError("CHANGE_CONFLICT", "Close must be active with a finished run.", 4);
 	await assertVerifiedCandidate(git, view, "HEAD", [relativeRecord(workId)], options.signal);
-	const receiptPath = `.codepatrol/changes/${workId}/finalize/receipt.md`;
+	const receiptPath = `.codepatrol/changes/${workId}/close/receipt.md`;
 	const statusPaths = parseStatusPaths(await git.status(options.signal));
-	if (statusPaths.some((path) => path !== receiptPath)) throw new CodepatrolError("CHANGE_CONFLICT", `Finalize requires a clean worktree; found ${statusPaths.join(", ")}.`, 4);
+	if (statusPaths.some((path) => path !== receiptPath)) throw new CodepatrolError("CHANGE_CONFLICT", `Close requires a clean worktree; found ${statusPaths.join(", ")}.`, 4);
 	const targetHead = await git.head(view.identity.target_branch, options.signal); if (targetHead !== view.identity.base_commit) throw new CodepatrolError("TARGET_ADVANCED", `Target advanced from ${view.identity.base_commit} to ${targetHead}.`, 4);
 	const outcome = requestedOutcome; const tag = requestedTag; const at = now(options).toISOString();
-	const absolute = resolveInside(workspace, receiptPath); mkdirSync(resolveInside(workspace, `.codepatrol/changes/${workId}/finalize`), { recursive: true });
-	writeFileSync(absolute, `# Finalize receipt\n\n- Work: \`${workId}\`\n- Outcome: \`${outcome}\`\n- Target: \`${view.identity.target_branch}\`\n- Base: \`${view.identity.base_commit}\`\n- Authority: ${input.authority}\n- Recorded at: \`${at}\`\n`, "utf8");
+	const absolute = resolveInside(workspace, receiptPath); mkdirSync(resolveInside(workspace, `.codepatrol/changes/${workId}/close`), { recursive: true });
+	writeFileSync(absolute, `# Close receipt\n\n- Work: \`${workId}\`\n- Outcome: \`${outcome}\`\n- Target: \`${view.identity.target_branch}\`\n- Base: \`${view.identity.base_commit}\`\n- Authority: ${input.authority}\n- Recorded at: \`${at}\`\n`, "utf8");
 	await git.add([receiptPath], options.signal); const receiptCommit = await git.commit(`chore(codepatrol): ${outcome} receipt ${workId}`, false, options.signal);
-	const event: ChangeEvent = { ...eventBase(view, input.actor, { ...options, now: new Date(at) }), type: "change-finalized", stage: "finalize", outcome, commit: receiptCommit, tag, receipt: "finalize/receipt.md" };
+	const event: ChangeEvent = { ...eventBase(view, input.actor, { ...options, now: new Date(at) }), type: "change-closed", stage: "close", outcome, commit: receiptCommit, tag, receipt: "close/receipt.md" };
 	await appendChangeEvent(workspace, workId, event, options); const terminalCommit = await commitMetadata(git, workId, `chore(codepatrol): ${outcome} ${workId}`, options.signal); await git.tag(tag, terminalCommit, options.signal);
 	view = foldChange({ ...record, events: [...record.events, event] });
 	await completeFinalization(git, view, input.outcome, tag, terminalCommit, options.signal);
 	return { outcome, workId, targetBranch: view.identity.target_branch, terminalCommit, tag };
 }
 
-async function completeFinalization(git: GitAdapter, view: ChangeView, outcome: FinalizeInput["outcome"], tag: string, terminalCommit: string, signal?: AbortSignal): Promise<void> {
+async function completeFinalization(git: GitAdapter, view: ChangeView, outcome: CloseInput["outcome"], tag: string, terminalCommit: string, signal?: AbortSignal): Promise<void> {
 	const targetHead = await git.head(view.identity.target_branch, signal);
 	if (outcome === "rollback" && targetHead !== view.identity.base_commit) throw new CodepatrolError("TARGET_ADVANCED", `Rollback target advanced from ${view.identity.base_commit} to ${targetHead}.`, 4);
 	if (outcome === "commit" && targetHead !== view.identity.base_commit && targetHead !== terminalCommit) throw new CodepatrolError("TARGET_ADVANCED", `Commit target is neither the recorded base nor terminal commit: ${targetHead}.`, 4);
 	const current = await git.currentBranch(signal);
-	if (current !== view.identity.branch && current !== view.identity.target_branch) throw new CodepatrolError("CHANGE_CONFLICT", `Finalize recovery found unrelated branch ${current}.`, 4);
+	if (current !== view.identity.branch && current !== view.identity.target_branch) throw new CodepatrolError("CHANGE_CONFLICT", `Close recovery found unrelated branch ${current}.`, 4);
 	if (current !== view.identity.target_branch) await git.checkout(view.identity.target_branch, signal);
 	if (outcome === "commit") {
 		await closeWork(git, view, tag, terminalCommit, signal);
@@ -350,12 +350,12 @@ async function completeFinalization(git: GitAdapter, view: ChangeView, outcome: 
 		if (checkedOutHead !== view.identity.base_commit) throw new CodepatrolError("TARGET_ADVANCED", "Target changed during rollback.", 4);
 		if (await git.branchExists(view.identity.branch, signal)) await git.deleteBranch(view.identity.branch, terminalCommit, signal);
 	}
-	if (parseStatusPaths(await git.status(signal)).length) throw new CodepatrolError("CHANGE_CONFLICT", "Finalize postcondition requires a clean worktree.", 4);
+	if (parseStatusPaths(await git.status(signal)).length) throw new CodepatrolError("CHANGE_CONFLICT", "Close postcondition requires a clean worktree.", 4);
 }
 
 async function closeWork(git: GitAdapter, view: ChangeView, tag: string, terminalCommit: string, signal?: AbortSignal): Promise<void> {
 	const checkedOutHead = await git.head("HEAD", signal);
 	if (checkedOutHead === view.identity.base_commit) await git.mergeFf(tag, signal);
-	else if (checkedOutHead !== terminalCommit) throw new CodepatrolError("TARGET_ADVANCED", "Target changed during Finalize.", 4);
+	else if (checkedOutHead !== terminalCommit) throw new CodepatrolError("TARGET_ADVANCED", "Target changed during Close.", 4);
 	if (await git.branchExists(view.identity.branch, signal)) await git.deleteBranch(view.identity.branch, terminalCommit, signal);
 }

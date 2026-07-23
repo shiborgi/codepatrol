@@ -11,7 +11,7 @@ branch/head recorded when Plan started it.
 ├── review/{report.md,evidence/}
 ├── apply/{journal.md,evidence/}
 ├── verify/{report.md,evidence/}
-└── finalize/receipt.md
+└── close/receipt.md
 ```
 
 `change.yaml` contains immutable identity and ordered validated events. Never
@@ -22,7 +22,7 @@ store. Obtain those projections through:
 codepatrol change inspect --id <work-id> --workspace "$PWD" --format json
 ```
 
-The only forward route is Plan → Review → Apply → Verify → Finalize. Contract
+The only forward route is Plan → Review → Apply → Verify → Close. Contract
 defects return to Plan; implementation defects found by Verify return to Apply.
 Every non-terminal projection names one exact next action with work id and
 branch. Never select by recency.
@@ -48,7 +48,7 @@ The orchestrator validates branch, event order, run coverage, hashes, owned
 directories and unexpected dirty paths, then creates local checkpoint commits.
 No stage invokes its successor.
 
-Finalize is the only normal terminal mutation. It requires an active Finalize
+Close is the only normal terminal mutation. It requires an active Close
 attempt, a finished run, explicit user authority, unchanged target ref and a
 clean tree. It creates a receipt, terminal event and recoverable tag before
 fast-forward integration or branch deletion. It never fetches, pushes, rebases,
@@ -57,7 +57,7 @@ forces or resolves conflicts.
 ## Ownership and failure
 
 - Plan owns `plan/`; Review owns `review/`; Apply owns `apply/`; Verify owns
-  `verify/`; Finalize owns `finalize/`.
+  `verify/`; Close owns `close/`.
 - Declare every durable file. Raw logs, prompts, transcripts, credentials and
   scratch payloads belong nowhere in a Change.
 - On drift, wrong branch, unexpected file, target advance or invalid event,

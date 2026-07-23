@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codepatrol Close"
+  short_description: "Commit or roll back a verified Change"
+  default_prompt: "Use $codepatrol-close to finish this verified Change with an explicit commit or rollback."

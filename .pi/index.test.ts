@@ -12,7 +12,7 @@ test("Pi extension registers exactly the six canonical primary entry points", as
 		on() {},
 	} as any;
 	codepatrolPiExtension(pi);
-	assert.deepEqual([...commands.keys()], ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-finalize", "codepatrol-status"]);
+	assert.deepEqual([...commands.keys()], ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-close", "codepatrol-status"]);
 	await commands.get("codepatrol-plan")!.handler("add caching");
 	assert.match(messages[0], /codepatrol-plan/);
 	assert.match(messages[0], /add caching/);
@@ -41,7 +41,7 @@ function piHarness() {
 	return { pi, commands, tools, handlers, messages };
 }
 
-test("Pi records one measured Finalize run before terminal mutation and is idempotent", async () => {
+test("Pi records one measured Close run before terminal mutation and is idempotent", async () => {
 	const harness = piHarness();
 	const transitions: Array<{ workspace: string; workId: string; intent: any }> = [];
 	let clock = 1000;
@@ -52,8 +52,8 @@ test("Pi records one measured Finalize run before terminal mutation and is idemp
 			return { identity: { work_id: workId }, state: "active" } as never;
 		},
 	});
-	const id = "2026-07-22-pi-finalize";
-	await harness.commands.get("codepatrol-finalize")!.handler(`${id} commit`, { cwd: "/repo" });
+	const id = "2026-07-22-pi-close";
+	await harness.commands.get("codepatrol-close")!.handler(`${id} commit`, { cwd: "/repo" });
 	assert.match(harness.messages[0], /codepatrol_record_run/);
 	await harness.handlers.get("message_end")!({ message: { role: "assistant", model: "pi-model", usage: { input: 3, output: 4, cacheRead: 2, cacheWrite: 1, reasoning: 1, totalTokens: 10 } } });
 	clock = 2500;
@@ -67,9 +67,9 @@ test("Pi records one measured Finalize run before terminal mutation and is idemp
 		intent: {
 			type: "usage",
 			actor: "pi",
-			stage: "finalize",
+			stage: "close",
 			run: {
-				id: "pi-finalize-1000",
+				id: "pi-close-1000",
 				started_at: "1970-01-01T00:00:01.000Z",
 				finished_at: "1970-01-01T00:00:02.500Z",
 				elapsed_ms: 1500,

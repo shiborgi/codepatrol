@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import { NodeGitAdapter } from "./git.js";
-import { finalizeChange, inspectChanges, startChange, transitionChange } from "./orchestrator.js";
+import { closeChange, inspectChanges, startChange, transitionChange } from "./orchestrator.js";
 import { CodepatrolError } from "../shared/errors.js";
 
 function run(workspace: string, args: string[]): string { return execFileSync("git", args, { cwd: workspace, encoding: "utf8" }).trim(); }
@@ -126,22 +126,22 @@ test("Plan artifact intent is checked against the immutable Git baseline", async
 	await assert.rejects(transitionChange(workspace, id, { type: "checkpoint", actor: "codex", stage: "plan", result: "ready", artifacts: [{ ...binding(workspace, spec), intent: "modify" }, { ...binding(workspace, plan), intent: "create" }], nextAction: "review" }, at(4)), (error: unknown) => error instanceof CodepatrolError && error.code === "CHANGE_DRIFT");
 });
 
-test("Finalize rejects production drift committed after the accepted Verify checkpoint", async () => {
+test("Close rejects production drift committed after the accepted Verify checkpoint", async () => {
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-verify-drift-")); const base = initialize(workspace); const id = "2026-07-22-verify-drift"; await advanceThroughVerify(workspace, id);
-	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "finalize", nextAction: "commit" }, at(15));
-	await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "finalize", run: { id: "finalize-drift", started_at: "2026-07-22T10:00:16Z", finished_at: "2026-07-22T10:00:17Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(17));
+	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "close", nextAction: "commit" }, at(15));
+	await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "close", run: { id: "close-drift", started_at: "2026-07-22T10:00:16Z", finished_at: "2026-07-22T10:00:17Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(17));
 	writeFileSync(join(workspace, "UNVERIFIED.txt"), "must not reach main\n"); run(workspace, ["add", "UNVERIFIED.txt"]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "unverified"]);
-	await assert.rejects(finalizeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(18)), (error: unknown) => error instanceof CodepatrolError && error.code === "CHANGE_DRIFT");
-	assert.equal(run(workspace, ["rev-parse", "main"]), base); assert.equal(run(workspace, ["tag", "--list", `codepatrol/committed/${id}`]), ""); assert.equal(existsSync(join(workspace, `.codepatrol/changes/${id}/finalize/receipt.md`)), false);
+	await assert.rejects(closeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(18)), (error: unknown) => error instanceof CodepatrolError && error.code === "CHANGE_DRIFT");
+	assert.equal(run(workspace, ["rev-parse", "main"]), base); assert.equal(run(workspace, ["tag", "--list", `codepatrol/committed/${id}`]), ""); assert.equal(existsSync(join(workspace, `.codepatrol/changes/${id}/close/receipt.md`)), false);
 });
 
-test("Finalize rejects a Verify binding that does not match immutable checkpoint history", async () => {
+test("Close rejects a Verify binding that does not match immutable checkpoint history", async () => {
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-lineage-")); const base = initialize(workspace); const id = "2026-07-22-lineage"; await advanceThroughVerify(workspace, id);
-	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "finalize", nextAction: "commit" }, at(15));
-	await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "finalize", run: { id: "finalize-lineage", started_at: "2026-07-22T10:00:16Z", finished_at: "2026-07-22T10:00:17Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(17));
+	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "close", nextAction: "commit" }, at(15));
+	await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "close", run: { id: "close-lineage", started_at: "2026-07-22T10:00:16Z", finished_at: "2026-07-22T10:00:17Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(17));
 	writeFileSync(join(workspace, "LATE.txt"), "late candidate content\n"); run(workspace, ["add", "LATE.txt"]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "late candidate"]);
 	const recordPath = join(workspace, `.codepatrol/changes/${id}/change.yaml`); const record = parse(readFileSync(recordPath, "utf8")); const verify = record.events.find((event: { type: string; stage: string }) => event.type === "stage-checkpointed" && event.stage === "verify"); verify.checkpoint = run(workspace, ["rev-parse", "HEAD"]); verify.tree = run(workspace, ["rev-parse", "HEAD^{tree}"]); writeFileSync(recordPath, stringify(record)); run(workspace, ["add", recordPath]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "altered binding"]);
-	await assert.rejects(finalizeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(18)), (error: unknown) => error instanceof CodepatrolError && error.code === "CHANGE_DRIFT");
+	await assert.rejects(closeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(18)), (error: unknown) => error instanceof CodepatrolError && error.code === "CHANGE_DRIFT");
 	assert.equal(run(workspace, ["rev-parse", "main"]), base); assert.equal(run(workspace, ["tag", "--list", `codepatrol/committed/${id}`]), "");
 });
 
@@ -205,18 +205,18 @@ test("rollback tags the complete Change, deletes its branch, and preserves the t
 		if (stage === "plan") { const planPath = `.codepatrol/changes/${id}/plan/plan.md`; writeFileSync(join(workspace, planPath), "plan\n"); artifacts.push(binding(workspace, planPath)); }
 		await transitionChange(workspace, id, { type: "usage", actor: "codex", stage, run: { id: `${stage}-1`, started_at: `2026-07-22T10:00:${String(3 + index * 3).padStart(2, "0")}.000Z`, finished_at: `2026-07-22T10:00:${String(4 + index * 3).padStart(2, "0")}.000Z`, elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(4 + index * 3));
 		const result = stage === "plan" ? "ready" : stage === "review" ? "approve" : stage === "apply" ? "implemented" : "commit";
-		await transitionChange(workspace, id, { type: "checkpoint", actor: "codex", stage, result, artifacts, ...(stage === "apply" ? { changes: [] } : {}), nextAction: stage === "verify" ? `codepatrol-finalize ${id}` : `continue ${id}` }, at(5 + index * 3));
+		await transitionChange(workspace, id, { type: "checkpoint", actor: "codex", stage, result, artifacts, ...(stage === "apply" ? { changes: [] } : {}), nextAction: stage === "verify" ? `codepatrol-close ${id}` : `continue ${id}` }, at(5 + index * 3));
 	}
-	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "finalize", nextAction: "rollback" }, at(15));
-	await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "finalize", run: { id: "finalize-1", started_at: "2026-07-22T10:00:16.000Z", finished_at: "2026-07-22T10:00:17.000Z", elapsed_ms: 1000, tokens: { status: "measured", source: "harness", input: 1, output: 1, total: 2 } } }, at(17));
+	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "close", nextAction: "rollback" }, at(15));
+	await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "close", run: { id: "close-1", started_at: "2026-07-22T10:00:16.000Z", finished_at: "2026-07-22T10:00:17.000Z", elapsed_ms: 1000, tokens: { status: "measured", source: "harness", input: 1, output: 1, total: 2 } } }, at(17));
 	const advanced = run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit-tree", `${base}^{tree}`, "-p", base, "-m", "advanced target"]); run(workspace, ["update-ref", "refs/heads/main", advanced]);
-	await assert.rejects(finalizeChange(workspace, id, { outcome: "rollback", actor: "codex", authority: "test authorization" }, at(18)), (error: unknown) => error instanceof CodepatrolError && error.code === "TARGET_ADVANCED");
+	await assert.rejects(closeChange(workspace, id, { outcome: "rollback", actor: "codex", authority: "test authorization" }, at(18)), (error: unknown) => error instanceof CodepatrolError && error.code === "TARGET_ADVANCED");
 	assert.equal(run(workspace, ["branch", "--show-current"]), `codepatrol/${id}`); assert.equal(run(workspace, ["tag", "--list", `codepatrol/rolled-back/${id}`]), ""); assert.equal(run(workspace, ["status", "--porcelain"]), ""); run(workspace, ["update-ref", "refs/heads/main", base]);
-	await assert.rejects(finalizeChange(workspace, id, { outcome: "rollback", actor: "codex", authority: "test authorization" }, { ...at(19), git: new FailAfterCheckoutGit(workspace) }), /injected after checkout/);
+	await assert.rejects(closeChange(workspace, id, { outcome: "rollback", actor: "codex", authority: "test authorization" }, { ...at(19), git: new FailAfterCheckoutGit(workspace) }), /injected after checkout/);
 	assert.equal(run(workspace, ["branch", "--show-current"]), "main");
 	assert.match(run(workspace, ["tag", "--list", `codepatrol/rolled-back/${id}`]), /rolled-back/);
 	assert.match(run(workspace, ["branch", "--list", `codepatrol/${id}`]), /codepatrol/);
-	const result = await finalizeChange(workspace, id, { outcome: "rollback", actor: "codex", authority: "test authorization" }, at(20));
+	const result = await closeChange(workspace, id, { outcome: "rollback", actor: "codex", authority: "test authorization" }, at(20));
 	assert.equal(result.outcome, "rolled-back"); assert.equal(run(workspace, ["rev-parse", "HEAD"]), base); assert.equal(run(workspace, ["rev-parse", "HEAD^{tree}"]), baseTree);
 	assert.equal(run(workspace, ["branch", "--list", `codepatrol/${id}`]), ""); assert.match(run(workspace, ["tag", "--list", `codepatrol/rolled-back/${id}`]), /rolled-back/); assert.equal(run(workspace, ["status", "--porcelain"]), "");
 });
@@ -232,12 +232,12 @@ test("commit finalization fast-forwards the unchanged target and preserves a ter
 		await transitionChange(workspace, id, { type: "usage", actor: "codex", stage, run: { id: `${stage}-commit`, started_at: `2026-07-22T10:00:${String(3 + index * 3).padStart(2, "0")}.000Z`, finished_at: `2026-07-22T10:00:${String(4 + index * 3).padStart(2, "0")}.000Z`, elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(4 + index * 3));
 		const result = stage === "plan" ? "ready" : stage === "review" ? "approve" : stage === "apply" ? "implemented" : "commit"; await transitionChange(workspace, id, { type: "checkpoint", actor: "codex", stage, result, artifacts, ...(stage === "apply" ? { changes: [] } : {}), nextAction: `continue ${id}` }, at(5 + index * 3));
 	}
-	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "finalize", nextAction: "commit" }, at(15)); await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "finalize", run: { id: "finalize-commit", started_at: "2026-07-22T10:00:16Z", finished_at: "2026-07-22T10:00:17Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(17));
-	await assert.rejects(finalizeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, { ...at(18), git: new FailAfterMergeGit(workspace) }), /injected after merge/);
+	await transitionChange(workspace, id, { type: "begin", actor: "codex", stage: "close", nextAction: "commit" }, at(15)); await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "close", run: { id: "close-commit", started_at: "2026-07-22T10:00:16Z", finished_at: "2026-07-22T10:00:17Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } } }, at(17));
+	await assert.rejects(closeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, { ...at(18), git: new FailAfterMergeGit(workspace) }), /injected after merge/);
 	assert.equal(run(workspace, ["branch", "--show-current"]), "main");
 	assert.match(run(workspace, ["branch", "--list", `codepatrol/${id}`]), /codepatrol/);
 	const tagHead = run(workspace, ["rev-parse", `codepatrol/committed/${id}`]); const advanced = run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit-tree", `${tagHead}^{tree}`, "-p", tagHead, "-m", "post-terminal drift"]); run(workspace, ["update-ref", `refs/heads/codepatrol/${id}`, advanced]);
-	await assert.rejects(finalizeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(19)), (error: unknown) => error instanceof CodepatrolError && error.code === "CHANGE_DRIFT"); run(workspace, ["update-ref", `refs/heads/codepatrol/${id}`, tagHead]);
-	const result = await finalizeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(20));
+	await assert.rejects(closeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(19)), (error: unknown) => error instanceof CodepatrolError && error.code === "CHANGE_DRIFT"); run(workspace, ["update-ref", `refs/heads/codepatrol/${id}`, tagHead]);
+	const result = await closeChange(workspace, id, { outcome: "commit", actor: "codex", authority: "test authorization" }, at(20));
 	assert.equal(result.outcome, "committed"); assert.equal(run(workspace, ["branch", "--show-current"]), "main"); assert.equal(run(workspace, ["rev-parse", "HEAD"]), result.terminalCommit); assert.equal(run(workspace, ["branch", "--list", `codepatrol/${id}`]), ""); assert.match(run(workspace, ["tag", "--list", `codepatrol/committed/${id}`]), /committed/); assert.equal(run(workspace, ["status", "--porcelain"]), "");
 });

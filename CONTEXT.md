@@ -1,6 +1,6 @@
 # Domain Glossary
 
-**Public Workflow** — one of Plan, Review, Apply, Verify, Finalize or Status.
+**Public Workflow** — one of Plan, Review, Apply, Verify, Close or Status.
 
 **Codepatrol Plan** — creates or resumes one branch-backed Change and produces a
 decision-complete specification and executable plan. _Avoid_: proposal package.
@@ -12,9 +12,9 @@ approves it or returns the Change to Plan. _Avoid_: silent plan correction.
 clean candidate checkpoint. _Avoid_: unguarded implementation.
 
 **Codepatrol Verify** — independently audits the candidate commit/tree and
-advances to Finalize or returns the defect. _Avoid_: trusting the Apply journal.
+advances to Close or returns the defect. _Avoid_: trusting the Apply journal.
 
-**Codepatrol Finalize** — executes an explicitly authorized terminal commit or
+**Codepatrol Close** — executes an explicitly authorized terminal commit or
 rollback and leaves a recoverable tag plus clean target checkout.
 
 **Codepatrol Status** — reproduces the deterministic Kanban and projected resume
@@ -23,7 +23,7 @@ actions without interpreting or mutating them.
 **Change** — the tracked `.codepatrol/changes/<work-id>/` aggregate containing
 immutable identity, ordered events and stage-owned artifacts for one branch.
 
-**Stage Attempt** — one append-only Plan, Review, Apply, Verify or Finalize
+**Stage Attempt** — one append-only Plan, Review, Apply, Verify or Close
 attempt, including every run and its metrics.
 
 **Stage Session** — disposable task progress under
@@ -36,7 +36,7 @@ attempt, including every run and its metrics.
 two return to Plan with recorded findings.
 
 **Commit verdict** — Verify result declaring the exact candidate eligible for
-Finalize; it is not authority to integrate automatically.
+Close; it is not authority to integrate automatically.
 
 **Support Skill** — a bounded capability invoked behind a Public Workflow.
 

@@ -20,7 +20,7 @@ In a temporary Git repository:
 5. confirm Verify binds candidate commit/tree;
 6. run commit and rollback in separate fixtures; require tag-before-delete,
    fast-forward-only commit, rollback target-tree equality and clean targets;
-7. advance the target and confirm Finalize returns `TARGET_ADVANCED` without
+7. advance the target and confirm Close returns `TARGET_ADVANCED` without
    rebasing or resolving.
 
 ## Deterministic Kanban
@@ -33,7 +33,7 @@ rows. Without `--as-of`, repeated renders must not read the current clock.
 ## Distribution
 
 Run installer dry-runs for Codex, OpenCode and Pi. Confirm exactly six public
-skills/commands, including Finalize, and no support skill exposure. Confirm Pi
+skills/commands, including Close, and no support skill exposure. Confirm Pi
 usage aggregation stores only numeric dimensions/model identity and never raw
 messages.
 

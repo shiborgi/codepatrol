@@ -50,7 +50,7 @@ const COMMAND_OPTIONS = new Map<string, Set<string>>([
 	["change.transition", new Set(["id", "input"])],
 	["change.session", new Set(["id", "input"])],
 	["change.doctor", new Set(["id"])],
-	["change.finalize", new Set(["id", "input"])],
+	["change.close", new Set(["id", "input"])],
 ]);
 
 function fail(message: string): never {

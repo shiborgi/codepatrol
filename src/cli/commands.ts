@@ -10,10 +10,10 @@ import { resolveInside } from "../shared/workspace.js";
 import type { ParsedArgs } from "./args.js";
 import { requireValue } from "./args.js";
 import { renderFind, renderImpact, renderNeighbors, renderOutline, renderOverview } from "./output.js";
-import { finalizeChange, inspectChanges, startChange, transitionChange } from "../change/orchestrator.js";
+import { closeChange, inspectChanges, startChange, transitionChange } from "../change/orchestrator.js";
 import { projectKanban, renderKanbanMarkdown } from "../change/board.js";
 import { claimSessionItem, closeSessionItem, discardAndRebuildSession, primeStageSession } from "../change/session.js";
-import type { FinalizeInput, Stage, StartChangeInput, TransitionIntent } from "../change/types.js";
+import type { CloseInput, Stage, StartChangeInput, TransitionIntent } from "../change/types.js";
 
 export interface CommandResult {
 	data: unknown;
@@ -136,8 +136,8 @@ export async function executeCommand(args: ParsedArgs, workspace: string, signal
 			const session = data.state === "terminal" ? undefined : primeStageSession(workspace, data.identity.work_id, data.stage, data.attempt);
 			return { data: { valid: true, change: data, session }, text: `Change ${data.identity.work_id} is structurally valid; runtime is rebuildable.` };
 		}
-		case "change.finalize": {
-			const data = await finalizeChange(workspace, requireValue(args.id, "id"), readJsonInput(workspace, requireValue(args.input, "input"), "Finalize") as FinalizeInput, { signal });
+		case "change.close": {
+			const data = await closeChange(workspace, requireValue(args.id, "id"), readJsonInput(workspace, requireValue(args.input, "input"), "Close") as CloseInput, { signal });
 			return { data, text: `${data.outcome} ${data.terminalCommit} (${data.tag})` };
 		}
 		default:

@@ -1,9 +1,9 @@
 ---
-name: codepatrol-finalize
-description: (codepatrol) Close an explicitly selected verified branch-backed Change with an authorized fast-forward commit or recoverable rollback. Use only for the Finalize stage after a Verify commit verdict; leave the target checkout clean and valid.
+name: codepatrol-close
+description: (codepatrol) Close an explicitly selected verified branch-backed Change with an authorized fast-forward commit or recoverable rollback. Use only for the Close stage after a Verify commit verdict; leave the target checkout clean and valid.
 ---
 
-# Codepatrol Finalize
+# Codepatrol Close
 
 Act as the Closer in [ROLES.md](../_shared/ROLES.md). Follow
 [CHANGE.md](../_shared/CHANGE.md). This is the only lifecycle skill authorized
@@ -12,17 +12,17 @@ Use the portable [execution protocol](../_shared/EXECUTION.md) for preflight evi
 
 Require the user to state the work id and exactly one action: `commit` or
 `rollback`. Run `codepatrol change inspect --id <work-id>` and stop unless the
-projection is Finalize, Verify recorded `commit`, the candidate binding is
+projection is Close, Verify recorded `commit`, the candidate binding is
 intact, the checkout is the recorded branch, the tree is clean and the target
 ref still equals the recorded base. Never infer authority from a prior stage.
 
-Submit Finalize `begin`, capture run start, and perform the bounded preflight in
-[FINALIZE-FORMAT.md](FINALIZE-FORMAT.md). Record a finished run with elapsed
-time and measured or unavailable tokens. Then call `change finalize --id
+Submit Close `begin`, capture run start, and perform the bounded preflight in
+[CLOSE-FORMAT.md](CLOSE-FORMAT.md). Record a finished run with elapsed
+time and measured or unavailable tokens. Then call `change close --id
 <work-id> --input -` with the explicit action, actor and a concise authority
 record.
 
-Finalize owns only `.codepatrol/changes/<work-id>/finalize/receipt.md`, its
+Close owns only `.codepatrol/changes/<work-id>/close/receipt.md`, its
 terminal event and the authorized local Git result.
 
 For `commit`, the orchestrator writes the receipt/event, creates a recoverable

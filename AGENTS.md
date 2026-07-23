@@ -24,7 +24,7 @@ ledger, harness-specific worktrees or provider candidate trees.
 | Plan awaiting a verdict | `codepatrol-review` | `review/` | never |
 | Approved current Change | `codepatrol-apply` | `apply/` plus planned source | authorized |
 | Candidate awaiting delivery verdict | `codepatrol-verify` | `verify/` | never source |
-| Verified Change awaiting commit or rollback | `codepatrol-finalize` | `finalize/`, local refs | explicitly authorized |
+| Verified Change awaiting commit or rollback | `codepatrol-close` | `close/`, local refs | explicitly authorized |
 | Lifecycle inspection | `codepatrol-status` | none | never |
 
 Each lifecycle workflow records its owned artifact/run event before returning
@@ -50,7 +50,7 @@ one branch, and one active branch maps to one Change.
 
 ## Lifecycle and ownership
 
-The only forward route is Plan → Review → Apply → Verify → Finalize. Review
+The only forward route is Plan → Review → Apply → Verify → Close. Review
 defects return to Plan. Verify implementation defects return to Apply; contract
 defects return to Plan. Returns create a new attempt and invalidate downstream
 accepted attempts without erasing history.
@@ -80,13 +80,13 @@ end-to-end cycle time distinct.
 - Preserve unrelated user changes. Never reset, force, rebase, fetch/push or
   resolve integration conflicts automatically.
 
-## Checkpoints and Finalize
+## Checkpoints and Close
 
 Stage checkpoints are created only through `change transition`. They bind owned
 artifacts and, for Apply, every production path; unexpected dirty paths fail.
 Verify binds the exact candidate commit/tree.
 
-Finalize requires new explicit authority, Verify `commit`, unchanged target and
+Close requires new explicit authority, Verify `commit`, unchanged target and
 a clean tree. Commit is fast-forward-only. Rollback proves the target tree
 unchanged. Create the recoverable terminal tag before deleting the feature
 branch. Remote operations remain out of scope.
@@ -98,7 +98,7 @@ test, build, skill lint, package and smoke gate. State commands actually run,
 residual risks, Change path, branch/checkpoint and metric coverage.
 
 Apply ends at a clean implemented candidate. Verify ends at a delivery verdict.
-Finalize ends at committed or rolled-back with a clean target checkout. The
+Close ends at committed or rolled-back with a clean target checkout. The
 v1-release bootstrap cutover in `README.md` requires independent Verify and a
 separate explicit user instruction; Apply must not execute it.
 

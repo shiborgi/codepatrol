@@ -66,7 +66,7 @@ behavior, and their consequence.>
 `commit` | `improve`
 
 <One paragraph explaining the verdict and next Change transition: `commit`
-advances to Finalize, a bounded `improve` returns to Apply, and a semantic
+advances to Close, a bounded `improve` returns to Apply, and a semantic
 `improve` returns to a new Plan attempt.>
 ```
 

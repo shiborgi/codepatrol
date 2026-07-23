@@ -6,7 +6,7 @@ import { STAGES, type ArtifactBinding, type ChangeEvent, type ChangeRecordV2, ty
 function invalid(message: string): never { throw new CodepatrolError("CHANGE_INVALID", `CHANGE_INVALID: ${message}`, 4); }
 function iso(value: string, label: string): void { if (!value || !Number.isFinite(Date.parse(value))) invalid(`${label} must be an ISO timestamp.`); }
 function next(stage: Stage): Stage | undefined { return STAGES[STAGES.indexOf(stage) + 1]; }
-function emptyAttempts(): Record<Stage, StageAttempt[]> { return { plan: [], review: [], apply: [], verify: [], finalize: [] }; }
+function emptyAttempts(): Record<Stage, StageAttempt[]> { return { plan: [], review: [], apply: [], verify: [], close: [] }; }
 function exactKeys(value: object, allowed: string[], label: string): void {
 	for (const key of Object.keys(value)) if (!allowed.includes(key)) invalid(`${label} contains unknown field ${key}.`);
 }
@@ -61,7 +61,7 @@ export function foldChange(record: ChangeRecordV2): ChangeView {
 		const at = Date.parse(event.at); if (at < previousAt) invalid("Events must be chronologically ordered."); previousAt = at;
 		if (!event.actor?.trim() || !STAGES.includes(event.stage) || !Number.isSafeInteger(event.attempt) || event.attempt < 1) invalid(`Event ${event.id} has invalid actor, stage or attempt.`);
 		const common = ["id", "type", "at", "actor", "stage", "attempt"];
-		const specific: Record<string, string[]> = { "change-started": ["next_action"], "stage-began": ["next_action"], "run-recorded": ["run"], "stage-blocked": ["reason", "next_action"], "stage-resumed": ["next_action"], "stage-returned": ["to_stage", "reason", "next_action"], "stage-checkpointed": ["result", "checkpoint", "tree", "artifacts", "changes", "next_action"], "change-finalized": ["outcome", "commit", "tag", "receipt"] };
+		const specific: Record<string, string[]> = { "change-started": ["next_action"], "stage-began": ["next_action"], "run-recorded": ["run"], "stage-blocked": ["reason", "next_action"], "stage-resumed": ["next_action"], "stage-returned": ["to_stage", "reason", "next_action"], "stage-checkpointed": ["result", "checkpoint", "tree", "artifacts", "changes", "next_action"], "change-closed": ["outcome", "commit", "tag", "receipt"] };
 		if (!specific[event.type]) invalid(`Unknown event type ${event.type}.`); exactKeys(event, [...common, ...specific[event.type]], `Event ${event.id}`);
 		switch (event.type) {
 			case "change-started":
@@ -99,13 +99,13 @@ export function foldChange(record: ChangeRecordV2): ChangeView {
 			const paths = new Set<string>(); for (const path of event.changes) { if (typeof path !== "string" || !path || /[\0\r\n]/.test(path) || paths.has(path) || path.startsWith("/") || path.split("/").includes("..")) invalid("Apply checkpoint contains an unsafe or duplicate production path."); paths.add(path); }
 				} else if (event.changes !== undefined) invalid("Only Apply checkpoints may declare production changes.");
 				if (!current().runs.some((run) => run.finished_at)) invalid("A checkpoint requires at least one finished run record.");
-				const expected: Record<Exclude<Stage, "finalize">, string> = { plan: "ready", review: "approve", apply: "implemented", verify: "commit" };
-				if (stage === "finalize" || event.result !== expected[stage]) invalid(`Unexpected ${stage} result ${event.result}.`);
+				const expected: Record<Exclude<Stage, "close">, string> = { plan: "ready", review: "approve", apply: "implemented", verify: "commit" };
+				if (stage === "close" || event.result !== expected[stage]) invalid(`Unexpected ${stage} result ${event.result}.`);
 				Object.assign(current(), { status: "completed", result: event.result, checkpoint: event.checkpoint, tree: event.tree, artifacts: event.artifacts, ...(event.changes ? { changes: event.changes } : {}) }); checkpoint = event.checkpoint;
 				stage = next(stage)!; attempt = (attempts[stage].at(-1)?.attempt ?? 0) + 1; attempts[stage].push({ attempt, status: "ready", runs: [], artifacts: [] }); state = "ready"; nextAction = event.next_action; break;
 			}
-			case "change-finalized":
-				if (state !== "active" || stage !== "finalize" || event.stage !== "finalize" || event.attempt !== attempt || !["committed", "rolled-back"].includes(event.outcome) || !/^[0-9a-f]{40}$/.test(event.commit) || event.tag !== `codepatrol/${event.outcome}/${record.identity.work_id}` || event.receipt !== "finalize/receipt.md") invalid("Finalize event is not valid for the active Finalize attempt.");
+			case "change-closed":
+				if (state !== "active" || stage !== "close" || event.stage !== "close" || event.attempt !== attempt || !["committed", "rolled-back"].includes(event.outcome) || !/^[0-9a-f]{40}$/.test(event.commit) || event.tag !== `codepatrol/${event.outcome}/${record.identity.work_id}` || event.receipt !== "close/receipt.md") invalid("Finalize event is not valid for the active close attempt.");
 				current().status = "completed"; current().result = event.outcome; state = "terminal"; outcome = event.outcome; terminalCommit = event.commit; nextAction = undefined; break;
 			default: invalid(`Unknown event type ${(event as ChangeEvent).type}.`);
 		}

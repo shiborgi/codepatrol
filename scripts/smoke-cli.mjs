@@ -25,6 +25,6 @@ const help = spawnSync(process.execPath, [join(root, "bin", "codepatrol.js"), "-
 assert.equal(help.status, 0, help.stderr);
 assert.match(help.stdout, /graph outline --file <path>/);
 assert.match(help.stdout, /change inspect --id <work-id>/);
-assert.match(help.stdout, /change finalize --id <work-id>/);
+assert.match(help.stdout, /change close --id <work-id>/);
 
 process.stdout.write(`Compiled CLI smoke passed (${packageJson.version}).\n`);

@@ -6,7 +6,7 @@ import { parse as parseYaml } from "yaml";
 
 const root = resolve(import.meta.dirname, "..", "skills");
 const shared = join(root, "_shared");
-const lifecycle = ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-finalize"];
+const lifecycle = ["codepatrol-plan", "codepatrol-review", "codepatrol-apply", "codepatrol-verify", "codepatrol-close"];
 const primaries = [...lifecycle, "codepatrol-status"];
 const support = ["assess-change", "codebase-design", "codebase-wiki", "diagnose-bug", "domain-modeling", "execute-change", "grilling", "research-technology", "solution-simplification", "verification-strategy", "writing-plans"];
 const catalog = parseYaml(readFileSync(join(root, "catalog.yaml"), "utf8"));
@@ -18,30 +18,30 @@ test("catalog exposes five ordered lifecycle skills plus unordered Status", () =
 	assert.deepEqual(Object.entries(catalog.skills).filter(([, value]) => value.role === "support").map(([name]) => name).sort(), [...support].sort());
 	for (const [index, name] of lifecycle.entries()) assert.equal(catalog.skills[name].order, index + 1);
 	assert.equal(catalog.skills["codepatrol-status"].order, undefined);
-	assert.equal(catalog.skills["codepatrol-finalize"].mutation, "authorized");
+	assert.equal(catalog.skills["codepatrol-close"].mutation, "authorized");
 });
 
 test("Change and Stage Session are the only shared lifecycle contracts", () => {
 	assert.ok(existsSync(join(shared, "CHANGE.md"))); assert.ok(existsSync(join(shared, "SESSION.md")));
 	assert.equal(existsSync(join(shared, "ARTIFACTS.md")), false); assert.equal(existsSync(join(shared, "WORKFLOW.md")), false);
 	const change = readFileSync(join(shared, "CHANGE.md"), "utf8");
-	assert.match(change, /\.codepatrol\/changes\/<work-id>/); assert.match(change, /Plan → Review → Apply → Verify → Finalize/);
+	assert.match(change, /\.codepatrol\/changes\/<work-id>/); assert.match(change, /Plan → Review → Apply → Verify → Close/);
 	assert.match(change, /measured|unavailable/); assert.match(change, /elapsed/i); assert.match(change, /never.*recency/is);
 	const session = readFileSync(join(shared, "SESSION.md"), "utf8"); assert.match(session, /\.codepatrol\/runtime\/sessions/); assert.match(session, /never own lifecycle/i);
 });
 
 test("each lifecycle skill owns one stage, records metrics, checkpoints, and stops", () => {
-	const owned = { "codepatrol-plan": "plan/", "codepatrol-review": "review/", "codepatrol-apply": "apply/", "codepatrol-verify": "verify/", "codepatrol-finalize": "finalize/" };
+	const owned = { "codepatrol-plan": "plan/", "codepatrol-review": "review/", "codepatrol-apply": "apply/", "codepatrol-verify": "verify/", "codepatrol-close": "close/" };
 	for (const name of lifecycle) {
 		const text = skill(name); assert.match(text, /change inspect --id <work-id>/); assert.match(text, new RegExp(owned[name].replace("/", "\\/")));
 		assert.match(text, /elapsed/i); assert.match(text, /actual.*unavailable|measured.*unavailable/is);
-		if (name !== "codepatrol-finalize") assert.match(text, /Do not invoke|never.*invoke/is);
+		if (name !== "codepatrol-close") assert.match(text, /Do not invoke|never.*invoke/is);
 		const metadata = parseYaml(readFileSync(join(root, name, "agents", "openai.yaml"), "utf8")); assert.match(metadata.interface.default_prompt, new RegExp(`\\$${name}\\b`));
 	}
 });
 
-test("Finalize is authority-bound, recoverable, local-only, and clean", () => {
-	const text = skill("codepatrol-finalize");
+test("Close is authority-bound, recoverable, local-only, and clean", () => {
+	const text = skill("codepatrol-close");
 	assert.match(text, /explicit.*authority|authority.*explicit/is); assert.match(text, /commit.*rollback/is); assert.match(text, /tag.*precedes deletion/is);
 	assert.match(text, /target tree byte-identical/i); assert.match(text, /clean/i); assert.match(text, /Never fetch, push, rebase, force/i);
 });

@@ -29,7 +29,7 @@ unplanned changes. It owns the delivery verdict and classification of
 improvement findings; it must not edit production code or treat implementation
 claims as proof.
 
-### Closer — Finalize
+### Closer — Close
 
 The Closer executes only the explicitly authorized terminal outcome after a
 Verify commit verdict. It owns the receipt, terminal tag, fast-forward commit or
