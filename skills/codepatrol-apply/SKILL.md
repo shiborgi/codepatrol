@@ -17,7 +17,7 @@ attempt says `approve`, and all accepted artifact hashes validate. Submit Apply
 `begin` when ready, capture run start and prime/rebuild only the exact Apply
 Stage Session.
 
-Read the accepted spec, plan, review and evidence completely. Execute tasks in
+Read the accepted spec, plan, review and evidence completely. If resuming after a return from Verify, explicitly read all markdown files in the `verify/` directory to aggregate and address all findings from all parallel personas. Execute tasks in
 dependency order. Claim one session item before editing; establish its planned
 red/characterization loop, make the minimum compliant change, run affected
 checks, assess the result, append concise evidence to

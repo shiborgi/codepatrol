@@ -55,6 +55,8 @@ defects return to Plan. Verify implementation defects return to Apply; contract
 defects return to Plan. Returns create a new attempt and invalidate downstream
 accepted attempts without erasing history.
 
+To support multiple parallel personas, Review and Verify stages may contain multiple persona-specific session items (e.g., `review-security`). When transitioning to Review or Verify, the harness MUST initialize a fresh context window for the agent. The agent must not have access to the chat history of the Plan or Apply stages, ensuring an unbiased, persona-driven evaluation based purely on artifacts.
+
 Only write files owned by the current stage. Declare and hash every durable
 file. Keep raw logs, conversations, prompts, credentials and scratch payloads
 out of Changes. Durable ADRs live in `docs/adr/`; ignored state lives only in

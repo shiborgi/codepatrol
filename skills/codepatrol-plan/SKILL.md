@@ -24,6 +24,8 @@ brownfield Change, sync the graph once, check wiki status, read `CONTEXT.md` and
 Use the appropriate supporting skills for bug diagnosis, domain language,
 module/seam design, external evidence, simplification and executable planning.
 
+If resuming after a return from Review or Verify, explicitly read all markdown files in the returning stage's directory (e.g., `review/` or `verify/`) to aggregate and address all findings from all parallel personas.
+
 ## Produce the Plan artifacts
 
 Write only:
