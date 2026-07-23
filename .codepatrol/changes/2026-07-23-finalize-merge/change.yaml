@@ -14,3 +14,20 @@ events:
     stage: plan
     attempt: 1
     next_action: codepatrol-plan 2026-07-23-finalize-merge on codepatrol/2026-07-23-finalize-merge
+  - id: cdee281e-4a8a-4a11-ad9e-885b76e0f0bc
+    at: 2026-07-23T16:30:53.989Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    type: run-recorded
+    run:
+      id: plan-1
+      started_at: 2026-07-23T12:00:00Z
+      finished_at: 2026-07-23T12:10:00Z
+      elapsed_ms: 600000
+      tokens:
+        status: measured
+        source: provider
+        input: 1000
+        output: 500
+        total: 1500
