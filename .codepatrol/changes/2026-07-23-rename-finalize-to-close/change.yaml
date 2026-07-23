@@ -67,3 +67,12 @@ events:
         status: unavailable
         reason: Token metrics unavailable in opencode environment
         harness: opencode
+  - id: eba7a32b-c740-4dee-b15d-7834e6f476cc
+    at: 2026-07-23T20:54:26.727Z
+    actor: opencode-MiniMax-M3
+    stage: review
+    attempt: 1
+    type: stage-returned
+    to_stage: plan
+    reason: "rework: 3 major plan defects — (1) .pi/index.ts, .pi/index.test.ts, and .opencode/commands/codepatrol-finalize.md silently out of scope; (2) npm run check and npm run lint do not exist in package.json (only build and test), so the planned red loop is unreachable; (3) no decision on renaming .codepatrol/changes/<work-id>/finalize/ to close/, yet the directory is hardcoded in src/change/orchestrator.ts and asserted in scripts/skills-contract.test.mjs. See review/report.md."
+    next_action: codepatrol-plan 2026-07-23-rename-finalize-to-close on codepatrol/2026-07-23-rename-finalize-to-close
