@@ -118,3 +118,18 @@ events:
     attempt: 2
     type: stage-began
     next_action: codepatrol-plan 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
+  - id: 13ebc222-b97c-4ad9-93fa-e9da95049c7e
+    at: 2026-07-23T23:29:07.092Z
+    actor: opencode
+    stage: plan
+    attempt: 2
+    type: run-recorded
+    run:
+      id: plan-restart-20260723T232900Z
+      started_at: 2026-07-23T23:28:50.000Z
+      finished_at: 2026-07-23T23:29:00.000Z
+      elapsed_ms: 10000
+      tokens:
+        status: unavailable
+        reason: Plan artifacts re-issued unchanged; user authorized re-review before Apply execution.
+        harness: opencode
