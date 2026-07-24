@@ -139,3 +139,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-verify 2026-07-23-self-improvement-tracing on codepatrol/2026-07-23-self-improvement-tracing
+  - id: 481c5b21-4465-4ba4-8fac-e406616afb3b
+    at: 2026-07-24T02:15:06.175Z
+    actor: opencode
+    stage: verify
+    attempt: 1
+    type: run-recorded
+    run:
+      id: verify-20260724T021311Z
+      started_at: 2026-07-24T02:13:11.000Z
+      finished_at: 2026-07-24T02:15:01.000Z
+      elapsed_ms: 110000
+      characters:
+        status: unavailable
+        reason: Verify produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
