@@ -519,3 +519,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-verify 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
+  - id: b181b2e5-5154-4d73-9fc7-2421dbd42431
+    at: 2026-07-24T00:59:26.581Z
+    actor: opencode
+    stage: verify
+    attempt: 1
+    type: run-recorded
+    run:
+      id: verify-20260724T005655Z
+      started_at: 2026-07-24T00:56:55.000Z
+      finished_at: 2026-07-24T00:59:18.000Z
+      elapsed_ms: 143000
+      characters:
+        status: unavailable
+        reason: Verify produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
