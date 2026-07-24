@@ -395,3 +395,17 @@ events:
     attempt: 6
     type: stage-began
     next_action: codepatrol-plan 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
+  - id: f28a0bb0-0c83-4949-bdfd-f9f73cc48686
+    at: 2026-07-24T00:18:40.151Z
+    actor: opencode
+    stage: plan
+    attempt: 6
+    type: run-recorded
+    run:
+      id: run-6
+      started_at: 2026-07-24T00:16:55.837Z
+      finished_at: 2026-07-24T00:18:24.075Z
+      elapsed_ms: 88238
+      tokens:
+        status: unavailable
+        reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
