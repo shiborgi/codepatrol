@@ -89,3 +89,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-apply 2026-07-23-self-improvement-tracing on codepatrol/2026-07-23-self-improvement-tracing
+  - id: 316c4dc9-3ba5-4390-bb86-75db77535c08
+    at: 2026-07-24T02:05:51.347Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: run-recorded
+    run:
+      id: apply-20260724T013916Z
+      started_at: 2026-07-24T01:39:16.000Z
+      finished_at: 2026-07-24T01:55:00.000Z
+      elapsed_ms: 944000
+      characters:
+        status: unavailable
+        reason: Apply produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
