@@ -14,3 +14,18 @@ events:
     stage: plan
     attempt: 1
     next_action: codepatrol-plan 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
+  - id: a0e5c612-fab8-4079-a3e5-e6d8314afccf
+    at: 2026-07-24T02:43:21.199Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    type: run-recorded
+    run:
+      id: plan-20260724T024010Z
+      started_at: 2026-07-24T02:40:10.000Z
+      finished_at: 2026-07-24T02:45:30.000Z
+      elapsed_ms: 320000
+      characters:
+        status: unavailable
+        reason: Plan produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
