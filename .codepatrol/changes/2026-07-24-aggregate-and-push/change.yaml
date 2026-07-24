@@ -278,3 +278,17 @@ events:
     attempt: 3
     type: stage-began
     next_action: codepatrol-verify 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
+  - id: 58296e46-b238-4519-9104-1fcd1e3ced00
+    at: 2026-07-24T12:48:44.790Z
+    actor: claude
+    stage: verify
+    attempt: 3
+    type: run-recorded
+    run:
+      id: verify-20260724T124741Z
+      started_at: 2026-07-24T12:47:41.606Z
+      finished_at: 2026-07-24T12:50:00.000Z
+      elapsed_ms: 138394
+      characters:
+        status: unavailable
+        reason: harness exposes no authoritative usage hook
