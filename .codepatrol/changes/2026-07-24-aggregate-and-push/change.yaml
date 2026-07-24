@@ -1,0 +1,16 @@
+schema_version: 2
+identity:
+  work_id: 2026-07-24-aggregate-and-push
+  title: Aggregate parallel review/verify and allow push at close
+  created_at: 2026-07-24T02:40:19.108Z
+  branch: codepatrol/2026-07-24-aggregate-and-push
+  target_branch: main
+  base_commit: d75ff9959f7c8bf14d726896f75c32969240b384
+events:
+  - id: bd0197e8-b3d2-4853-8470-713edea006c8
+    type: change-started
+    at: 2026-07-24T02:40:19.108Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    next_action: codepatrol-plan 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
