@@ -14,3 +14,18 @@ events:
     stage: plan
     attempt: 1
     next_action: codepatrol-plan 2026-07-23-self-improvement-tracing on codepatrol/2026-07-23-self-improvement-tracing
+  - id: 70e3f16f-20d4-4735-8072-bc5f1ca51162
+    at: 2026-07-24T01:25:41.030Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    type: run-recorded
+    run:
+      id: plan-20260724T012410Z
+      started_at: 2026-07-24T01:15:00.000Z
+      finished_at: 2026-07-24T01:24:10.000Z
+      elapsed_ms: 550000
+      characters:
+        status: unavailable
+        reason: Plan produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
