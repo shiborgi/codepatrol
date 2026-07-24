@@ -254,3 +254,20 @@ events:
         status: unavailable
         reason: opencode usage not collected
         harness: opencode
+  - id: e8cea5ae-b6bd-4dd6-b62c-7af72e1a2c70
+    at: 2026-07-24T12:43:44.692Z
+    actor: opencode
+    stage: apply
+    attempt: 3
+    type: stage-checkpointed
+    result: implemented
+    checkpoint: 39673bdc3981cad5ea222f32fd4b66b54393fa97
+    tree: b87043b4b393e8350bac0b0f6608277b6956359b
+    artifacts:
+      - path: .codepatrol/changes/2026-07-24-aggregate-and-push/apply/journal.md
+        sha256: 83c677c07c87cacb2ec1671a0009690261faa2f405236a153de9abe0f66913dd
+        intent: modify
+    changes:
+      - src/change/orchestrator-parallel.test.ts
+      - src/shared/errors.ts
+    next_action: codepatrol-verify 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
