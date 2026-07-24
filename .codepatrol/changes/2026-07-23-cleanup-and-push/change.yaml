@@ -555,3 +555,17 @@ events:
     attempt: 1
     type: stage-began
     next_action: commit
+  - id: a5e23e85-0cd7-4b59-b57f-48832ebffc35
+    at: 2026-07-24T01:02:08.933Z
+    actor: opencode
+    stage: close
+    attempt: 1
+    type: run-recorded
+    run:
+      id: close-run-1
+      started_at: 2026-07-24T01:01:28.191Z
+      finished_at: 2026-07-24T01:01:58.309Z
+      elapsed_ms: 30118
+      characters:
+        status: unavailable
+        reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
