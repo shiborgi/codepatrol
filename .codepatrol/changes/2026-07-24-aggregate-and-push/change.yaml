@@ -68,3 +68,17 @@ events:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
+  - id: 1cd643c4-391e-46ef-8be1-23dcfc46a1c8
+    at: 2026-07-24T07:44:51.854Z
+    actor: opencode
+    stage: review
+    attempt: 1
+    type: stage-checkpointed
+    result: approve
+    checkpoint: b4a175bd9c400d1faf3d774e928b19d5e287635e
+    tree: ba463a4e7333746dde76d56cf599f44507638111
+    artifacts:
+      - path: .codepatrol/changes/2026-07-24-aggregate-and-push/review/report.md
+        sha256: 04fffea99df74d1ee12011ed57ed330d7c77a516ff8c9b506012a5aa893796f2
+        intent: create
+    next_action: codepatrol-apply 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
