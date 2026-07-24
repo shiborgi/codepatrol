@@ -25,7 +25,7 @@ events:
       started_at: 2026-07-23T23:18:46.634Z
       finished_at: 2026-07-23T23:21:22.204Z
       elapsed_ms: 155570
-      tokens:
+      characters:
         status: unavailable
         reason: Opencode does not expose authoritative tokens via standard API
   - id: 4f758df7-26b3-4017-b26c-6b20333fb828
@@ -63,7 +63,7 @@ events:
       started_at: 2026-07-23T23:22:49.798Z
       finished_at: 2026-07-23T23:23:40.998Z
       elapsed_ms: 51200
-      tokens:
+      characters:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
   - id: 7d50e441-bad8-43fa-adda-b2871ecdfbc4
@@ -98,7 +98,7 @@ events:
       started_at: 2026-07-23T23:27:00.000Z
       finished_at: 2026-07-23T23:28:39.000Z
       elapsed_ms: 99000
-      tokens:
+      characters:
         status: unavailable
         reason: Apply not started — re-review requested by user; recorded only to satisfy return run requirement.
         harness: opencode
@@ -129,7 +129,7 @@ events:
       started_at: 2026-07-23T23:28:50.000Z
       finished_at: 2026-07-23T23:29:00.000Z
       elapsed_ms: 10000
-      tokens:
+      characters:
         status: unavailable
         reason: Plan artifacts re-issued unchanged; user authorized re-review before Apply execution.
         harness: opencode
@@ -168,7 +168,7 @@ events:
       started_at: 2026-07-23T23:30:00.000Z
       finished_at: 2026-07-23T23:30:55.000Z
       elapsed_ms: 55000
-      tokens:
+      characters:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
@@ -199,7 +199,7 @@ events:
       started_at: 2026-07-23T23:33:46.909Z
       finished_at: 2026-07-23T23:34:20.635Z
       elapsed_ms: 33726
-      tokens:
+      characters:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
   - id: f7cab14b-acb4-46a6-9bc5-ecaf6aa0b1d1
@@ -237,7 +237,7 @@ events:
       started_at: 2026-07-23T23:35:00.000Z
       finished_at: 2026-07-23T23:44:44.000Z
       elapsed_ms: 584000
-      tokens:
+      characters:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
@@ -268,7 +268,7 @@ events:
       started_at: 2026-07-23T23:47:55.001Z
       finished_at: 2026-07-23T23:48:36.313Z
       elapsed_ms: 41312
-      tokens:
+      characters:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
   - id: 247d77c8-c53f-4a1e-9ea6-dc761295eeeb
@@ -306,7 +306,7 @@ events:
       started_at: 2026-07-23T23:50:00.000Z
       finished_at: 2026-07-23T23:52:29.000Z
       elapsed_ms: 149000
-      tokens:
+      characters:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
@@ -337,7 +337,7 @@ events:
       started_at: 2026-07-23T23:54:39.985Z
       finished_at: 2026-07-23T23:55:42.656Z
       elapsed_ms: 62671
-      tokens:
+      characters:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
   - id: 529674ec-9850-4abd-8f51-88198ba42588
@@ -375,7 +375,7 @@ events:
       started_at: 2026-07-23T23:58:00.000Z
       finished_at: 2026-07-24T00:12:56.000Z
       elapsed_ms: 896000
-      tokens:
+      characters:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
@@ -406,7 +406,7 @@ events:
       started_at: 2026-07-24T00:16:55.837Z
       finished_at: 2026-07-24T00:18:24.075Z
       elapsed_ms: 88238
-      tokens:
+      characters:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
   - id: d97d1207-a4dc-4f44-9a3f-4c4d90444850
@@ -444,7 +444,7 @@ events:
       started_at: 2026-07-24T00:18:00.000Z
       finished_at: 2026-07-24T00:21:27.000Z
       elapsed_ms: 207000
-      tokens:
+      characters:
         status: unavailable
         reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
@@ -469,3 +469,17 @@ events:
     attempt: 2
     type: stage-began
     next_action: execute-change 2026-07-23-cleanup-and-push
+  - id: 7d8068df-c08d-4154-b087-12e854566244
+    at: 2026-07-24T00:35:31.641Z
+    actor: opencode
+    stage: apply
+    attempt: 2
+    type: run-recorded
+    run:
+      id: apply-run-2
+      started_at: 2026-07-24T00:26:44.868Z
+      finished_at: 2026-07-24T00:33:01.212Z
+      elapsed_ms: 376344
+      characters:
+        status: unavailable
+        reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
