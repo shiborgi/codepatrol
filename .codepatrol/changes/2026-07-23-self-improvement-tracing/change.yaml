@@ -190,3 +190,13 @@ events:
         status: unavailable
         reason: Close produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
+  - id: d937e7d0-16dd-4994-b23d-013484fd5dfc
+    at: 2026-07-24T02:27:39.125Z
+    actor: opencode
+    stage: close
+    attempt: 1
+    type: change-closed
+    outcome: committed
+    commit: a533ecd553260d2707371e3c321897fd5a9394c9
+    tag: codepatrol/committed/2026-07-23-self-improvement-tracing
+    receipt: close/receipt.md
