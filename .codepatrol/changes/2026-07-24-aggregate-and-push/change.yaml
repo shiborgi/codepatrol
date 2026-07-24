@@ -327,3 +327,13 @@ events:
       characters:
         status: unavailable
         reason: harness exposes no authoritative usage hook
+  - id: 98971632-b480-4390-a43c-f0af931e86a9
+    at: 2026-07-24T13:16:02.156Z
+    actor: claude-sonnet-5
+    stage: close
+    attempt: 1
+    type: change-closed
+    outcome: committed
+    commit: 33e15482c355f305f238842672fa99b5651f27d8
+    tag: codepatrol/committed/2026-07-24-aggregate-and-push
+    receipt: close/receipt.md
