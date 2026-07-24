@@ -483,3 +483,32 @@ events:
       characters:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
+  - id: 72af16b1-d920-4f0d-b0c4-fe7a9e300898
+    at: 2026-07-24T00:35:43.743Z
+    actor: opencode
+    stage: apply
+    attempt: 2
+    type: stage-checkpointed
+    result: implemented
+    checkpoint: 487c025d07ecc72356b5dd50a3e948a324a0e834
+    tree: 6cb8c1f13df3e4d65519ac2cf42e6e328bf4586f
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-cleanup-and-push/apply/journal.md
+        sha256: 43aebaa41bd594deed894e9116d8be5c227e8c05a735c96b695195e63ac51979
+        intent: create
+    changes:
+      - .pi/index.test.ts
+      - .pi/index.ts
+      - src/change/board.test.ts
+      - src/change/board.ts
+      - src/change/change.test.ts
+      - src/change/fixtures/committed-change.yaml
+      - src/change/fixtures/returned-change.yaml
+      - src/change/fixtures/rolled-back-change.yaml
+      - src/change/git.test.ts
+      - src/change/orchestrator.ts
+      - src/change/store.ts
+      - src/change/types.ts
+      - src/change/usage.ts
+      - src/cli/cli.test.ts
+    next_action: codepatrol-verify 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
