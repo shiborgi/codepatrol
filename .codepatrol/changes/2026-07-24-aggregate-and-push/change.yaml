@@ -89,3 +89,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-apply 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
+  - id: 6433f016-863b-4500-a964-b698bcb4d8aa
+    at: 2026-07-24T11:40:51.061Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: run-recorded
+    run:
+      id: apply-20260724T120000Z
+      started_at: 2026-07-24T11:00:00.000Z
+      finished_at: 2026-07-24T12:00:00.000Z
+      elapsed_ms: 3600000
+      characters:
+        status: unavailable
+        reason: opencode usage not collected
+        harness: opencode
