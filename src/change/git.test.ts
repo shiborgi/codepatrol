@@ -14,7 +14,8 @@ function run(workspace: string, args: string[]): string { return execFileSync("g
 function binding(workspace: string, path: string) { return { path, sha256: createHash("sha256").update(readFileSync(join(workspace, path))).digest("hex"), intent: "create" as const }; }
 function at(second: number) { return { now: new Date(`2026-07-22T10:00:${String(second).padStart(2, "0")}.000Z`) }; }
 function initialize(workspace: string): string {
-	run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "README.md"]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]); return run(workspace, ["rev-parse", "HEAD"]);
+	writeFileSync(join(workspace, ".gitignore"), ".codepatrol/runtime/\ndocs/codepatrol/improvement-reports/\n");
+	run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "."]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]); return run(workspace, ["rev-parse", "HEAD"]);
 }
 async function advanceThroughVerify(workspace: string, id: string): Promise<void> {
 	await startChange(workspace, { workId: id, title: "Verified candidate", targetBranch: "main", actor: "codex" }, at(1));
@@ -93,7 +94,7 @@ test("git adapter rejects a non-repository without mutating it", async () => {
 
 test("failed Change start removes only its partial record and branch", async () => {
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-start-failure-"));
-	run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "README.md"]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
+	writeFileSync(join(workspace, ".gitignore"), ".codepatrol/runtime/\ndocs/codepatrol/improvement-reports/\n"); run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "."]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
 	const id = "2026-07-22-start-failure";
 	await assert.rejects(startChange(workspace, { workId: id, title: "Failure", targetBranch: "main", actor: "codex" }, { ...at(1), git: new FailInitialCommitGit(workspace) }), /injected initial commit failure/);
 	assert.equal(run(workspace, ["branch", "--show-current"]), "main");
@@ -184,7 +185,7 @@ test("inspect rejects divergent working-tree and branch copies of one Change", a
 
 test("repeating an interrupted transition commits the pending event exactly once", async () => {
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-transition-recovery-"));
-	run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "README.md"]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
+	writeFileSync(join(workspace, ".gitignore"), ".codepatrol/runtime/\ndocs/codepatrol/improvement-reports/\n"); run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "."]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
 	const id = "2026-07-22-transition-recovery"; await startChange(workspace, { workId: id, title: "Recovery", targetBranch: "main", actor: "codex" }, at(1));
 	const intent = { type: "usage", actor: "codex", stage: "plan", run: { id: "plan-recovery", started_at: "2026-07-22T10:00:02Z", finished_at: "2026-07-22T10:00:03Z", elapsed_ms: 1000, characters: { status: "unavailable", reason: "test" } } } as const;
 	await assert.rejects(transitionChange(workspace, id, intent, { ...at(3), git: new FailInitialCommitGit(workspace) }), /injected initial commit failure/);
@@ -196,7 +197,7 @@ test("repeating an interrupted transition commits the pending event exactly once
 
 test("rollback tags the complete Change, deletes its branch, and preserves the target tree", async () => {
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-lifecycle-"));
-	run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "README.md"]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
+	writeFileSync(join(workspace, ".gitignore"), ".codepatrol/runtime/\ndocs/codepatrol/improvement-reports/\n"); run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "."]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
 	const base = run(workspace, ["rev-parse", "HEAD"]); const baseTree = run(workspace, ["rev-parse", "HEAD^{tree}"]); const id = "2026-07-22-lifecycle";
 	await startChange(workspace, { workId: id, title: "Lifecycle", targetBranch: "main", actor: "codex" }, at(1));
 	for (const [index, stage] of (["plan", "review", "apply", "verify"] as const).entries()) {
@@ -223,7 +224,7 @@ test("rollback tags the complete Change, deletes its branch, and preserves the t
 
 test("commit finalization fast-forwards the unchanged target and preserves a terminal tag", async () => {
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-commit-"));
-	run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "README.md"]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
+	writeFileSync(join(workspace, ".gitignore"), ".codepatrol/runtime/\ndocs/codepatrol/improvement-reports/\n"); run(workspace, ["init", "-b", "main"]); writeFileSync(join(workspace, "README.md"), "baseline\n"); run(workspace, ["add", "."]); run(workspace, ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "baseline"]);
 	const id = "2026-07-22-commit"; await startChange(workspace, { workId: id, title: "Commit lifecycle", targetBranch: "main", actor: "codex" }, at(1));
 	for (const [index, stage] of (["plan", "review", "apply", "verify"] as const).entries()) {
 		if (stage !== "plan") await transitionChange(workspace, id, { type: "begin", actor: "codex", stage, nextAction: `complete ${stage}` }, at(2 + index * 3));

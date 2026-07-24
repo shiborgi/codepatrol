@@ -13,3 +13,4 @@ dist/
 .codepatrol/main-consolidation-*.json
 .codepatrol/scan-overview.json
 .codepatrol/version.json
+docs/codepatrol/improvement-reports/

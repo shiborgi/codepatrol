@@ -55,7 +55,16 @@ export class NodeGitAdapter implements GitAdapter {
 		const root = await this.run(["rev-parse", "--show-toplevel"], signal, true);
 		if (!root || realpathSync(root) !== realpathSync(this.workspace)) throw new CodepatrolError("INVALID_WORKSPACE", "Git repository root must equal the Codepatrol workspace.", 3);
 	}
-	status(signal?: AbortSignal): Promise<string> { return this.run(["status", "--porcelain=v1", "--untracked-files=all"], signal); }
+	async status(signal?: AbortSignal): Promise<string> {
+		try {
+			const result = await execute("git", ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: this.workspace, encoding: "utf8", signal, maxBuffer: 8 * 1024 * 1024 });
+			return result.stdout;
+		} catch (cause) {
+			if (signal?.aborted) throw new CodepatrolError("CANCELLED", "Operation cancelled.", 130, true);
+			if ((cause as { code?: string }).code === "ENOENT") return "";
+			throw new CodepatrolError("OPERATION_FAILED", (cause as Error).message, 5, true);
+		}
+	}
 	currentBranch(signal?: AbortSignal): Promise<string> { return this.run(["symbolic-ref", "--quiet", "--short", "HEAD"], signal); }
 	head(ref = "HEAD", signal?: AbortSignal): Promise<string> { return this.run(["rev-parse", "--verify", `${ref}^{commit}`], signal); }
 	tree(ref = "HEAD", signal?: AbortSignal): Promise<string> { return this.run(["rev-parse", "--verify", `${ref}^{tree}`], signal); }

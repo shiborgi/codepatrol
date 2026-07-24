@@ -26,6 +26,8 @@ module/seam design, external evidence, simplification and executable planning.
 
 If resuming after a return from Review or Verify, explicitly read all markdown files in the returning stage's directory (e.g., `review/` or `verify/`) to aggregate and address all findings from all parallel personas.
 
+For a brownfield Change, also read the most recent `docs/codepatrol/improvement-reports/*.md` (sorted by file mtime, take the most recent) and surface its top three `Recommendations` bullets as `Improvement signals:` lines in the new spec's Intent section. If no mirror exists yet, record `Improvement signals: none — first Change on this workspace.` and continue.
+
 ## Produce the Plan artifacts
 
 Write only:
