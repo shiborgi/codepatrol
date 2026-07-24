@@ -138,7 +138,9 @@ export async function executeCommand(args: ParsedArgs, workspace: string, signal
 		}
 		case "change.close": {
 			const data = await closeChange(workspace, requireValue(args.id, "id"), readJsonInput(workspace, requireValue(args.input, "input"), "Close") as CloseInput, { signal });
-			return { data, text: `${data.outcome} ${data.terminalCommit} (${data.tag})` };
+			const baseText = `${data.outcome} ${data.terminalCommit} (${data.tag})`;
+			const text = data.pushSuggestion ? `${baseText}\nConsider: ${data.pushSuggestion}` : baseText;
+			return { data, text };
 		}
 		default:
 			throw new CodepatrolError("INVALID_ARGUMENT", `Unknown command: ${args.command || "(none)"}`, 2);

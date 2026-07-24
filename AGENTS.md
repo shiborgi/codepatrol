@@ -91,7 +91,18 @@ Verify binds the exact candidate commit/tree.
 Close requires new explicit authority, Verify `commit`, unchanged target and
 a clean tree. Commit is fast-forward-only. Rollback proves the target tree
 unchanged. Create the recoverable terminal tag before deleting the feature
-branch. Remote operations remain out of scope.
+branch.
+
+### Push at close
+
+A successful commit (`change close --outcome commit`) may opt in to a
+single `git push origin <target>` by passing `push: true` in the close
+input. The push runs after the terminal tag is created and before the
+feature branch is deleted. Push failure is captured in the close result's
+`pushError` field and does not abort Close; the local tag remains the
+source of truth. `git push --force` is never used. The push suggestion
+`Consider: git push origin <target>` is printed on the text output only
+when the push was not auto-performed.
 
 ## Completion
 

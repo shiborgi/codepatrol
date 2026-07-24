@@ -26,6 +26,7 @@ export interface GitAdapter {
 	files(ref: string, prefix: string, signal?: AbortSignal): Promise<string[]>;
 	changedPaths(from: string, to: string, signal?: AbortSignal): Promise<string[]>;
 	isAncestor(ancestor: string, descendant: string, signal?: AbortSignal): Promise<boolean>;
+	push(remote: string, branch: string, signal?: AbortSignal): Promise<string>;
 }
 
 export class NodeGitAdapter implements GitAdapter {
@@ -101,5 +102,12 @@ export class NodeGitAdapter implements GitAdapter {
 	}
 	async isAncestor(ancestor: string, descendant: string, signal?: AbortSignal): Promise<boolean> {
 		const expected = await this.head(ancestor, signal); return await this.run(["merge-base", ancestor, descendant], signal, true) === expected;
+	}
+	async push(remote: string, branch: string, signal?: AbortSignal): Promise<string> {
+		try { return await this.run(["push", remote, branch], signal); }
+		catch (cause) {
+			const error = cause as Error & { stderr?: string };
+			throw new CodepatrolError("PUSH_FAILED", error.stderr?.trim() || error.message, 5, true);
+		}
 	}
 }

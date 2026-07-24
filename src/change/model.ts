@@ -64,7 +64,7 @@ export function foldChange(record: ChangeRecordV2): ChangeView {
 		const at = Date.parse(event.at); if (at < previousAt) invalid("Events must be chronologically ordered."); previousAt = at;
 		if (!event.actor?.trim() || !STAGES.includes(event.stage) || !Number.isSafeInteger(event.attempt) || event.attempt < 1) invalid(`Event ${event.id} has invalid actor, stage or attempt.`);
 		const common = ["id", "type", "at", "actor", "stage", "attempt"];
-		const specific: Record<string, string[]> = { "change-started": ["next_action"], "stage-began": ["next_action"], "run-recorded": ["run"], "stage-blocked": ["reason", "next_action"], "stage-resumed": ["next_action"], "stage-returned": ["to_stage", "reason", "next_action"], "stage-checkpointed": ["result", "checkpoint", "tree", "artifacts", "changes", "next_action"], "change-closed": ["outcome", "commit", "tag", "receipt"] };
+		const specific: Record<string, string[]> = { "change-started": ["next_action"], "stage-began": ["next_action"], "run-recorded": ["run"], "stage-blocked": ["reason", "next_action"], "stage-resumed": ["next_action"], "stage-returned": ["to_stage", "reason", "next_action", "persona", "reasons"], "stage-checkpointed": ["result", "checkpoint", "tree", "artifacts", "changes", "next_action", "persona"], "change-closed": ["outcome", "commit", "tag", "receipt"] };
 		if (!specific[event.type]) invalid(`Unknown event type ${event.type}.`); exactKeys(event, [...common, ...specific[event.type]], `Event ${event.id}`);
 		switch (event.type) {
 			case "change-started":
@@ -85,10 +85,15 @@ export function foldChange(record: ChangeRecordV2): ChangeView {
 			case "stage-resumed":
 				if (state !== "blocked" || event.stage !== stage || event.attempt !== attempt || !event.next_action?.trim()) invalid("Invalid resume event.");
 				current().status = "active"; state = "active"; nextAction = event.next_action; break;
-				case "stage-returned": {
-					if ((state !== "active" && state !== "blocked") || event.stage !== stage || event.attempt !== attempt || !event.reason?.trim() || !event.next_action?.trim()) invalid("Invalid return event.");
-					if (event.to_stage !== "plan" && !(event.stage === "verify" && event.to_stage === "apply")) invalid("Return target is not allowed.");
-					if (!current().runs.some((run) => run.finished_at)) invalid("A return requires at least one finished run.");
+			case "stage-returned": {
+				if ((state !== "active" && state !== "blocked") || event.stage !== stage || event.attempt !== attempt || !event.reason?.trim() || !event.next_action?.trim()) invalid("Invalid return event.");
+				if (event.to_stage !== "plan" && !(event.stage === "verify" && event.to_stage === "apply")) invalid("Return target is not allowed.");
+				if (!current().runs.some((run) => run.finished_at)) invalid("A return requires at least one finished run.");
+				const persona = (event as { persona?: string }).persona;
+				if (persona) {
+					current().status = "active";
+					break;
+				}
 				current().status = "returned"; current().result = "returned";
 				for (const affected of STAGES.slice(STAGES.indexOf(event.to_stage))) for (const prior of attempts[affected]) if (prior.status === "completed") prior.status = "invalidated";
 				stage = event.to_stage; attempt = (attempts[stage].at(-1)?.attempt ?? 0) + 1;
@@ -104,6 +109,11 @@ export function foldChange(record: ChangeRecordV2): ChangeView {
 				if (!current().runs.some((run) => run.finished_at)) invalid("A checkpoint requires at least one finished run record.");
 				const expected: Record<Exclude<Stage, "close">, string> = { plan: "ready", review: "approve", apply: "implemented", verify: "commit" };
 				if (stage === "close" || event.result !== expected[stage]) invalid(`Unexpected ${stage} result ${event.result}.`);
+				const ckptPersona = (event as { persona?: string }).persona;
+				if (ckptPersona) {
+					current().status = "active";
+					break;
+				}
 				Object.assign(current(), { status: "completed", result: event.result, checkpoint: event.checkpoint, tree: event.tree, artifacts: event.artifacts, ...(event.changes ? { changes: event.changes } : {}) }); checkpoint = event.checkpoint;
 				stage = next(stage)!; attempt = (attempts[stage].at(-1)?.attempt ?? 0) + 1; attempts[stage].push({ attempt, status: "ready", runs: [], artifacts: [] }); state = "ready"; nextAction = event.next_action; break;
 			}

@@ -43,8 +43,8 @@ function assertStartInput(input: StartChangeInput): void {
 function assertTransitionIntent(intent: TransitionIntent): void {
 	const value = requireObject(intent, "Transition"); const type = textInput(value.type, "type");
 	const fields: Record<string, string[]> = {
-		begin: ["type", "actor", "stage", "nextAction"], usage: ["type", "actor", "stage", "run"], checkpoint: ["type", "actor", "stage", "result", "artifacts", "changes", "nextAction"],
-		return: ["type", "actor", "stage", "toStage", "reason", "nextAction"], block: ["type", "actor", "stage", "reason", "nextAction"], resume: ["type", "actor", "stage", "nextAction"],
+		begin: ["type", "actor", "stage", "nextAction"], usage: ["type", "actor", "stage", "run"], checkpoint: ["type", "actor", "stage", "result", "artifacts", "changes", "nextAction", "persona"],
+		return: ["type", "actor", "stage", "toStage", "reason", "nextAction", "persona", "reasons"], block: ["type", "actor", "stage", "reason", "nextAction"], resume: ["type", "actor", "stage", "nextAction"],
 	};
 	if (!fields[type]) throw new CodepatrolError("INVALID_ARGUMENT", `Unknown transition type: ${type}.`, 2);
 	exactInput(value, fields[type], "Transition"); textInput(value.actor, "actor");
@@ -68,7 +68,7 @@ function assertTransitionIntent(intent: TransitionIntent): void {
 	}
 }
 function assertCloseInput(input: CloseInput): void {
-	const value = requireObject(input, "Close"); exactInput(value, ["outcome", "actor", "authority"], "Close");
+	const value = requireObject(input, "Close"); exactInput(value, ["outcome", "actor", "authority", "push"], "Close");
 	if (value.outcome !== "commit" && value.outcome !== "rollback") throw new CodepatrolError("INVALID_ARGUMENT", "Close outcome must be commit or rollback.", 2);
 	textInput(value.actor, "actor"); textInput(value.authority, "authority");
 }
@@ -206,7 +206,18 @@ async function transitionChangeLocked(workspace: string, workId: string, intent:
 		}
 		throw new CodepatrolError("CHANGE_CONFLICT", `Transition recovery found unrelated worktree paths: ${statusPaths.join(", ")}.`, 4);
 	}
-	if (intent.stage !== view.stage) throw new CodepatrolError("CHANGE_CONFLICT", `Expected ${view.stage}, received ${intent.stage}.`, 4);
+	const persona = (intent as { persona?: string }).persona;
+	if (persona && (intent.stage === "review" || intent.stage === "verify")) {
+		if (intent.stage !== view.stage) {
+			const personaSubEvents = record.events.filter((event) => (event.type === "stage-checkpointed" || event.type === "stage-returned") && (event as { persona?: string }).persona && event.stage === intent.stage && event.attempt === view.attempt);
+			if (personaSubEvents.length === 0) {
+				const attempt = view.attempts[intent.stage].at(-1);
+				if (!attempt || attempt.status !== "active") throw new CodepatrolError("CHANGE_CONFLICT", `Cannot ${intent.type} ${intent.stage} attempt ${attempt?.attempt ?? 0}: attempt is ${attempt?.status ?? "missing"}.`, 4);
+			}
+		}
+	} else if (intent.stage !== view.stage) {
+		throw new CodepatrolError("CHANGE_CONFLICT", `Expected ${view.stage}, received ${intent.stage}.`, 4);
+	}
 	let event: ChangeEvent;
 	if (intent.type === "checkpoint") {
 		const required: Record<string, string[]> = {
@@ -215,27 +226,31 @@ async function transitionChangeLocked(workspace: string, workId: string, intent:
 			apply: [`.codepatrol/changes/${workId}/apply/journal.md`],
 			verify: [`.codepatrol/changes/${workId}/verify/report.md`],
 		};
-		const declared = new Set(intent.artifacts.map((item) => item.path)); const missing = required[intent.stage].filter((path) => !intent.artifacts.some((item) => item.path === path && item.intent !== "delete"));
+		const personaCheckpoint = persona && (intent.stage === "review" || intent.stage === "verify");
+		const declared = new Set(intent.artifacts.map((item) => item.path)); const missing = personaCheckpoint ? [] : required[intent.stage].filter((path) => !intent.artifacts.some((item) => item.path === path && item.intent !== "delete"));
 		if (missing.length) throw new CodepatrolError("CHANGE_INVALID", `Checkpoint is missing required ${intent.stage} artifacts: ${missing.join(", ")}.`, 4);
-		await validateWorkspaceArtifacts(git, workspace, record, intent.stage, intent.artifacts, undefined, options.signal);
+		if (!personaCheckpoint) await validateWorkspaceArtifacts(git, workspace, record, intent.stage, intent.artifacts, undefined, options.signal);
 		const paths = [...intent.artifacts.filter((item) => item.intent !== "delete").map((item) => item.path), ...(intent.changes ?? [])]; paths.forEach(ensurePath);
 		const allowed = new Set([...paths, ...intent.artifacts.filter((item) => item.intent === "delete").map((item) => item.path), relativeRecord(workId)]);
 		const prior = baselineRef(record); const dirty = parseStatusPaths(await git.status(options.signal)); const committed = await git.changedPaths(prior, "HEAD", options.signal); const candidate = [...new Set([...committed, ...dirty])];
 		const unexpected = candidate.filter((path) => !allowed.has(path));
-		if (unexpected.length) throw new CodepatrolError("CHANGE_CONFLICT", `Checkpoint has undeclared worktree paths: ${unexpected.join(", ")}.`, 4);
-		const actualProduction = candidate.filter((path) => !path.startsWith(`.codepatrol/changes/${workId}/`)).sort(); const declaredProduction = [...(intent.changes ?? [])].sort();
-		if (JSON.stringify(actualProduction) !== JSON.stringify(declaredProduction)) throw new CodepatrolError("CHANGE_CONFLICT", "Apply changes do not match the complete candidate production delta.", 4);
+		if (unexpected.length && !personaCheckpoint) throw new CodepatrolError("CHANGE_CONFLICT", `Checkpoint has undeclared worktree paths: ${unexpected.join(", ")}.`, 4);
+		const actualProduction = personaCheckpoint ? paths.slice().sort() : candidate.filter((path) => !path.startsWith(`.codepatrol/changes/${workId}/`)).sort(); const declaredProduction = [...(intent.changes ?? [])].sort();
+		if (!personaCheckpoint && JSON.stringify(actualProduction) !== JSON.stringify(declaredProduction)) throw new CodepatrolError("CHANGE_CONFLICT", "Apply changes do not match the complete candidate production delta.", 4);
 		await git.add([...new Set([...paths, ...intent.artifacts.map((item) => item.path)])], options.signal);
-		const checkpoint = await git.commit(`chore(codepatrol): ${intent.stage} content ${workId}`, true, options.signal); const tree = await git.tree(checkpoint, options.signal);
+		const checkpoint = await git.commit(personaCheckpoint ? `chore(codepatrol): ${intent.stage} ${persona} persona content ${workId}` : `chore(codepatrol): ${intent.stage} content ${workId}`, true, options.signal); const tree = await git.tree(checkpoint, options.signal);
 		const finalDelta = await git.changedPaths(prior, checkpoint, options.signal); const unexpectedFinal = finalDelta.filter((path) => !allowed.has(path)); const finalProduction = finalDelta.filter((path) => !path.startsWith(`.codepatrol/changes/${workId}/`)).sort();
 		if (unexpectedFinal.length || JSON.stringify(finalProduction) !== JSON.stringify(declaredProduction)) throw new CodepatrolError("CHANGE_CONFLICT", "Checkpoint commit does not match its declared artifact and production paths.", 4);
-		event = { ...eventBase(view, intent.actor, options), type: "stage-checkpointed", stage: intent.stage, result: intent.result, checkpoint, tree, artifacts: intent.artifacts, ...(intent.stage === "apply" ? { changes: intent.changes ?? [] } : {}), next_action: intent.nextAction };
+		event = { ...eventBase(view, intent.actor, options), type: "stage-checkpointed", stage: intent.stage, result: intent.result, checkpoint, tree, artifacts: intent.artifacts, ...(intent.stage === "apply" ? { changes: intent.changes ?? [] } : {}), next_action: intent.nextAction, ...(persona ? { persona } : {}) };
 	} else if (intent.type === "begin") event = { ...eventBase(view, intent.actor, options), type: "stage-began", next_action: intent.nextAction };
 	else if (intent.type === "usage") {
 		const target = view.attempts[intent.stage].at(-1); if (!target || target.status === "invalidated") throw new CodepatrolError("CHANGE_CONFLICT", `No accepted ${intent.stage} attempt can receive usage.`, 4);
 		event = { id: randomUUID(), at: now(options).toISOString(), actor: intent.actor, stage: intent.stage, attempt: target.attempt, type: "run-recorded", run: intent.run };
 	}
-	else if (intent.type === "return") event = { ...eventBase(view, intent.actor, options), type: "stage-returned", to_stage: intent.toStage, reason: intent.reason, next_action: intent.nextAction };
+	else if (intent.type === "return") {
+		const reasonList = persona ? [intent.reason] : record.events.filter((ev) => (ev.type === "stage-checkpointed" || ev.type === "stage-returned") && (ev as { persona?: string }).persona && ev.stage === intent.stage && ev.attempt === view.attempt && (ev.type === "stage-returned" || (ev.type === "stage-checkpointed" && (ev as { result?: string }).result !== "approve" && (ev as { result?: string }).result !== "commit" && (ev as { result?: string }).result !== "implemented" && (ev as { result?: string }).result !== "ready"))).map((ev) => (ev as { reason?: string }).reason ?? "").filter((r) => r);
+		event = { ...eventBase(view, intent.actor, options), type: "stage-returned", to_stage: intent.toStage, reason: intent.reason, next_action: intent.nextAction, ...(persona ? { persona } : {}), ...(reasonList.length > 0 ? { reasons: reasonList } : {}) };
+	}
 	else if (intent.type === "block") event = { ...eventBase(view, intent.actor, options), type: "stage-blocked", reason: intent.reason, next_action: intent.nextAction };
 	else event = { ...eventBase(view, intent.actor, options), type: "stage-resumed", next_action: intent.nextAction };
 	record = await appendChangeEvent(workspace, workId, event, options); try { trace.append(workspace, workId, { kind: "event", at: now(options).toISOString(), stage: event.stage, attempt: "attempt" in event ? event.attempt : 0, type: event.type }); } catch { /* trace is fire-and-forget */ } await commitMetadata(git, workId, `chore(codepatrol): ${intent.type} ${intent.stage} ${workId}`, options.signal); return foldChange(record);
@@ -351,7 +366,13 @@ async function closeChangeLocked(workspace: string, workId: string, input: Close
 	view = foldChange({ ...record, events: [...record.events, event] });
 	try { trace.close(workspace, workId); } catch { /* trace cleanup is best-effort */ }
 	await completeFinalization(git, view, input.outcome, tag, terminalCommit, options.signal);
-	return { outcome, workId, targetBranch: view.identity.target_branch, terminalCommit, tag };
+	let pushError: { code: string; message: string } | undefined;
+	if (input.push && outcome === "committed") {
+		try { await git.push("origin", view.identity.target_branch, options.signal); }
+		catch (cause) { const error = cause as CodepatrolError; pushError = { code: error.code, message: error.message }; }
+	}
+	const pushSuggestion = outcome === "committed" && !input.push ? `git push origin ${view.identity.target_branch}` : undefined;
+	return { outcome, workId, targetBranch: view.identity.target_branch, terminalCommit, tag, ...(pushError ? { pushError } : {}), ...(pushSuggestion ? { pushSuggestion } : {}) };
 }
 
 async function completeFinalization(git: GitAdapter, view: ChangeView, outcome: CloseInput["outcome"], tag: string, terminalCommit: string, signal?: AbortSignal): Promise<void> {

@@ -13,8 +13,8 @@ interface EventBase { id: string; type: string; at: string; actor: string; stage
 export interface ChangeStartedEvent extends EventBase { type: "change-started"; stage: "plan"; attempt: 1; next_action: string }
 export interface StageBeganEvent extends EventBase { type: "stage-began"; next_action: string }
 export interface RunRecordedEvent extends EventBase { type: "run-recorded"; run: RunUsage }
-export interface StageCheckpointedEvent extends EventBase { type: "stage-checkpointed"; result: "ready" | "approve" | "implemented" | "commit"; checkpoint: string; tree?: string; artifacts: ArtifactBinding[]; changes?: string[]; next_action: string }
-export interface StageReturnedEvent extends EventBase { type: "stage-returned"; to_stage: "plan" | "apply"; reason: string; next_action: string }
+export interface StageCheckpointedEvent extends EventBase { type: "stage-checkpointed"; result: "ready" | "approve" | "implemented" | "commit"; checkpoint: string; tree?: string; artifacts: ArtifactBinding[]; changes?: string[]; next_action: string; persona?: string }
+export interface StageReturnedEvent extends EventBase { type: "stage-returned"; to_stage: "plan" | "apply"; reason: string; next_action: string; persona?: string; reasons?: string[] }
 export interface StageBlockedEvent extends EventBase { type: "stage-blocked"; reason: string; next_action: string }
 export interface StageResumedEvent extends EventBase { type: "stage-resumed"; next_action: string }
 export interface ChangeClosedEvent extends EventBase { type: "change-closed"; stage: "close"; outcome: TerminalOutcome; commit: string; tag: string; receipt: string }
@@ -42,12 +42,12 @@ export interface ChangeView {
 export type TransitionIntent =
 	| { type: "begin"; actor: string; stage: Stage; nextAction: string }
 	| { type: "usage"; actor: string; stage: Stage; run: RunUsage }
-	| { type: "checkpoint"; actor: string; stage: Exclude<Stage, "close">; result: StageCheckpointedEvent["result"]; artifacts: ArtifactBinding[]; changes?: string[]; nextAction: string }
-	| { type: "return"; actor: string; stage: "review" | "apply" | "verify"; toStage: "plan" | "apply"; reason: string; nextAction: string }
+	| { type: "checkpoint"; actor: string; stage: Exclude<Stage, "close">; result: StageCheckpointedEvent["result"]; artifacts: ArtifactBinding[]; changes?: string[]; nextAction: string; persona?: string }
+	| { type: "return"; actor: string; stage: "review" | "apply" | "verify"; toStage: "plan" | "apply"; reason: string; nextAction: string; persona?: string; reasons?: string[] }
 	| { type: "block"; actor: string; stage: Stage; reason: string; nextAction: string }
 	| { type: "resume"; actor: string; stage: Stage; nextAction: string };
 export interface StartChangeInput { workId: string; title: string; targetBranch: string; actor: string; nextAction?: string }
 export interface ChangeQuery { workId?: string; all?: boolean }
-export interface CloseInput { outcome: "commit" | "rollback"; actor: string; authority: string }
-export interface CloseResult { outcome: TerminalOutcome; workId: string; targetBranch: string; terminalCommit: string; tag: string }
+export interface CloseInput { outcome: "commit" | "rollback"; actor: string; authority: string; push?: boolean }
+export interface CloseResult { outcome: TerminalOutcome; workId: string; targetBranch: string; terminalCommit: string; tag: string; pushError?: { code: string; message: string }; pushSuggestion?: string }
 export interface OperationOptions { signal?: AbortSignal; now?: Date; git?: import("./git.js").GitAdapter }
