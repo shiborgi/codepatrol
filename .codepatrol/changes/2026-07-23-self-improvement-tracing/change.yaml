@@ -53,3 +53,18 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-review 2026-07-23-self-improvement-tracing on codepatrol/2026-07-23-self-improvement-tracing
+  - id: 7d96ca7b-74fd-4e2f-9610-b658b9155c50
+    at: 2026-07-24T01:37:22.348Z
+    actor: opencode
+    stage: review
+    attempt: 1
+    type: run-recorded
+    run:
+      id: review-20260724T013644Z
+      started_at: 2026-07-24T01:24:10.000Z
+      finished_at: 2026-07-24T01:36:44.000Z
+      elapsed_ms: 754000
+      characters:
+        status: unavailable
+        reason: Review produced no measurable provider tokens; metric is intentionally not estimated.
+        harness: opencode
