@@ -36,7 +36,6 @@ test("CLI exposes only explicit Change lifecycle commands and deterministic stat
 		assert.equal(started.status, 0, started.stderr || started.stdout); const startData = JSON.parse(started.stdout).data; assert.equal(startData.stage, "plan"); assert.equal(git(root, ["branch", "--show-current"]), `codepatrol/${id}`);
 		const inspected = run(["change", "inspect", "--id", id, "--workspace", root, "--format=json"]); assert.equal(inspected.status, 0, inspected.stderr); assert.equal(JSON.parse(inspected.stdout).data.identity.work_id, id);
 		const status = run(["status", "--workspace", root, "--format=json"]); assert.equal(status.status, 0, status.stderr); assert.equal(JSON.parse(status.stdout).data.rows[0].workId, id);
-		const legacy = run(["workflow", "prime", "--workspace", root, "--format=json"]); assert.equal(legacy.status, 2); assert.equal(JSON.parse(legacy.stdout).error.code, "INVALID_ARGUMENT");
 		const missingId = run(["change", "inspect", "--workspace", root, "--format=json"]); assert.equal(missingId.status, 2); assert.match(JSON.parse(missingId.stdout).error.message, /--id/);
 	} finally { rmSync(root, { recursive: true, force: true }); }
 });

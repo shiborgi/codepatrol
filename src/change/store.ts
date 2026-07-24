@@ -13,9 +13,17 @@ export function changeRecordPath(workspace: string, workId: string): string { re
 export function readChangeRecord(workspace: string, workId: string): ChangeRecordV2 {
 	const path = changeRecordPath(workspace, workId);
 	if (!existsSync(path)) throw new CodepatrolError("CHANGE_NOT_FOUND", `Change not found: ${workId}.`, 4);
-	let record: ChangeRecordV2;
-	try { record = parse(readFileSync(path, "utf8")) as ChangeRecordV2; } catch { throw new CodepatrolError("CHANGE_INVALID", `Cannot parse ${relative(workspace, path)}.`, 4); }
-	assertChangeRecord(record); foldChange(record); return record;
+	let record: any;
+	try { record = parse(readFileSync(path, "utf8")); } catch { throw new CodepatrolError("CHANGE_INVALID", `Cannot parse ${relative(workspace, path)}.`, 4); }
+	if (record && Array.isArray(record.events)) {
+		for (const event of record.events) {
+			if (event.run && "tokens" in event.run) {
+				event.run.characters = event.run.tokens;
+				delete event.run.tokens;
+			}
+		}
+	}
+	assertChangeRecord(record as ChangeRecordV2); foldChange(record as ChangeRecordV2); return record as ChangeRecordV2;
 }
 export function writeChangeRecord(workspace: string, record: ChangeRecordV2): void {
 	assertChangeRecord(record); foldChange(record); atomicWriteFile(changeRecordPath(workspace, record.identity.work_id), stringify(record, { lineWidth: 0 }));

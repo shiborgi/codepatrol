@@ -238,7 +238,18 @@ async function transitionChangeLocked(workspace: string, workId: string, intent:
 	record = await appendChangeEvent(workspace, workId, event, options); await commitMetadata(git, workId, `chore(codepatrol): ${intent.type} ${intent.stage} ${workId}`, options.signal); return foldChange(record);
 }
 
-function recordFromYaml(raw: string): ChangeRecordV2 { return parse(raw) as ChangeRecordV2; }
+function recordFromYaml(raw: string): ChangeRecordV2 {
+	const parsed = parse(raw) as any;
+	if (parsed && Array.isArray(parsed.events)) {
+		for (const event of parsed.events) {
+			if (event.run && "tokens" in event.run) {
+				event.run.characters = event.run.tokens;
+				delete event.run.tokens;
+			}
+		}
+	}
+	return parsed as ChangeRecordV2;
+}
 export async function inspectChanges(workspace: string, query: ChangeQuery = {}, options: OperationOptions = {}): Promise<ChangeView[]> {
 	const git = gitFor(workspace, options); await git.assertTrusted(options.signal); const records = new Map<string, { record: ChangeRecordV2; source: string }>(); const terminalHeads = new Map<string, string>();
 	const addRecord = (id: string, record: ChangeRecordV2, source: string): void => {

@@ -2,11 +2,11 @@ export const STAGES = ["plan", "review", "apply", "verify", "close"] as const;
 export type Stage = typeof STAGES[number];
 export type TerminalOutcome = "committed" | "rolled-back";
 
-export type TokenUsage =
+export type CharacterUsage =
 	| { status: "measured"; source: "provider" | "harness"; input: number; output: number; cacheRead?: number; cacheWrite?: number; reasoning?: number; total: number; model?: string; harness?: string }
 	| { status: "unavailable"; reason: string; model?: string; harness?: string };
 
-export interface RunUsage { id: string; started_at: string; finished_at?: string; elapsed_ms?: number; tokens: TokenUsage }
+export interface RunUsage { id: string; started_at: string; finished_at?: string; elapsed_ms?: number; characters: CharacterUsage }
 export interface ArtifactBinding { path: string; sha256: string; intent?: "create" | "modify" | "delete" }
 
 interface EventBase { id: string; type: string; at: string; actor: string; stage: Stage; attempt: number }
@@ -23,7 +23,7 @@ export type ChangeEvent = ChangeStartedEvent | StageBeganEvent | RunRecordedEven
 export interface ChangeIdentity { work_id: string; title: string; created_at: string; branch: string; target_branch: string; base_commit: string }
 export interface ChangeRecordV2 { schema_version: 2; identity: ChangeIdentity; events: ChangeEvent[] }
 export interface StageAttempt { attempt: number; status: "ready" | "active" | "blocked" | "completed" | "returned" | "invalidated"; result?: string; runs: RunUsage[]; checkpoint?: string; tree?: string; artifacts: ArtifactBinding[]; changes?: string[] }
-export interface UsageSummary { activeMs: number; tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; total: number; measuredRuns: number; totalRuns: number; coverage: string; complete: boolean } }
+export interface UsageSummary { activeMs: number; characters: { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; total: number; measuredRuns: number; totalRuns: number; coverage: string; complete: boolean } }
 export interface ChangeView {
 	identity: ChangeIdentity;
 	stage: Stage;

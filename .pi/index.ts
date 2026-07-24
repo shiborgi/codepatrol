@@ -25,10 +25,13 @@ const STAGE_BY_COMMAND: Record<string, Stage | undefined> = {
 export function sumPiUsage(messages: unknown[]): { input: number; output: number; cacheRead: number; cacheWrite: number; reasoning: number; total: number; model?: string } {
 	const total = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 0, model: undefined as string | undefined };
 	for (const value of messages) {
-		const message = value as { role?: string; model?: string; usage?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number; reasoning?: number; totalTokens?: number } };
-		if (message.role !== "assistant" || !message.usage) continue;
-		total.input += message.usage.input ?? 0; total.output += message.usage.output ?? 0; total.cacheRead += message.usage.cacheRead ?? 0; total.cacheWrite += message.usage.cacheWrite ?? 0; total.reasoning += message.usage.reasoning ?? 0; total.total += message.usage.totalTokens ?? 0; total.model = message.model ?? total.model;
+		const message = value as { role?: string; model?: string; content?: string };
+		if (message.model) total.model = message.model;
+		const length = String(message.content || "").length;
+		if (message.role === "user" || message.role === "system") total.input += length;
+		else if (message.role === "assistant") total.output += length;
 	}
+	total.total = total.input + total.output;
 	return total;
 }
 
@@ -87,11 +90,11 @@ export function installCodepatrolPiExtension(pi: ExtensionAPI, dependencies: PiE
 			if (active.cwd !== ctx.cwd) throw new CodepatrolError("CHANGE_CONFLICT", `Active Codepatrol run belongs to ${active.cwd}, not ${ctx.cwd}.`, 4);
 			if (!/^\d{4}-\d{2}-\d{2}-[a-z0-9][a-z0-9-]*$/.test(params.workId) || (active.workId && active.workId !== params.workId)) throw new CodepatrolError("CHANGE_CONFLICT", "Recorder work id does not match the active Codepatrol command.", 4);
 			if (!active.recording) {
-				const finishedAt = clock(); const tokens = active.usage.total > 0
+				const finishedAt = clock(); const characters = active.usage.total > 0
 					? { status: "measured" as const, source: "provider" as const, input: active.usage.input, output: active.usage.output, cacheRead: active.usage.cacheRead, cacheWrite: active.usage.cacheWrite, reasoning: active.usage.reasoning, total: active.usage.total, harness: "pi", ...(active.usage.model ? { model: active.usage.model } : {}) }
 					: { status: "unavailable" as const, reason: "Pi exposed no authoritative provider usage for this run.", harness: "pi" };
-				const run: RunUsage = { id: active.runId, started_at: new Date(active.startedAt).toISOString(), finished_at: new Date(finishedAt).toISOString(), elapsed_ms: Math.max(0, finishedAt - active.startedAt), tokens };
-				const intent: TransitionIntent = { type: "usage", actor: "pi", stage: active.stage, run };
+				const run: RunUsage = { id: active.runId, started_at: new Date(active.startedAt).toISOString(), finished_at: new Date(finishedAt).toISOString(), elapsed_ms: Math.max(0, finishedAt - active.startedAt), characters };
+				const intent: TransitionIntent = { type: "usage", actor: `pi (${active.usage.model || "unknown"})`, stage: active.stage, run };
 				active.recording = transition(active.cwd, params.workId, intent, { signal }).then((view) => ({ run, view }));
 			}
 			active.result = await active.recording;

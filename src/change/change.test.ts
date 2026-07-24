@@ -42,10 +42,10 @@ test("terminal fixtures traverse every stage and expose the final outcome", () =
 
 test("usage totals measured runs exactly once and exposes coverage", () => {
 	const summary = aggregateUsage([
-		{ id: "a", started_at: "2026-07-22T10:00:00.000Z", finished_at: "2026-07-22T10:00:01.000Z", elapsed_ms: 1000, tokens: { status: "measured", source: "provider", input: 4, output: 6, total: 10 } },
-		{ id: "b", started_at: "2026-07-22T10:00:01.000Z", finished_at: "2026-07-22T10:00:03.000Z", elapsed_ms: 2000, tokens: { status: "unavailable", reason: "no hook" } },
+		{ id: "a", started_at: "2026-07-22T10:00:00.000Z", finished_at: "2026-07-22T10:00:01.000Z", elapsed_ms: 1000, characters: { status: "measured", source: "provider", input: 4, output: 6, total: 10 } },
+		{ id: "b", started_at: "2026-07-22T10:00:01.000Z", finished_at: "2026-07-22T10:00:03.000Z", elapsed_ms: 2000, characters: { status: "unavailable", reason: "no hook" } },
 	]);
-	assert.deepEqual({ tokens: summary.tokens.total, coverage: summary.tokens.coverage, elapsed: summary.activeMs }, { tokens: 10, coverage: "1/2", elapsed: 3000 });
+	assert.deepEqual({ characters: summary.characters.total, coverage: summary.characters.coverage, elapsed: summary.activeMs }, { characters: 10, coverage: "1/2", elapsed: 3000 });
 });
 
 test("invalid transition and terminal payloads fail before touching Git", async () => {
@@ -56,14 +56,14 @@ test("invalid transition and terminal payloads fail before touching Git", async 
 });
 
 test("usage timestamps and elapsed time must agree", () => {
-	assert.throws(() => aggregateUsage([{ id: "bad", started_at: "2026-07-22T10:00:02Z", finished_at: "2026-07-22T10:00:01Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "test" } }]), /timestamps and elapsed_ms/);
+	assert.throws(() => aggregateUsage([{ id: "bad", started_at: "2026-07-22T10:00:02Z", finished_at: "2026-07-22T10:00:01Z", elapsed_ms: 1000, characters: { status: "unavailable", reason: "test" } }]), /timestamps and elapsed_ms/);
 });
 
 test("measured usage requires complete finite counters", () => {
-	assert.throws(() => aggregateUsage([{ id: "missing", started_at: "2026-07-22T10:00:00Z", finished_at: "2026-07-22T10:00:01Z", elapsed_ms: 1000, tokens: { status: "measured", source: "provider" } as never }]), /tokens.input/);
+	assert.throws(() => aggregateUsage([{ id: "missing", started_at: "2026-07-22T10:00:00Z", finished_at: "2026-07-22T10:00:01Z", elapsed_ms: 1000, characters: { status: "measured", source: "provider" } as never }]), /characters.input/);
 	assert.throws(() => aggregateUsage([
-		{ id: "max", started_at: "2026-07-22T10:00:00Z", finished_at: "2026-07-22T10:00:01Z", elapsed_ms: 1000, tokens: { status: "measured", source: "provider", input: Number.MAX_SAFE_INTEGER, output: 0, total: Number.MAX_SAFE_INTEGER } },
-		{ id: "overflow", started_at: "2026-07-22T10:00:01Z", finished_at: "2026-07-22T10:00:02Z", elapsed_ms: 1000, tokens: { status: "measured", source: "provider", input: 1, output: 0, total: 1 } },
+		{ id: "max", started_at: "2026-07-22T10:00:00Z", finished_at: "2026-07-22T10:00:01Z", elapsed_ms: 1000, characters: { status: "measured", source: "provider", input: Number.MAX_SAFE_INTEGER, output: 0, total: Number.MAX_SAFE_INTEGER } },
+		{ id: "overflow", started_at: "2026-07-22T10:00:01Z", finished_at: "2026-07-22T10:00:02Z", elapsed_ms: 1000, characters: { status: "measured", source: "provider", input: 1, output: 0, total: 1 } },
 	]), /safe integer/);
 });
 
@@ -73,7 +73,7 @@ test("returns and run events are confined to the current active attempt", () => 
 	assert.throws(() => foldChange(withoutRun), /finished run/);
 
 	const terminal = fixture("committed-change.yaml");
-	terminal.events.push({ id: "late", type: "run-recorded", at: "2026-07-22T10:10:00Z", actor: "codex", stage: "plan", attempt: 1, run: { id: "late", started_at: "2026-07-22T10:09:59Z", finished_at: "2026-07-22T10:10:00Z", elapsed_ms: 1000, tokens: { status: "unavailable", reason: "late" } } });
+	terminal.events.push({ id: "late", type: "run-recorded", at: "2026-07-22T10:10:00Z", actor: "codex", stage: "plan", attempt: 1, run: { id: "late", started_at: "2026-07-22T10:09:59Z", finished_at: "2026-07-22T10:10:00Z", elapsed_ms: 1000, characters: { status: "unavailable", reason: "late" } } });
 	assert.throws(() => foldChange(terminal), /current active attempt/);
 });
 
@@ -110,10 +110,10 @@ test("Apply session rebuilds deterministic plan tasks and rejects a stale attemp
 	const workspace = mkdtempSync(join(tmpdir(), "codepatrol-apply-session-"));
 	const record = fixture("active-change.yaml");
 	record.events.push(
-		{ id: "plan-run", type: "run-recorded", at: "2026-07-22T10:01:00Z", actor: "codex", stage: "plan", attempt: 1, run: { id: "plan-run", started_at: "2026-07-22T10:00:00Z", finished_at: "2026-07-22T10:01:00Z", elapsed_ms: 60000, tokens: { status: "unavailable", reason: "test" } } },
+		{ id: "plan-run", type: "run-recorded", at: "2026-07-22T10:01:00Z", actor: "codex", stage: "plan", attempt: 1, run: { id: "plan-run", started_at: "2026-07-22T10:00:00Z", finished_at: "2026-07-22T10:01:00Z", elapsed_ms: 60000, characters: { status: "unavailable", reason: "test" } } },
 		{ id: "plan-done", type: "stage-checkpointed", at: "2026-07-22T10:01:01Z", actor: "codex", stage: "plan", attempt: 1, result: "ready", checkpoint: "a".repeat(40), artifacts: [], next_action: "review" },
 		{ id: "review-begin", type: "stage-began", at: "2026-07-22T10:01:02Z", actor: "reviewer", stage: "review", attempt: 1, next_action: "review" },
-		{ id: "review-run", type: "run-recorded", at: "2026-07-22T10:02:00Z", actor: "reviewer", stage: "review", attempt: 1, run: { id: "review-run", started_at: "2026-07-22T10:01:02Z", finished_at: "2026-07-22T10:02:00Z", elapsed_ms: 58000, tokens: { status: "unavailable", reason: "test" } } },
+		{ id: "review-run", type: "run-recorded", at: "2026-07-22T10:02:00Z", actor: "reviewer", stage: "review", attempt: 1, run: { id: "review-run", started_at: "2026-07-22T10:01:02Z", finished_at: "2026-07-22T10:02:00Z", elapsed_ms: 58000, characters: { status: "unavailable", reason: "test" } } },
 		{ id: "review-done", type: "stage-checkpointed", at: "2026-07-22T10:02:01Z", actor: "reviewer", stage: "review", attempt: 1, result: "approve", checkpoint: "b".repeat(40), artifacts: [], next_action: "apply" },
 	);
 	writeChangeRecord(workspace, record);

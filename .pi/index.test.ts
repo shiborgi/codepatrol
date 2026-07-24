@@ -19,8 +19,8 @@ test("Pi extension registers exactly the six canonical primary entry points", as
 	assert.doesNotMatch(messages[0], /spawn_agent|subagent\(/);
 });
 
-test("Pi usage capture sums provider dimensions without storing messages", () => {
-	assert.deepEqual(sumPiUsage([{ role: "assistant", model: "m", usage: { input: 3, output: 4, cacheRead: 2, cacheWrite: 1, reasoning: 1, totalTokens: 10 } }, { role: "user", content: "secret" }]), { input: 3, output: 4, cacheRead: 2, cacheWrite: 1, reasoning: 1, total: 10, model: "m" });
+test("Pi usage capture sums provider dimensions using character length", () => {
+	assert.deepEqual(sumPiUsage([{ role: "assistant", model: "m", content: "output" }, { role: "user", content: "secret" }]), { input: 6, output: 6, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 12, model: "m" });
 });
 
 test("kickoff includes the Pi sequential fallback", () => {
@@ -55,7 +55,8 @@ test("Pi records one measured Close run before terminal mutation and is idempote
 	const id = "2026-07-22-pi-close";
 	await harness.commands.get("codepatrol-close")!.handler(`${id} commit`, { cwd: "/repo" });
 	assert.match(harness.messages[0], /codepatrol_record_run/);
-	await harness.handlers.get("message_end")!({ message: { role: "assistant", model: "pi-model", usage: { input: 3, output: 4, cacheRead: 2, cacheWrite: 1, reasoning: 1, totalTokens: 10 } } });
+	await harness.handlers.get("message_end")!({ message: { role: "assistant", model: "pi-model", content: "four" } });
+	await harness.handlers.get("message_end")!({ message: { role: "user", content: "three" } });
 	clock = 2500;
 	const tool = harness.tools.get("codepatrol_record_run")!;
 	await tool.execute("tool-1", { workId: id }, undefined, undefined, { cwd: "/repo" });
@@ -66,14 +67,14 @@ test("Pi records one measured Close run before terminal mutation and is idempote
 		workId: id,
 		intent: {
 			type: "usage",
-			actor: "pi",
+			actor: "pi (pi-model)",
 			stage: "close",
 			run: {
 				id: "pi-close-1000",
 				started_at: "1970-01-01T00:00:01.000Z",
 				finished_at: "1970-01-01T00:00:02.500Z",
 				elapsed_ms: 1500,
-				tokens: { status: "measured", source: "provider", input: 3, output: 4, cacheRead: 2, cacheWrite: 1, reasoning: 1, total: 10, harness: "pi", model: "pi-model" },
+				characters: { status: "measured", source: "provider", input: 5, output: 4, cacheRead: 0, cacheWrite: 0, reasoning: 0, total: 9, harness: "pi", model: "pi-model" },
 			},
 		},
 	});
@@ -90,5 +91,5 @@ test("Pi records unavailable coverage exactly once when the provider exposes no 
 	await harness.commands.get("codepatrol-plan")!.handler(id, { cwd: "/repo" });
 	await harness.tools.get("codepatrol_record_run")!.execute("tool", { workId: id }, undefined, undefined, { cwd: "/repo" });
 	assert.equal(intents.length, 1);
-	assert.deepEqual(intents[0].run.tokens, { status: "unavailable", reason: "Pi exposed no authoritative provider usage for this run.", harness: "pi" });
+	assert.deepEqual(intents[0].run.characters, { status: "unavailable", reason: "Pi exposed no authoritative provider usage for this run.", harness: "pi" });
 });
