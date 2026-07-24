@@ -388,3 +388,10 @@ events:
     to_stage: plan
     reason: "Fix-first required: Plan attempt 5 has resolved every Review 1-4 defect (push excluded, tokens→characters rename, model preserved for actor, board.ts and fixtures in correct tasks, dependency order coherent). Remaining defects are bounded file-list accuracy: (1) major: T3 places the YAML migration shim in src/change/model.ts but recordFromYaml lives at src/change/orchestrator.ts:241 — Apply would hunt for a function that does not exist. (2) minor: T2 lists src/change/fixtures/active-change.yaml even though it has zero 'tokens:' keys (grep -c returns 0). See review/report.md for exact corrections."
     next_action: codepatrol-plan 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
+  - id: bc1b7332-007a-4a60-a06c-dd533363ca0d
+    at: 2026-07-24T00:18:31.994Z
+    actor: opencode
+    stage: plan
+    attempt: 6
+    type: stage-began
+    next_action: codepatrol-plan 2026-07-23-cleanup-and-push on codepatrol/2026-07-23-cleanup-and-push
