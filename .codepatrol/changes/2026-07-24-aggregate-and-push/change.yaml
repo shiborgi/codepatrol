@@ -292,3 +292,17 @@ events:
       characters:
         status: unavailable
         reason: harness exposes no authoritative usage hook
+  - id: 6506f2f1-cb1d-4e41-97a7-0470fcd64091
+    at: 2026-07-24T12:49:11.300Z
+    actor: claude
+    stage: verify
+    attempt: 3
+    type: stage-checkpointed
+    result: commit
+    checkpoint: 780be542da39e859f8c6e0f167fd152cd910a78e
+    tree: 7f757a7ad14a1c7236bc0e89ebb14dfc7baedbfc
+    artifacts:
+      - path: .codepatrol/changes/2026-07-24-aggregate-and-push/verify/report.md
+        sha256: 7dd606bc5fb3805b7789ca05ddbd00ffc52701552202fe9c626a129a15683c15
+        intent: create
+    next_action: codepatrol-close 2026-07-24-aggregate-and-push commit|rollback on codepatrol/2026-07-24-aggregate-and-push
