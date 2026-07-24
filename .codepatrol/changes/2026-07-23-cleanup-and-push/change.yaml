@@ -534,3 +534,17 @@ events:
         status: unavailable
         reason: Verify produced no measurable provider tokens; metric is intentionally not estimated.
         harness: opencode
+  - id: d4f5f55a-68f2-4cb5-b7f6-849545e5119f
+    at: 2026-07-24T00:59:30.875Z
+    actor: opencode
+    stage: verify
+    attempt: 1
+    type: stage-checkpointed
+    result: commit
+    checkpoint: 13f119123d3d1bdee40d2cbed42f0e169da7757e
+    tree: bedec8c27d2dcddf6c18e2f93606c25edfb53959
+    artifacts:
+      - path: .codepatrol/changes/2026-07-23-cleanup-and-push/verify/report.md
+        sha256: 014376af0ae1782a3cf4ac17817d223e8ef44a67720a8822daa74bd254e8feaa
+        intent: create
+    next_action: codepatrol-close 2026-07-23-cleanup-and-push commit|rollback on codepatrol/2026-07-23-cleanup-and-push
