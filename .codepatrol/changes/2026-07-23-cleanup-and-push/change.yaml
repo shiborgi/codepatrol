@@ -569,3 +569,13 @@ events:
       characters:
         status: unavailable
         reason: Opencode doesn't currently provide explicit prompt/completion metrics directly to bash sessions.
+  - id: c2081dee-6d1e-49d2-b1c7-1574d6a9e3a5
+    at: 2026-07-24T01:02:17.865Z
+    actor: opencode
+    stage: close
+    attempt: 1
+    type: change-closed
+    outcome: committed
+    commit: a9237d58f543678875c3df452cdffb521863a97f
+    tag: codepatrol/committed/2026-07-23-cleanup-and-push
+    receipt: close/receipt.md
