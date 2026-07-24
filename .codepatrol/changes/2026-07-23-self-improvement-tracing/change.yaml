@@ -1,0 +1,16 @@
+schema_version: 2
+identity:
+  work_id: 2026-07-23-self-improvement-tracing
+  title: Tracing and process improvement report
+  created_at: 2026-07-24T01:15:11.135Z
+  branch: codepatrol/2026-07-23-self-improvement-tracing
+  target_branch: main
+  base_commit: e6debc057df53789b455fd30930ba35609836423
+events:
+  - id: d28ce4b0-dfb8-4c40-81e8-a647a01c90fa
+    type: change-started
+    at: 2026-07-24T01:15:11.135Z
+    actor: opencode
+    stage: plan
+    attempt: 1
+    next_action: codepatrol-plan 2026-07-23-self-improvement-tracing on codepatrol/2026-07-23-self-improvement-tracing
