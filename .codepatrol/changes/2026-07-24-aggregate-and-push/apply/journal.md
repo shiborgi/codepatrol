@@ -44,3 +44,7 @@
 - Fixed T10 (Finding 2): Reconciled `skills/codepatrol-close/SKILL.md` by retaining the exact phrase "Never fetch, push, rebase, force" to satisfy `scripts/skills-contract.test.mjs:43` and appended the opt-in carve-out as a separate sentence.
 - Fixed T9 (Finding 3): Corrected `AGENTS.md` text to state the push runs after the terminal tag is created and the feature branch is deleted, matching the implementation logic.
 - Run `npm run verify` passed all 144 tests again.
+
+## Attempt 3 Fixes
+- Fixed Finding A (Compile Break): Added `"CONSOLIDATION_AFTER_SUBEVENTS"` to `ErrorCode` union in `src/shared/errors.ts` and added the `CodepatrolError` import to `src/change/orchestrator-parallel.test.ts`.
+- Run `npm run verify` passed all steps (typecheck, test, build, smoke:cli, lint:skills) with 144/144 tests.
