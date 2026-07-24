@@ -18,7 +18,7 @@
 - Modify `codepatrol_record_run` to inject the harness and model into the `actor` field.
 - Rename `tokens` to `characters` in `RunUsage` and `UsageSummary`. Rename `TokenUsage` to `CharacterUsage` in `src/change/types.ts`.
 - Update YAML fixtures and `board.ts` / tests to use the new `characters` property.
-- Update `recordFromYaml` in `src/change/model.ts` to safely map legacy `tokens` keys to `characters` for backward compatibility.
+- Update `recordFromYaml` in `src/change/orchestrator.ts` to safely map legacy `tokens` keys to `characters` for backward compatibility.
 - Remove the legacy `workflow prime` CLI test assertions in `src/cli/cli.test.ts`.
 
 ### Out of scope
@@ -36,7 +36,7 @@
 
 1. **Token tracking rename and logic**: In `.pi/index.ts`, `sumPiUsage` will measure string character lengths of `message.content` instead of pulling `.usage` (except for extracting `message.model`). In `types.ts` and `usage.ts`, rename `TokenUsage` to `CharacterUsage`, and `tokens` to `characters`. Update `board.ts` to reflect these renames.
 2. **Actor metadata**: Update the `actor` payload in the Pi extension's intent creation to format as `pi (${active.usage.model || 'unknown'})`.
-3. **YAML Migration**: Update `src/change/model.ts` inside the `recordFromYaml` function to rewrite `.tokens` to `.characters` on loaded events to ensure old records don't crash the orchestrator. Update all static fixtures in `src/change/fixtures/`.
+3. **YAML Migration**: Update `src/change/orchestrator.ts` inside the `recordFromYaml` function to rewrite `.tokens` to `.characters` on loaded events to ensure old records don't crash the orchestrator. Update all static fixtures in `src/change/fixtures/`.
 4. **Legacy cleanup**: Delete the `workflow` test block in `cli.test.ts`.
 
 ## Alternatives
@@ -50,7 +50,7 @@
 - Earlier rungs: N/A, we are modifying local behaviors directly.
 - Irreducible complexity: Typescript type adjustments across the pipeline and providing backward compatibility for old YAMLs.
 - Safety floor: Metric collection must not crash if messages lack text content; old workspaces must still load.
-- Expected surface delta: ~10 files modified (`types.ts`, `usage.ts`, `board.ts`, `model.ts`, `.pi/index.ts`, `cli.test.ts`, tests, fixtures).
+- Expected surface delta: ~10 files modified (`types.ts`, `usage.ts`, `board.ts`, `orchestrator.ts`, `.pi/index.ts`, `cli.test.ts`, tests, fixtures).
 
 ## Deferred constraints
 

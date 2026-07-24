@@ -17,7 +17,7 @@ Maintain safety floors: ensure backward compatibility for old `.yaml` files usin
 - Selected rung: direct local change
 - Reused capabilities: Existing metric pipeline.
 - Forbidden speculative surface: No automatic git push (out of scope per remote-operation rules).
-- Expected surface delta: Modify `src/change/types.ts`, `src/change/usage.ts`, `src/change/board.ts`, `src/change/model.ts`, `.pi/index.ts`, `src/cli/cli.test.ts`, plus tests and fixtures.
+- Expected surface delta: Modify `src/change/types.ts`, `src/change/usage.ts`, `src/change/board.ts`, `src/change/orchestrator.ts`, `.pi/index.ts`, `src/cli/cli.test.ts`, plus tests and fixtures.
 
 ## Acceptance mapping
 
@@ -69,14 +69,13 @@ Maintain safety floors: ensure backward compatibility for old `.yaml` files usin
 - Modify: `src/change/fixtures/committed-change.yaml`
 - Modify: `src/change/fixtures/returned-change.yaml`
 - Modify: `src/change/fixtures/rolled-back-change.yaml`
-- Modify: `src/change/fixtures/active-change.yaml`
 
 **Interfaces:**
 - Modify: Test mocks and fixtures use `characters` instead of `tokens`.
 
 **Simplicity proof:** Fixes compiler errors directly caused by T1.
 
-**Surface delta:** 7 files modified.
+**Surface delta:** 6 files modified.
 
 **Steps:**
 1. In the listed `.test.ts` files, rename `tokens: { ... }` to `characters: { ... }` in all run usage mock objects.
@@ -89,7 +88,7 @@ Maintain safety floors: ensure backward compatibility for old `.yaml` files usin
 **Depends on:** T2
 
 **Files:**
-- Modify: `src/change/model.ts`
+- Modify: `src/change/orchestrator.ts`
 
 **Interfaces:**
 - Modify: `recordFromYaml` injects a migration shim.
@@ -99,7 +98,7 @@ Maintain safety floors: ensure backward compatibility for old `.yaml` files usin
 **Surface delta:** 1 file modified.
 
 **Steps:**
-1. In `src/change/model.ts`, update `recordFromYaml`.
+1. In `src/change/orchestrator.ts`, update `recordFromYaml`.
 2. Iterate over `events` in the parsed object. If an event has a `run.tokens` key, mutate it to `run.characters` and delete `run.tokens`.
 
 ### T4 — Character counting and Actor tracking
