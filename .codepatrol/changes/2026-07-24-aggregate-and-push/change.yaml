@@ -313,3 +313,17 @@ events:
     attempt: 1
     type: stage-began
     next_action: codepatrol-close 2026-07-24-aggregate-and-push commit|rollback on codepatrol/2026-07-24-aggregate-and-push
+  - id: 9ee9303c-8244-4a48-9dc6-db4da39ff759
+    at: 2026-07-24T13:15:54.534Z
+    actor: claude-sonnet-5
+    stage: close
+    attempt: 1
+    type: run-recorded
+    run:
+      id: close-20260724T130730Z
+      started_at: 2026-07-24T13:07:30.000Z
+      finished_at: 2026-07-24T13:07:33.000Z
+      elapsed_ms: 3000
+      characters:
+        status: unavailable
+        reason: harness exposes no authoritative usage hook
