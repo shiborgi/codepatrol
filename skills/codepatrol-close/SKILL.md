@@ -32,7 +32,7 @@ fast-forwards it and deletes the feature branch. For `rollback`, it creates
 deletes the feature branch. Tag creation precedes deletion.
 
 On target advance, dirty state, conflict or partial failure, stop with the exact
-reported recovery action. Never fetch, rebase, force, resolve conflicts,
+reported recovery action. Never fetch, push, rebase, force, resolve conflicts,
 delete remote refs or edit production code. An opt-in `git push origin <target>`
 is allowed when the outcome is `commit` and `push: true` is set. Report outcome, target SHA, tag,
 receipt, metrics and clean-checkout validation.

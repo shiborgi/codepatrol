@@ -38,3 +38,9 @@
 ## Final Verification
 - Run `npm run verify` passed all 144 tests.
 - Re-applied `AGENTS.md:94` properly.
+
+## Attempt 2 Fixes
+- Fixed T3 (Finding 1): Added `CONSOLIDATION_AFTER_SUBEVENTS` guard in `transitionChangeLocked` and updated test to properly inject a divergence (fix-first) instead of a second approve.
+- Fixed T10 (Finding 2): Reconciled `skills/codepatrol-close/SKILL.md` by retaining the exact phrase "Never fetch, push, rebase, force" to satisfy `scripts/skills-contract.test.mjs:43` and appended the opt-in carve-out as a separate sentence.
+- Fixed T9 (Finding 3): Corrected `AGENTS.md` text to state the push runs after the terminal tag is created and the feature branch is deleted, matching the implementation logic.
+- Run `npm run verify` passed all 144 tests again.

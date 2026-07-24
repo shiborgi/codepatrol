@@ -104,3 +104,82 @@ events:
         status: unavailable
         reason: opencode usage not collected
         harness: opencode
+  - id: 3c3a66e6-cf46-44d4-b6a1-d2242d696d09
+    at: 2026-07-24T11:41:32.414Z
+    actor: opencode
+    stage: apply
+    attempt: 1
+    type: stage-checkpointed
+    result: implemented
+    checkpoint: 9fb26cefd098768dff44f878a232d2f0b2cafe4c
+    tree: 117795dcb3be2eb241dca901cfa0fe9f4c31900c
+    artifacts:
+      - path: .codepatrol/changes/2026-07-24-aggregate-and-push/apply/journal.md
+        sha256: 07d506ceb1a79f428fedeb5787e5383e5ddec7ac1da668c88c4ab30e3585de80
+        intent: create
+    changes:
+      - AGENTS.md
+      - skills/codepatrol-apply/SKILL.md
+      - skills/codepatrol-close/SKILL.md
+      - skills/codepatrol-plan/SKILL.md
+      - src/change/close-push.test.ts
+      - src/change/git.ts
+      - src/change/model.ts
+      - src/change/orchestrator-parallel.test.ts
+      - src/change/orchestrator.ts
+      - src/change/types.ts
+      - src/cli/commands.ts
+      - src/shared/errors.ts
+    next_action: codepatrol-verify 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
+  - id: 65893a73-47fa-4891-b931-c75dcd98bda4
+    at: 2026-07-24T11:53:42.670Z
+    actor: claude
+    stage: verify
+    attempt: 1
+    type: stage-began
+    next_action: codepatrol-verify 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
+  - id: 33a94a1f-44c5-4228-b3e0-73308c86c07c
+    at: 2026-07-24T11:57:09.741Z
+    actor: claude
+    stage: verify
+    attempt: 1
+    type: run-recorded
+    run:
+      id: verify-20260724T115342Z
+      started_at: 2026-07-24T11:53:42.670Z
+      finished_at: 2026-07-24T11:58:00.000Z
+      elapsed_ms: 257330
+      characters:
+        status: unavailable
+        reason: harness exposes no authoritative usage hook
+  - id: f32c2444-c11b-4f4d-bad4-b25c303bdabd
+    at: 2026-07-24T11:57:23.789Z
+    actor: claude
+    stage: verify
+    attempt: 1
+    type: stage-returned
+    to_stage: apply
+    reason: "Verify found two critical, independently-reproduced defects: (1) no CONSOLIDATION_AFTER_SUBEVENTS guard - a stray no-persona checkpoint silently overrides an already-recorded persona fix-first return and advances the stage to apply with result approve, defeating the Change's core safety premise (spec.md risk 1, plan.md T3); (2) npm run verify fails - scripts/skills-contract.test.mjs:43 regression because T10 dropped the word push from the Never fetch, push, rebase, force phrase in skills/codepatrol-close/SKILL.md; apply/journal.md falsely claims all 144 tests passed. Also a minor doc/implementation ordering mismatch in AGENTS.md push-at-close section. Full evidence in verify/report.md."
+    next_action: codepatrol-apply 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
+  - id: 26654790-c895-447c-9929-5cd2510274b7
+    at: 2026-07-24T12:08:32.994Z
+    actor: opencode
+    stage: apply
+    attempt: 2
+    type: stage-began
+    next_action: codepatrol-apply 2026-07-24-aggregate-and-push on codepatrol/2026-07-24-aggregate-and-push
+  - id: 8833f363-75dc-43aa-abd1-3ca9504e1796
+    at: 2026-07-24T12:08:47.359Z
+    actor: opencode
+    stage: apply
+    attempt: 2
+    type: run-recorded
+    run:
+      id: apply-20260724T123000Z
+      started_at: 2026-07-24T12:00:00.000Z
+      finished_at: 2026-07-24T12:30:00.000Z
+      elapsed_ms: 1800000
+      characters:
+        status: unavailable
+        reason: opencode usage not collected
+        harness: opencode

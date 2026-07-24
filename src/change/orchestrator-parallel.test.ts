@@ -69,10 +69,16 @@ describe("orchestrator parallel aggregation", () => {
 			await transitionChange(workspace, id, { type: "usage", actor: "codex", stage: "review", run: { id: "review-base", started_at: "2026-07-24T10:00:05.000Z", finished_at: "2026-07-24T10:00:06.000Z", elapsed_ms: 1000, characters: { status: "unavailable", reason: "test" } } }, at(5));
 			mkdirSync(join(workspace, `.codepatrol/changes/${id}/review`), { recursive: true });
 			writeFileSync(join(workspace, `.codepatrol/changes/${id}/review/findings-security.md`), "security review\n");
-			await transitionChange(workspace, id, { type: "checkpoint", actor: "codex-security", stage: "review", result: "approve", artifacts: [binding(workspace, `.codepatrol/changes/${id}/review/findings-security.md`)], nextAction: "review-consolidate", persona: "review-security" }, at(6));
+			await transitionChange(workspace, id, { type: "return", actor: "codex-security", stage: "review", toStage: "plan", reason: "architecture: missing boundary check", nextAction: "review-consolidate", persona: "review-security" }, at(6));
 			const view = (await inspectChanges(workspace, { workId: id }))[0]!;
 			assert.equal(view.stage, "review");
 			assert.equal(view.attempts.review.at(-1)?.status, "active");
+			
+			// Try to consolidate with approve checkpoint, should fail due to divergence
+			await assert.rejects(
+				transitionChange(workspace, id, { type: "checkpoint", actor: "codex", stage: "review", result: "approve", artifacts: [binding(workspace, `.codepatrol/changes/${id}/review/findings-security.md`)], nextAction: "apply" }, at(7)),
+				(err: CodepatrolError) => err.code === "CONSOLIDATION_AFTER_SUBEVENTS"
+			);
 		} finally { rmSync(workspace, { recursive: true, force: true }); }
 	});
 });

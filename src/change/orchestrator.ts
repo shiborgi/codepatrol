@@ -218,6 +218,15 @@ async function transitionChangeLocked(workspace: string, workId: string, intent:
 	} else if (intent.stage !== view.stage) {
 		throw new CodepatrolError("CHANGE_CONFLICT", `Expected ${view.stage}, received ${intent.stage}.`, 4);
 	}
+	
+	if (!persona && intent.type === "checkpoint" && (intent.stage === "review" || intent.stage === "verify")) {
+		const personaSubEvents = record.events.filter((ev) => (ev.type === "stage-checkpointed" || ev.type === "stage-returned") && (ev as { persona?: string }).persona && ev.stage === intent.stage && ev.attempt === view.attempt);
+		if (personaSubEvents.length > 0) {
+			const hasDivergence = personaSubEvents.some((ev) => ev.type === "stage-returned" || (ev.type === "stage-checkpointed" && (ev as { result?: string }).result !== "approve" && (ev as { result?: string }).result !== "commit" && (ev as { result?: string }).result !== "implemented" && (ev as { result?: string }).result !== "ready"));
+			if (hasDivergence) throw new CodepatrolError("CONSOLIDATION_AFTER_SUBEVENTS", "Cannot consolidate checkpoint with divergence; use return instead.", 4);
+		}
+	}
+	
 	let event: ChangeEvent;
 	if (intent.type === "checkpoint") {
 		const required: Record<string, string[]> = {
