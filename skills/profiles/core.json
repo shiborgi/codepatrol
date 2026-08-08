@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "core",
+  "methods": {
+    "spec": [],
+    "plan": [
+      "scope-boundary"
+    ],
+    "review": [
+      "evidence-discipline",
+      "independent-review"
+    ],
+    "build": [
+      "scope-boundary"
+    ],
+    "verify": [
+      "acceptance-criterion-mapping",
+      "evidence-discipline"
+    ],
+    "ship": []
+  }
+}

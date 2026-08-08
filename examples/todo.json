@@ -1,0 +1,6 @@
+{
+  "todo": [
+    { "id": "t1", "title": "Fictional example: enumerate the states" },
+    { "id": "t2", "title": "Fictional example: enumerate the transitions" }
+  ]
+}

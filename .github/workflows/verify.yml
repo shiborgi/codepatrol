@@ -1,0 +1,100 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is not in the matrix because it is not verified; see
+        # docs/limitations.md rather than assuming it is supported.
+        os: [ubuntu-latest, macos-latest]
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - name: Configure fixture Git identity
+        run: |
+          git config --global user.name "CodePatrol CI"
+          git config --global user.email "codepatrol-ci@users.noreply.github.com"
+      # The whole chain, never an enumeration of its steps: CI and a local run
+      # cannot verify different things. This covers typecheck, the test suite,
+      # the external smoke, the closed-loop fixture, the local-delivery fixture
+      # and the CLI entry point.
+      - run: npm run verify
+      # Coverage is measured by the same run that executes the suite, by the
+      # native runner, so the number always reflects what CI actually ran.
+
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Install the exact tarball a user would get, in a directory with no
+      # source tree, and drive a real repository with it.
+      - name: Validate the published artifact
+        run: |
+          set -euo pipefail
+          npm pack --pack-destination "$RUNNER_TEMP"
+          tarball="$(ls "$RUNNER_TEMP"/codepatrol-*.tgz)"
+          consumer="$RUNNER_TEMP/consumer"
+          mkdir -p "$consumer"
+          cd "$consumer"
+          npm init --yes >/dev/null
+          npm install "$tarball"
+          test ! -d node_modules/codepatrol/dist/test
+          # The README promises the harness command templates; a clean install
+          # must actually contain them.
+          for stage in spec plan review build verify ship; do
+            test -f "node_modules/codepatrol/.opencode/commands/codepatrol-$stage.md"
+            test -f "node_modules/codepatrol/.claude/commands/codepatrol-$stage.md"
+            test -f "node_modules/codepatrol/.pi/prompts/codepatrol-$stage.md"
+          done
+          npx codepatrol --version
+          npx codepatrol --help
+          CODEPATROL_BIN="$consumer/node_modules/codepatrol/bin/codepatrol.js" \
+            node "$GITHUB_WORKSPACE/scripts/smoke.mjs"
+      - name: Validate TypeScript consumer
+        run: |
+          set -euo pipefail
+          npm pack --pack-destination "$RUNNER_TEMP"
+          tarball="$(ls "$RUNNER_TEMP"/codepatrol-*.tgz)"
+          tsconsumer="$RUNNER_TEMP/tsconsumer"
+          mkdir -p "$tsconsumer"
+          cd "$tsconsumer"
+          npm init --yes >/dev/null
+          npm install "$tarball" typescript
+          cat > index.ts <<'EOF'
+           import { isWorkId, parseDocument, runCli, type CliIO, type SpecDocument, type Stage } from "codepatrol";
+           const doc: SpecDocument = {
+            schemaVersion: 1,
+            type: "codepatrol-initiative-document",
+            initiative: { id: "INIT-1", title: "hello", intent: "world" },
+            waves: [{ id: "WAVE-1.1", title: "wave", intent: "wave intent" }],
+            works: []
+          };
+          const parsed = parseDocument(JSON.parse(JSON.stringify(doc)));
+          const stage: Stage = "plan";
+          const io: CliIO = { out: (t: string) => console.log(t), err: (t: string) => console.error(t) };
+          const exitCode: Promise<number> = runCli([stage, "--help"], { io });
+          console.log(parsed.initiative.title, isWorkId("WORK-1.1.1"), typeof exitCode);
+          EOF
+          npx tsc --noEmit --moduleResolution NodeNext --module NodeNext --target ES2022 --strict index.ts

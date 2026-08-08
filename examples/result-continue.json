@@ -1,0 +1,8 @@
+{
+  "decision": "continue",
+  "summary": "Fictional example: the stage finished and the work moves to the next stage.",
+  "todo": [
+    { "id": "t1", "status": "done" },
+    { "id": "t2", "status": "done", "note": "documented in the fictional spec" }
+  ]
+}

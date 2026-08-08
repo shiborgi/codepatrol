@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "type": "codepatrol-initiative-document",
+  "initiative": {
+    "id": "INIT-1",
+    "title": "Fictional checkout flow",
+    "intent": "Illustrate a CodePatrol initiative with two dependent works. All data is fictional."
+  },
+  "waves": [
+    {
+      "id": "WAVE-1.1",
+      "title": "Cart behaviour",
+      "intent": "Fictional example: design the cart state machine and implement it."
+    }
+  ],
+  "works": [
+    {
+      "id": "WORK-1.1.1",
+      "wave": "WAVE-1.1",
+      "title": "Design the cart state machine",
+      "description": "Fictional example: sketch states and transitions for a shopping cart.",
+      "workType": "task",
+      "priority": "p2",
+      "delivery": "no-code",
+      "acceptance": ["States and transitions are enumerated", "Edge cases are listed"],
+      "blockedBy": []
+    },
+    {
+      "id": "WORK-1.1.2",
+      "wave": "WAVE-1.1",
+      "title": "Implement the fictional cart reducer",
+      "description": "Fictional example: implement the reducer designed in the previous work.",
+      "workType": "feature",
+      "priority": "p1",
+      "delivery": "code",
+      "acceptance": ["Reducer covers every designed transition"],
+      "blockedBy": ["WORK-1.1.1"]
+    }
+  ]
+}

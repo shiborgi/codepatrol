@@ -1,0 +1,9 @@
+{
+  "decision": "accept",
+  "authority": "fictional-maintainer",
+  "summary": "Fictional example: ship inspected the candidate and accepted it.",
+  "todo": [
+    { "id": "t1", "status": "done" },
+    { "id": "t2", "status": "done" }
+  ]
+}

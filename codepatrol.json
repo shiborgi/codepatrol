@@ -1,0 +1,9 @@
+{
+  "github": {
+    "enabled": true,
+    "project": {
+      "owner": "shiborgi",
+      "number": 7
+    }
+  }
+}

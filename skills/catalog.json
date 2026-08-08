@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "primaryMethods": [
+    {
+      "id": "spec",
+      "scope": "initiative",
+      "skill": "codepatrol-spec"
+    },
+    {
+      "id": "plan",
+      "scope": "work",
+      "skill": "codepatrol-plan"
+    },
+    {
+      "id": "review",
+      "scope": "work",
+      "skill": "codepatrol-review"
+    },
+    {
+      "id": "build",
+      "scope": "work",
+      "skill": "codepatrol-build"
+    },
+    {
+      "id": "verify",
+      "scope": "work",
+      "skill": "codepatrol-verify"
+    },
+    {
+      "id": "ship",
+      "scope": "work",
+      "skill": "codepatrol-ship"
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "acceptance-criterion-mapping"
+    },
+    {
+      "id": "evidence-discipline"
+    },
+    {
+      "id": "independent-review"
+    },
+    {
+      "id": "scope-boundary"
+    }
+  ]
+}

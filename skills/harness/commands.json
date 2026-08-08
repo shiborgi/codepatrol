@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "commands": {
+    "spec": {
+      "description": "Run the CodePatrol Spec stage for an Initiative",
+      "argument-hint": "<initiative-id>"
+    },
+    "plan": {
+      "description": "Run the CodePatrol Plan stage for a Work",
+      "argument-hint": "<work-id>"
+    },
+    "review": {
+      "description": "Run the CodePatrol Review stage for a Work",
+      "argument-hint": "<work-id>"
+    },
+    "build": {
+      "description": "Run the CodePatrol Build stage for a Work and record the candidate commit for Verify",
+      "argument-hint": "<work-id>"
+    },
+    "verify": {
+      "description": "Run the CodePatrol Verify stage for a Work",
+      "argument-hint": "<work-id>"
+    },
+    "ship": {
+      "description": "Run the CodePatrol Ship stage for a Work",
+      "argument-hint": "<work-id>"
+    }
+  }
+}

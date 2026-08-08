@@ -1,0 +1,80 @@
+{
+  "name": "codepatrol",
+  "version": "1.0.0",
+  "description": "Minimal local-first workflow and state orchestrator: Initiatives, Waves, Works, lifecycle and GitHub projection. State lives only on refs/codepatrol/state.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiborgi/codepatrol.git"
+  },
+  "homepage": "https://github.com/shiborgi/codepatrol#readme",
+  "bugs": {
+    "url": "https://github.com/shiborgi/codepatrol/issues"
+  },
+  "bin": {
+    "codepatrol": "./bin/codepatrol.js"
+  },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome check",
+    "format": "biome check --write",
+    "test:run": "node --test dist/test/*.test.js",
+    "test": "npm run build && npm run test:run",
+    "smoke:run": "node scripts/smoke.mjs",
+    "smoke": "npm run build && npm run smoke:run",
+    "closed-loop:run": "node scripts/closed-loop-fixture.mjs",
+    "closed-loop": "npm run build && npm run closed-loop:run",
+    "local-delivery:run": "node scripts/local-delivery-fixture.mjs",
+    "local-delivery": "npm run build && npm run local-delivery:run",
+    "cli-check:run": "node bin/codepatrol.js --help",
+    "cli-check": "npm run build && npm run cli-check:run",
+    "verify": "npm run typecheck && npm run lint && npm run build && npm run coverage:run && npm run smoke:run && npm run closed-loop:run && npm run local-delivery:run && npm run cli-check:run",
+    "prepublishOnly": "npm run verify",
+    "coverage:run": "node --test --experimental-test-coverage dist/test/*.test.js",
+    "coverage": "npm run build && npm run coverage:run"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.7",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agents",
+    "orchestration",
+    "git",
+    "workflow",
+    "code-review"
+  ],
+  "files": [
+    "bin",
+    "dist",
+    "!dist/test",
+    "docs",
+    "examples",
+    "skills",
+    ".opencode/commands",
+    ".claude/commands",
+    ".pi/prompts",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "decision": "continue",
+  "summary": "Fictional example: the candidate was verified against every acceptance criterion.",
+  "todo": [
+    { "id": "t1", "status": "done" },
+    { "id": "t2", "status": "done" }
+  ],
+  "acceptance": [
+    { "index": 0, "status": "passed", "summary": "Fictional example: observed behavior matches the criterion" },
+    { "index": 1, "status": "not-applicable", "summary": "Fictional example: criterion does not apply to this change" }
+  ]
+}
