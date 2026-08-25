@@ -353,12 +353,14 @@ test("doctor ignores return risks after a wave is shipped", async () => {
   const payload = JSON.parse(doctor.stdout) as {
     atRiskWaves: unknown[];
     recurringAcceptanceFailures: unknown[];
+    openTasks: unknown[];
   };
   assert.deepEqual(payload.atRiskWaves, []);
   assert.deepEqual(payload.recurringAcceptanceFailures, []);
+  assert.deepEqual(payload.openTasks, []);
 });
 
-test("doctor lists open tasks with a submit or cancel next command", async () => {
+test("doctor lists the lifecycle step for open tasks", async () => {
   const { root, service } = fixture();
   const { wave, buildTask } = driveToBuild(service);
   const doctor = await runCli(["node", "codepatrol", "--workspace", root, "doctor"]);
@@ -370,7 +372,7 @@ test("doctor lists open tasks with a submit or cancel next command", async () =>
       subjectId: string;
       status: string;
       createdAt: string;
-      nextCommand: string;
+      next: string;
     }>;
   };
   const listed = payload.openTasks.find((entry) => entry.id === buildTask.id);
@@ -379,5 +381,5 @@ test("doctor lists open tasks with a submit or cancel next command", async () =>
   assert.equal(listed.subjectId, wave.id);
   assert.equal(listed.status, "open");
   assert.ok(listed.createdAt);
-  assert.match(listed.nextCommand, /task (submit|cancel)/);
+  assert.equal(listed.next, "build");
 });

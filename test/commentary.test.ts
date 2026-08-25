@@ -155,7 +155,11 @@ test("commentary templates and marker upsert are deterministic and idempotent", 
   const ctx = context(remoteFetch(calls));
   await syncHooks(repo, remoteConfig, { kind: "open", task: tasks.build }, ctx);
   const first = calls[0]?.body ?? "";
-  assert.match(first, /### Next\n- Open Build Review\./);
+  assert.match(first, /### Next\n- build-review/);
+  assert.match(
+    first,
+    /### Source\n- Harness: test; Model: unspecified; Agent: unspecified/,
+  );
   assert.match(first, /Render stable marker/);
   assert.match(first, /AC-1/);
   assert.match(first, /AC-2/);
@@ -206,13 +210,13 @@ test("all lifecycle hook events select their operation and next step", async () 
   const bodies = calls.map((call) => call.body ?? "");
   const body = (index: number): string => bodies[index] ?? "";
   assert.match(body(0), /comment:todo:plan:/);
-  assert.match(body(0), /Open Plan Review/);
+  assert.match(body(0), /plan-review/);
   assert.match(body(1), /comment:todo:build:/);
-  assert.match(body(1), /Open Build Review/);
+  assert.match(body(1), /build-review/);
   assert.match(body(2), /comment:summary:plan:/);
-  assert.match(body(3), /Open Build\./);
+  assert.match(body(3), /- build/);
   assert.match(body(4), /comment:summary:build:/);
-  assert.match(body(5), /Ship the selected candidate/);
+  assert.match(body(5), /- ship/);
   assert.match(body(6), /comment:summary:ship:/);
 });
 

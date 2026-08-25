@@ -68,7 +68,7 @@ export function doctorSignals(
     subjectId: string;
     status: string;
     createdAt: string;
-    nextCommand: string;
+    next: string;
   }>;
 } {
   const threshold = Math.max(0, maxReviewReturns - 1);
@@ -115,7 +115,7 @@ export function doctorSignals(
       subjectId: task.subjectId,
       status: task.status,
       createdAt: task.createdAt,
-      nextCommand: `task submit --task ${task.id}`,
+      next: task.operation,
     }));
   return { atRiskWaves, recurringAcceptanceFailures, openTasks };
 }

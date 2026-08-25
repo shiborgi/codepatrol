@@ -1,4 +1,4 @@
-import type { Operation, PlanDocument, State, Task, Wave } from "./core.js";
+import type { Operation, PlanDocument, Source, State, Task, Wave } from "./core.js";
 
 export type CommentKind = "todo" | "summary";
 type CommentaryOperation = Operation | "ship";
@@ -27,6 +27,7 @@ export function renderTodo(
   round: number,
   lines: string[],
   next: string,
+  sources: Source[],
 ): string {
   return [
     commentMarker("todo", operation, subject, round),
@@ -37,6 +38,7 @@ export function renderTodo(
     ...lines.flatMap((line) =>
       line.split("\n").map((part, index) => `${index === 0 ? "- [ ] " : "  "}${part}`),
     ),
+    ...renderSources(sources),
     "",
     "### Next",
     `- ${next}`,
@@ -51,6 +53,7 @@ export function renderSummary(
   status: string,
   done: string[],
   next: string,
+  sources: Source[],
 ): string {
   return [
     commentMarker("summary", operation, subject, round),
@@ -59,6 +62,7 @@ export function renderSummary(
     "",
     "### Done",
     ...done.map((line) => `- ${line}`),
+    ...renderSources(sources),
     "",
     "### Next",
     `- ${next}`,
@@ -136,6 +140,7 @@ export function canonicalCommentary(state: State): ProjectedCommentary[] {
         wave.ship.decision === "accept"
           ? "Continue to the next Wave."
           : "Review the rollback and resume planning if needed.",
+        [],
       );
       for (const workId of workIds) result.push(project(group, workId, body));
       continue;
@@ -165,7 +170,8 @@ export function canonicalCommentary(state: State): ProjectedCommentary[] {
           group.subject,
           group.round,
           lines,
-          task.operation === "plan" ? "Open Plan Review." : "Open Build Review.",
+          task.operation === "plan" ? "plan-review" : "build-review",
+          tasks.map((candidate) => candidate.source),
         );
         for (const workId of wave.workIds) result.push(project(group, workId, body));
       }
@@ -175,18 +181,7 @@ export function canonicalCommentary(state: State): ProjectedCommentary[] {
     const resultValue = task.result as Record<string, unknown> | null;
     const decision =
       typeof resultValue?.decision === "string" ? resultValue.decision : "submitted";
-    const next =
-      decision === "approve"
-        ? task.operation === "plan"
-          ? "Open Plan Review."
-          : task.operation === "build"
-            ? "Open Build Review."
-            : task.operation === "plan-review"
-              ? "Open Build."
-              : task.operation === "build-review"
-                ? "Ship the selected candidate."
-                : "Continue the lifecycle."
-        : "Resume the returned round.";
+    const next = nextStep(task.operation, decision);
     const body = renderSummary(
       task.operation,
       group.subject,
@@ -194,6 +189,7 @@ export function canonicalCommentary(state: State): ProjectedCommentary[] {
       "Submitted",
       done,
       next,
+      tasks.map((candidate) => candidate.source),
     );
     for (const workId of workIds) result.push(project(group, workId, body));
   }
@@ -253,6 +249,33 @@ function selectedPlan(state: State, wave: Wave): PlanDocument | undefined {
     ? (state.proposals.find((proposal) => proposal.id === wave.selectedPlanId)
         ?.document as PlanDocument | undefined)
     : undefined;
+}
+
+function renderSources(sources: Source[]): string[] {
+  if (sources.length === 0) return [];
+  return [
+    "",
+    "### Source",
+    ...sources.map(
+      (source) =>
+        `- Harness: ${source.harness}; Model: ${source.model ?? "unspecified"}; Agent: ${source.agent ?? "unspecified"}`,
+    ),
+  ];
+}
+
+function nextStep(operation: Operation, decision: string): string {
+  if (decision !== "approve") {
+    if (operation === "spec-review") return "spec";
+    if (operation === "plan-review") return "plan";
+    if (operation === "build-review") return "build";
+    return operation;
+  }
+  if (operation === "spec") return "spec-review";
+  if (operation === "spec-review") return "plan";
+  if (operation === "plan") return "plan-review";
+  if (operation === "plan-review") return "build";
+  if (operation === "build") return "build-review";
+  return "ship";
 }
 
 function stepName(operation: CommentaryOperation): string {
