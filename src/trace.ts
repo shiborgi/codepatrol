@@ -3,11 +3,27 @@ import type { State, Task } from "./core.js";
 export type TimelineEntry = {
   subject: string;
   operation: string;
-  kind: "opened" | "submitted" | "review-decision" | "verification" | "ship-decision";
+  kind:
+    | "opened"
+    | "submitted"
+    | "review-decision"
+    | "verification"
+    | "ship-decision"
+    | "cancel"
+    | "fail";
   outcome: string;
   timestamp: string;
   failedAcceptanceIds?: string[];
   candidates?: Array<{ proposalId: string; status: string }>;
+  taskId?: string;
+};
+
+export type Problem = {
+  kind: "duplicate-producer" | "abandoned-producer" | "review-dwell";
+  subject: string;
+  operation: string;
+  message: string;
+  taskId?: string;
 };
 
 export type StateHistoryEntry = {
@@ -48,7 +64,10 @@ export function doctorSignals(
   }>;
 } {
   const threshold = Math.max(0, maxReviewReturns - 1);
-  const atRiskWaves = state.waves.flatMap((wave) =>
+  const activeWaves = state.waves.filter(
+    (wave) => !["accepted", "rolled-back"].includes(wave.status),
+  );
+  const atRiskWaves = activeWaves.flatMap((wave) =>
     (["plan", "build"] as const)
       .filter((operation) => wave.reviewReturns[operation] >= threshold)
       .map((operation) => ({
@@ -59,6 +78,8 @@ export function doctorSignals(
   );
   const seen = new Map<string, Set<number>>();
   for (const task of state.tasks) {
+    const wave = state.waves.find((candidate) => candidate.id === task.subjectId);
+    if (wave && ["accepted", "rolled-back"].includes(wave.status)) continue;
     if (task.operation !== "build-review" || task.status !== "submitted") continue;
     for (const acceptanceId of failedAcceptanceIds(task.result)) {
       const key = `${task.subjectId}\0${acceptanceId}`;
@@ -88,12 +109,101 @@ export function timelineFromHistory(
 ): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   for (const snapshot of history) {
-    const eventSubject = subjectOf(snapshot.event.event);
+    const eventSubject = subjectOf(snapshot.event.event) ?? taskSubject(snapshot);
     if (!eventSubject || !matchesSubject(kind, subjectId, eventSubject, snapshot.state))
       continue;
     entries.push(...entriesFor(snapshot, eventSubject));
   }
   return entries;
+}
+
+export function problemsFromHistory(
+  history: StateHistoryEntry[],
+  subjectId: string,
+  kind: "init" | "wave",
+): Problem[] {
+  const problems: Problem[] = [];
+  const opened = new Map<
+    string,
+    { subject: string; operation: string; round: number }[]
+  >();
+  const submitted = new Set<string>();
+  const reviews = new Map<
+    string,
+    { subject: string; operation: string; taskId: string }
+  >();
+  for (let index = 0; index < history.length; index += 1) {
+    const snapshot = history[index];
+    if (!snapshot) continue;
+    const event = snapshot.event.event;
+    const eventSubject = subjectOf(event) ?? taskSubject(snapshot);
+    if (eventSubject && !matchesSubject(kind, subjectId, eventSubject, snapshot.state))
+      continue;
+    const open = event.match(OPEN);
+    if (open) {
+      const operation = open[1] as string;
+      const task = latestTask(snapshot.state, operation, open[2] as string);
+      if (!task) continue;
+      const key = `${task.subjectId}\0${operation}\0${task.round}`;
+      const tasks = opened.get(key) ?? [];
+      tasks.push({ subject: task.subjectId, operation, round: task.round });
+      opened.set(key, tasks);
+      if (tasks.length === 2 && ["spec", "plan", "build"].includes(operation)) {
+        problems.push({
+          kind: "duplicate-producer",
+          subject: task.subjectId,
+          operation,
+          message: `multiple ${operation} producers opened for round ${task.round}`,
+        });
+      }
+      if (operation.endsWith("-review")) {
+        reviews.set(task.id, { subject: task.subjectId, operation, taskId: task.id });
+      }
+      continue;
+    }
+    const submit = event.match(SUBMIT);
+    if (submit) {
+      const task = latestTask(snapshot.state, submit[1] as string, submit[2] as string);
+      if (task) submitted.add(task.id);
+      reviews.delete(task?.id ?? "");
+      continue;
+    }
+    const terminal = event.match(/^task (cancel|fail) (TASK-.+)$/);
+    if (terminal) {
+      const task = snapshot.state.tasks.find(
+        (candidate) => candidate.id === terminal[2],
+      );
+      if (
+        task &&
+        !submitted.has(task.id) &&
+        ["spec", "plan", "build"].includes(task.operation)
+      ) {
+        problems.push({
+          kind: "abandoned-producer",
+          subject: task.subjectId,
+          operation: task.operation,
+          taskId: task.id,
+          message: `${task.operation} producer was ${terminal[1]} before submission`,
+        });
+      }
+      continue;
+    }
+    if (index > 0 && reviews.size > 0) {
+      for (const review of reviews.values()) {
+        if (review.subject === subjectId || kind === "init") {
+          problems.push({
+            kind: "review-dwell",
+            subject: review.subject,
+            operation: review.operation,
+            taskId: review.taskId,
+            message: `${review.operation} remained open across a later state event`,
+          });
+        }
+      }
+      reviews.clear();
+    }
+  }
+  return problems;
 }
 
 function subjectOf(event: string): string | null {
@@ -104,6 +214,11 @@ function subjectOf(event: string): string | null {
     event.match(SHIP)?.[2] ??
     null
   );
+}
+
+function taskSubject(snapshot: StateHistoryEntry): string | null {
+  const taskId = snapshot.event.event.match(/^task (?:cancel|fail) (TASK-.+)$/)?.[1];
+  return snapshot.state.tasks.find((task) => task.id === taskId)?.subjectId ?? null;
 }
 
 function matchesSubject(
@@ -188,6 +303,21 @@ function entriesFor(snapshot: StateHistoryEntry, subject: string): TimelineEntry
         kind: "ship-decision",
         outcome: shipped[1] as string,
         timestamp: event.at,
+      },
+    ];
+  }
+  const terminal = event.event.match(/^task (cancel|fail) (TASK-.+)$/);
+  if (terminal) {
+    const task = snapshot.state.tasks.find((candidate) => candidate.id === terminal[2]);
+    if (!task) return [];
+    return [
+      {
+        subject: task.subjectId,
+        operation: task.operation,
+        kind: terminal[1] as "cancel" | "fail",
+        outcome: task.status,
+        timestamp: task.finishedAt ?? event.at,
+        taskId: task.id,
       },
     ];
   }

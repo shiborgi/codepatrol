@@ -272,3 +272,86 @@ test("doctor lists at-risk waves and recurring acceptance failures, and stays em
     ),
   );
 });
+
+test("trace includes cancelled producers and detects duplicate and abandoned work", async () => {
+  const { root, service } = fixture();
+  const { init, wave } = driveToBuild(service);
+  const second = service.openProducer("build", wave.id, producer).task;
+  service.cancelTask(second.id);
+
+  const traced = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "trace",
+    "--init",
+    init.id,
+  ]);
+  assert.equal(traced.exitCode, 0, traced.stderr);
+  const payload = JSON.parse(traced.stdout) as {
+    entries: Array<{ kind: string; taskId?: string }>;
+    problems: Array<{ kind: string; taskId?: string }>;
+  };
+  assert.ok(
+    payload.entries.some(
+      (entry) => entry.kind === "cancel" && entry.taskId === second.id,
+    ),
+  );
+  assert.ok(payload.problems.some((problem) => problem.kind === "duplicate-producer"));
+  assert.ok(
+    payload.problems.some(
+      (problem) =>
+        problem.kind === "abandoned-producer" && problem.taskId === second.id,
+    ),
+  );
+});
+
+test("trace detects a review that remains open across a later state event", async () => {
+  const { root, service } = fixture();
+  const { init, wave, work, buildTask } = driveToBuild(service);
+  commitCandidate(buildTask.workspace as string, "review-dwell");
+  const proposalId = service.submitTask(buildTask.id, {
+    summary: "Candidate",
+    works: [{ workId: work.id, summary: "Implemented" }],
+  }).task.proposalId as string;
+  service.openReview("build-review", wave.id, reviewer);
+  service.createInit("Later event", "Advance committed history");
+
+  const traced = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "trace",
+    "--init",
+    init.id,
+  ]);
+  assert.equal(traced.exitCode, 0, traced.stderr);
+  const payload = JSON.parse(traced.stdout) as {
+    problems: Array<{ kind: string; taskId?: string }>;
+  };
+  assert.ok(payload.problems.some((problem) => problem.kind === "review-dwell"));
+  assert.ok(proposalId);
+});
+
+test("doctor ignores return risks after a wave is shipped", async () => {
+  const { root, service } = fixture();
+  const { wave, work, buildTask } = driveToBuild(service);
+  commitCandidate(buildTask.workspace as string, "terminal");
+  const proposalId = service.submitTask(buildTask.id, {
+    summary: "Candidate",
+    works: [{ workId: work.id, summary: "Implemented" }],
+  }).task.proposalId as string;
+  approveBuild(service, wave.id, work.acceptance[0]?.id as string, proposalId);
+  service.shipAccept(wave.id);
+
+  const doctor = await runCli(["node", "codepatrol", "--workspace", root, "doctor"]);
+  assert.equal(doctor.exitCode, 0, doctor.stderr);
+  const payload = JSON.parse(doctor.stdout) as {
+    atRiskWaves: unknown[];
+    recurringAcceptanceFailures: unknown[];
+  };
+  assert.deepEqual(payload.atRiskWaves, []);
+  assert.deepEqual(payload.recurringAcceptanceFailures, []);
+});

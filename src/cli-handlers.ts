@@ -13,7 +13,7 @@ import { syncGitHub } from "./remote.js";
 import type { RunContext } from "./run-context.js";
 import { getInit, getWave } from "./selectors.js";
 import type { CodePatrolService } from "./service.js";
-import { doctorSignals, timelineFromHistory } from "./trace.js";
+import { doctorSignals, problemsFromHistory, timelineFromHistory } from "./trace.js";
 
 export type DispatchContext = {
   command: string;
@@ -146,13 +146,11 @@ export const handlers: Record<Handler, DispatchHandler> = {
     if (initId) getInit(state, initId);
     else getWave(state, waveId as string);
     const subject = (initId ?? waveId) as string;
+    const history = repo.readStateHistory();
     return ok({
       subject,
-      entries: timelineFromHistory(
-        repo.readStateHistory(),
-        subject,
-        initId ? "init" : "wave",
-      ),
+      entries: timelineFromHistory(history, subject, initId ? "init" : "wave"),
+      problems: problemsFromHistory(history, subject, initId ? "init" : "wave"),
     });
   },
   doctor: ({ repo, config }) => {
