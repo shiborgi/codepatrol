@@ -61,8 +61,8 @@ requires `--update`, which preserves unrelated valid settings.
 ### Optional Agent Catalog
 
 An AgentPatrol-compatible catalog can be configured as an optional, deterministic
-process boundary. CodePatrol has no AgentPatrol dependency, discovery, network
-lookup, or catalog-layout knowledge. Do not add this section to a repository that
+process boundary. See `contracts/family.md`. CodePatrol has no AgentPatrol
+dependency, discovery, network lookup, or catalog-layout knowledge. Do not add this section to a repository that
 does not use catalog resolution:
 
 ```json
@@ -103,7 +103,8 @@ result contracts, schemas, verification, review, and Ship gates remain authorita
 
 ### ContextPatrol Integration
 
-ContextPatrol is configured independently of the agent catalog. It receives a
+ContextPatrol is configured independently of the agent catalog. See
+`contracts/family.md`. It receives a
 neutral, output-byte-bounded code-analysis query and returns advisory context. It
 never receives task identifiers, lifecycle labels, agent identity, or agent
 instructions. CodePatrol targets the current base commit, so a snapshot is
