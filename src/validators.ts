@@ -1,68 +1,20 @@
-import type { z } from "zod";
-import {
-  type BuildResult,
-  type BuildReview,
-  buildResultSchema,
-  buildReviewSchema,
-  type DocumentReview,
-  documentReviewSchema,
-  type Operation,
-  type PlanDocument,
-  planDocumentSchema,
-  type Round,
-  type SpecDocument,
-  type State,
-  specDocumentSchema,
-  type Task,
-  type Wave,
+import type {
+  BuildReview,
+  PlanDocument,
+  Round,
+  SpecDocument,
+  State,
+  Task,
+  Wave,
 } from "./core.js";
-import {
-  assertDomain,
-  CodePatrolError,
-  ERROR_CODES,
-  type ErrorCode,
-  zodIssues,
-} from "./errors.js";
+
+export { parseResult, resultAs } from "./service/results.js";
+
+import { assertDomain, ERROR_CODES, type ErrorCode } from "./errors.js";
 import { getWork } from "./selectors.js";
+import type { ParsedResult } from "./service/results.js";
 
-export type ParsedResult =
-  | SpecDocument
-  | PlanDocument
-  | BuildResult
-  | DocumentReview
-  | BuildReview;
-
-export function parseResult(operation: Operation, raw: unknown): ParsedResult {
-  const schema =
-    operation === "spec"
-      ? specDocumentSchema
-      : operation === "plan"
-        ? planDocumentSchema
-        : operation === "build"
-          ? buildResultSchema
-          : operation === "build-review"
-            ? buildReviewSchema
-            : documentReviewSchema;
-  const parsed = schema.safeParse(raw);
-  if (!parsed.success) {
-    throw new CodePatrolError(ERROR_CODES.INVALID_RESULT, zodIssues(parsed.error), 2);
-  }
-  return parsed.data;
-}
-
-export function resultAs<T extends z.ZodTypeAny>(
-  value: unknown,
-  schema: T,
-): z.infer<T> {
-  const parsed = schema.safeParse(value);
-  if (!parsed.success) {
-    throw new CodePatrolError(
-      ERROR_CODES.INTERNAL,
-      "validated result does not match its schema",
-    );
-  }
-  return parsed.data;
-}
+export type { ParsedResult };
 
 export function validateSpec(document: SpecDocument): void {
   const waveKeys = document.waves.map((wave) => wave.key);
