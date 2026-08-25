@@ -4,11 +4,23 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 import { runCli } from "../src/cli.js";
+import type { ContextSnapshot } from "../src/context-provider.js";
 import type { Source } from "../src/core.js";
+import { digest, stableJson } from "../src/shared.js";
 import { commitCandidate, fixture } from "./helpers.js";
 
 const producer: Source = { harness: "test-producer", model: "model-a", agent: null };
 const reviewer: Source = { harness: "test-reviewer", model: "model-b", agent: null };
+
+function contextSnapshot(profile: string): ContextSnapshot {
+  const report = { profile };
+  return {
+    profile,
+    reportDigest: `sha256:${digest(stableJson(report))}`,
+    requestDigest: `sha256:${"a".repeat(64)}`,
+    report,
+  };
+}
 
 function specDoc() {
   return {
@@ -78,6 +90,23 @@ function driveToBuild(service: ReturnType<typeof fixture>["service"]) {
 function buildResult(workId: string) {
   return { summary: "Candidate", works: [{ workId, summary: "Implemented" }] };
 }
+
+test("producer selections retain their individual context snapshots", () => {
+  const { service } = fixture();
+  const init = service.createInit("Context", "Per-task context");
+  const first = contextSnapshot("focused");
+  const second = contextSnapshot("broad");
+  const opened = service.openProducers("spec", init.id, [
+    { source: producer, agentInstructions: "", contextSnapshot: first },
+    { source: reviewer, agentInstructions: "", contextSnapshot: second },
+  ]);
+  assert.deepEqual(
+    opened.tasks.map(
+      ({ contextSnapshot }) => (contextSnapshot as ContextSnapshot).profile,
+    ),
+    ["focused", "broad"],
+  );
+});
 
 function linkSharedSource(root: string): void {
   mkdirSync(resolve(root, "node_modules"));

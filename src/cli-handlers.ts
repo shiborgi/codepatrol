@@ -76,15 +76,17 @@ export const handlers: Record<Handler, DispatchHandler> = {
     ),
   producer: async ({ command, options, repo, config, service, ctx }) => {
     const operation = command as ProducerOperation;
-    const selections = await producerAgents(config, options, ctx);
-    const context = await taskContext(config, operation, options, repo, ctx);
+    const agents = await producerAgents(config, options, ctx);
+    const contexts = await taskContexts(config, operation, options, repo, ctx);
+    const selections = agents.flatMap((selection) =>
+      contexts.map((contextSnapshot) => ({ ...selection, contextSnapshot })),
+    );
     return ok(
       service.openProducers(
         operation,
         required(options, operation === "spec" ? "--init" : "--wave"),
         selections,
         options.get("--from"),
-        context,
       ),
     );
   },
@@ -259,11 +261,9 @@ async function taskContext(
   repo: Repository,
   ctx: RunContext,
 ): Promise<ContextSnapshot | undefined> {
-  const explicit = options.get("--context-profile");
-  if (options.has("--context-profile") && !explicit)
-    usage("--context-profile must not be empty");
-  if (explicit === "none") return undefined;
-  const profile = explicit ?? config.contextPatrol?.defaults[operation];
+  const profiles = contextProfiles(config, operation, options);
+  if (profiles.length > 1) usage("--context-profile accepts one profile here");
+  const profile = profiles[0];
   if (!profile) return undefined;
   return resolveContext(
     config.contextPatrol,
@@ -274,6 +274,47 @@ async function taskContext(
     undefined,
     ctx,
   );
+}
+
+async function taskContexts(
+  config: ReturnType<typeof loadConfig>,
+  operation: Operation | "ship",
+  options: Map<string, string>,
+  repo: Repository,
+  ctx: RunContext,
+): Promise<Array<ContextSnapshot | undefined>> {
+  const profiles = contextProfiles(config, operation, options);
+  return Promise.all(
+    profiles.map((profile) =>
+      profile === undefined
+        ? undefined
+        : resolveContext(
+            config.contextPatrol,
+            profile,
+            repo.root,
+            "Analyze the relevant code structure, dependencies, source boundaries, changes, and test signals for the requested change.",
+            { kind: "commit", oid: repo.currentCommit(config.baseBranch) },
+            undefined,
+            ctx,
+          ),
+    ),
+  );
+}
+
+function contextProfiles(
+  config: ReturnType<typeof loadConfig>,
+  operation: Operation | "ship",
+  options: Map<string, string>,
+): Array<string | undefined> {
+  const explicit = options.get("--context-profile");
+  if (options.has("--context-profile") && !explicit)
+    usage("--context-profile must not be empty");
+  const profiles = explicit
+    ? explicit.split(",").map((profile) => profile.trim())
+    : [config.contextPatrol?.defaults[operation]];
+  if (explicit && profiles.some((profile) => !profile))
+    usage("--context-profile entries must not be empty");
+  return profiles.map((profile) => (profile === "none" ? undefined : profile));
 }
 
 async function readJson(ctx: RunContext, location: string): Promise<unknown> {

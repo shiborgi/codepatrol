@@ -73,6 +73,42 @@ test("producer batches resolve before opening and return task envelopes", async 
   assert.equal(repo.readState().state.tasks.length, 2);
 });
 
+test("producer profiles form a cartesian batch and none omits snapshots", async () => {
+  const log = resolve(tmpdir(), `codepatrol-agent-${process.pid}-${Date.now()}.log`);
+  const { root, repo } = fixture(catalog("valid", log));
+  const created = await cli(root, "init", "create", "--title", "Profiles");
+  const initId = (JSON.parse(created.stdout) as { id: string }).id;
+  const opened = await cli(
+    root,
+    "spec",
+    "open",
+    "--init",
+    initId,
+    "--harness",
+    "test",
+    "--agents",
+    "agentpatrol/first@1.0.0,agentpatrol/second@1.0.0",
+    "--context-profile",
+    "none,none",
+  );
+  assert.equal(opened.exitCode, 0, opened.stderr);
+  const output = JSON.parse(opened.stdout) as {
+    tasks: Array<{ task: { source: Source; contextSnapshot?: unknown } }>;
+  };
+  assert.equal(output.tasks.length, 4);
+  assert.deepEqual(
+    output.tasks.map(({ task }) => task.source.agent),
+    [
+      "agentpatrol/first",
+      "agentpatrol/first",
+      "agentpatrol/second",
+      "agentpatrol/second",
+    ],
+  );
+  assert.ok(output.tasks.every(({ task }) => task.contextSnapshot === undefined));
+  assert.equal(repo.readState().state.tasks.length, 4);
+});
+
 test("producer selection is explicit and legacy role flags are rejected", async () => {
   const { root } = fixture();
   const created = await cli(root, "init", "create", "--title", "Explicit");

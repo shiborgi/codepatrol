@@ -88,16 +88,19 @@ export class CodePatrolService {
     return this.openProducers(
       operation,
       subjectId,
-      [{ source, agentInstructions: agentInstructions ?? "" }],
+      [{ source, agentInstructions: agentInstructions ?? "", contextSnapshot }],
       seedProposalId,
-      contextSnapshot,
     ).tasks[0] as TaskEnvelope;
   }
 
   openProducers(
     operation: ProducerOperation,
     subjectId: string,
-    selections: Array<{ source: Source; agentInstructions: string }>,
+    selections: Array<{
+      source: Source;
+      agentInstructions: string;
+      contextSnapshot?: ContextSnapshot;
+    }>,
     seedProposalId?: string,
     contextSnapshot?: ContextSnapshot,
   ): { tasks: TaskEnvelope[] } {
@@ -197,7 +200,7 @@ export class CodePatrolService {
               status: "open",
               source: selection.source,
               agentInstructions: selection.agentInstructions || undefined,
-              contextSnapshot,
+              contextSnapshot: selection.contextSnapshot ?? contextSnapshot,
               workspace,
               baseCommit,
             }),
