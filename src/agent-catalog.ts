@@ -6,8 +6,8 @@ import {
 } from "./agent-protocol.js";
 import type { Config } from "./config.js";
 import { digest } from "./core.js";
-import { CodePatrolError, ERROR_CODES, zodIssues } from "./errors.js";
-import { invokeJsonProcess } from "./process-rpc.js";
+import { CodePatrolError, ERROR_CODES } from "./errors.js";
+import { invokeJsonResponse } from "./resolver-rpc.js";
 import { type RunContext, systemRunContext } from "./run-context.js";
 import { LIMITS, sha256Schema } from "./shared.js";
 
@@ -74,7 +74,7 @@ export async function resolveAgent(
   ctx.log.debug(
     `resolving agent ${request.reference}@${request.version} via ${command}`,
   );
-  const raw = await invokeJsonProcess(
+  const parsed = await invokeJsonResponse(
     command,
     args,
     {
@@ -101,48 +101,30 @@ export async function resolveAgent(
           message,
         ),
     },
+    responseSchema,
+    ERROR_CODES.AGENT_RESOLVER_INVALID_RESPONSE,
   );
-  let json: unknown;
-  try {
-    json = JSON.parse(raw);
-  } catch {
-    throw new CodePatrolError(
-      ERROR_CODES.AGENT_RESOLVER_INVALID_RESPONSE,
-      "agent resolver stdout is not valid JSON",
-    );
-  }
-  const parsed = responseSchema.safeParse(json);
-  if (!parsed.success) {
-    throw new CodePatrolError(
-      ERROR_CODES.AGENT_RESOLVER_INVALID_RESPONSE,
-      zodIssues(parsed.error),
-    );
-  }
   if (
-    parsed.data.agent.reference !== request.reference ||
-    parsed.data.agent.version !== request.version
+    parsed.agent.reference !== request.reference ||
+    parsed.agent.version !== request.version
   ) {
     throw new CodePatrolError(
       ERROR_CODES.AGENT_RESOLVER_MISMATCH,
       "agent resolver returned a different reference or version",
     );
   }
-  if (
-    Buffer.byteLength(parsed.data.instructions, "utf8") > LIMITS.agentInstructionsBytes
-  ) {
+  if (Buffer.byteLength(parsed.instructions, "utf8") > LIMITS.agentInstructionsBytes) {
     throw new CodePatrolError(
       ERROR_CODES.AGENT_RESOLVER_INVALID_RESPONSE,
       `agent resolver instructions exceed ${LIMITS.agentInstructionsBytes} bytes`,
     );
   }
-  if (`sha256:${digest(parsed.data.instructions)}` !== parsed.data.instructionsDigest) {
+  if (`sha256:${digest(parsed.instructions)}` !== parsed.instructionsDigest) {
     throw new CodePatrolError(
       ERROR_CODES.AGENT_RESOLVER_DIGEST_MISMATCH,
       "agent resolver instructions digest does not match the instructions",
     );
   }
-  ctx.log.debug(
-    `resolved agent ${parsed.data.agent.reference}@${parsed.data.agent.version}`,
-  );
-  return parsed.data;
+  ctx.log.debug(`resolved agent ${parsed.agent.reference}@${parsed.agent.version}`);
+  return parsed;
 }

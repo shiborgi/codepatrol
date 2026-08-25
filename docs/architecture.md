@@ -68,3 +68,40 @@ publication. The complete report is an immutable task snapshot exposed only at
 the envelope boundary; task lists, proposals, and historical reviews keep it out
 of nested data. Context is advisory and cannot grant authority or alter lifecycle
 contracts, verification, review, or Ship gates.
+
+## Module Map
+
+Each module has one primary responsibility. Dependencies point inward toward
+contracts and infrastructure; modules must not import CLI handlers from domain
+or persistence code.
+
+| Module | Responsibility | Allowed dependencies |
+| --- | --- | --- |
+| `agent-protocol.ts` | Agent reference and version predicates | None |
+| `agent-catalog.ts` | Agent catalog adapter and identity/digest checks | `config`, `core`, `errors`, `resolver-rpc`, `run-context`, `shared` |
+| `context-provider.ts` | ContextPatrol profile adapter and snapshot checks | `config`, `errors`, `resolver-rpc`, `run-context`, `shared` |
+| `resolver-rpc.ts` | Shared JSON resolver response parsing and schema validation | `errors`, `process-rpc` |
+| `process-rpc.ts` | Bounded child-process execution | Node platform APIs |
+| `schemas.ts` | Zod contracts and inferred domain types | `agent-protocol`, `shared` |
+| `core.ts` | State construction, IDs, and round helpers | `schemas` |
+| `service.ts` | Lifecycle orchestration facade | Domain modules, `git`, `verification` |
+| `service/results.ts` | Producer and review result parsing | `errors`, `schemas` |
+| `service/review.ts` | Review selection, sealing, and Spec materialization | `core`, `errors`, `selectors`, `service/results`, `validators` |
+| `validators.ts` | Contract and acceptance validation | `core`, `errors`, `selectors`, `service/results` |
+| `selectors.ts` | State lookup helpers | `core`, `errors` |
+| `git.ts` | Git state, refs, worktrees, and locks | `command`, `core`, `errors`, `run-context` |
+| `verification.ts` | Candidate verification in disposable worktrees | `command`, `git`, `run-context` |
+| `command.ts` | Safe subprocess command execution and diagnostics | Node platform APIs |
+| `config.ts` | Repository configuration loading and validation | `errors`, `shared` |
+| `setup.ts` | Initial and updated repository configuration | `config`, `git`, `errors` |
+| `remote.ts` | GitHub synchronization adapter | `config`, `git`, `run-context` |
+| `ship.ts` | Ship recovery and transition support | `core`, `git`, `errors` |
+| `run-context.ts` | Clock, environment, IO, and logging seams | Node platform APIs |
+| `shared.ts` | Digests, stable JSON, and shared limits | Node platform APIs |
+| `envelope.ts` | Task envelope projection | `core` |
+| `sync-hooks.ts` | Lifecycle commentary and remote hook selection | `commentary`, `remote`, `core` |
+| `commentary.ts` | Deterministic lifecycle comments | `core` |
+| `errors.ts` | Typed lifecycle error codes and formatting | None |
+| `version.ts` | Package version constant | None |
+| `cli.ts` | Command registry, global flags, routing, and usage | `cli-handlers`, `service`, `setup`, `remote` |
+| `cli-handlers.ts` | Per-command operation handlers | `cli`, `service`, provider adapters |
