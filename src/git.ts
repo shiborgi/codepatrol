@@ -372,7 +372,6 @@ export class Repository implements StateStore {
       if (patch) {
         const applied = this.tryGit(["apply", "--3way", "-"], path, patch);
         if (applied.status !== "succeeded") {
-          this.removeWorkspace(taskId);
           throw new CodePatrolError(
             ERROR_CODES.SEED_CONFLICT,
             applied.stderr.trim() ||

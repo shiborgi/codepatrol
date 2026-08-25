@@ -25,7 +25,7 @@ import {
   type Wave,
 } from "./core.js";
 import { taskEnvelope, taskWithoutInstructions } from "./envelope.js";
-import { assertDomain, ERROR_CODES } from "./errors.js";
+import { assertDomain, CodePatrolError, ERROR_CODES } from "./errors.js";
 import { filterSharedPathEntries, type StateStore } from "./git.js";
 import { type RunContext, systemRunContext } from "./run-context.js";
 import {
@@ -177,34 +177,50 @@ export class CodePatrolService {
           const taskId = id("TASK");
           allocatedTaskIds.push(taskId);
           let workspace: string | null = null;
+          let status: Task["status"] = "open";
+          let failure: Task["failure"] = null;
           if (operation === "build") {
             const seed = seedProposalId
               ? getProposal(state, seedProposalId).candidate
               : null;
-            workspace = this.repo.createWorkspace(
-              taskId,
-              baseCommit as string,
-              seed ? { base: seed.baseCommit, commit: seed.commit } : undefined,
-            );
-            this.repo.linkSharedPaths(
-              workspace,
-              this.config.verification.sharedPaths ?? [],
-            );
+            try {
+              workspace = this.repo.createWorkspace(
+                taskId,
+                baseCommit as string,
+                seed ? { base: seed.baseCommit, commit: seed.commit } : undefined,
+              );
+              this.repo.linkSharedPaths(
+                workspace,
+                this.config.verification.sharedPaths ?? [],
+              );
+            } catch (error) {
+              if (
+                !(error instanceof CodePatrolError) ||
+                error.code !== ERROR_CODES.SEED_CONFLICT
+              )
+                throw error;
+              workspace = this.repo.workspacePath(taskId);
+              status = "failed";
+              failure = { code: error.code, message: error.message };
+            }
           }
-          state.tasks.push(
-            createTask(this.ctx, {
-              id: taskId,
-              operation,
-              subjectId,
-              round: round.number,
-              status: "open",
-              source: selection.source,
-              agentInstructions: selection.agentInstructions || undefined,
-              contextSnapshot: selection.contextSnapshot ?? contextSnapshot,
-              workspace,
-              baseCommit,
-            }),
-          );
+          const task = createTask(this.ctx, {
+            id: taskId,
+            operation,
+            subjectId,
+            round: round.number,
+            status,
+            source: selection.source,
+            agentInstructions: selection.agentInstructions || undefined,
+            contextSnapshot: selection.contextSnapshot ?? contextSnapshot,
+            workspace,
+            baseCommit,
+          });
+          if (failure) {
+            task.failure = failure;
+            task.finishedAt = this.ctx.now().toISOString();
+          }
+          state.tasks.push(task);
         }
         return allocatedTaskIds;
       });

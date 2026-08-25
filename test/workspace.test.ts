@@ -7,7 +7,7 @@ import { runCli } from "../src/cli.js";
 import type { ContextSnapshot } from "../src/context-provider.js";
 import type { Source } from "../src/core.js";
 import { digest, stableJson } from "../src/shared.js";
-import { commitCandidate, fixture } from "./helpers.js";
+import { commitCandidate, fixture, git } from "./helpers.js";
 
 const producer: Source = { harness: "test-producer", model: "model-a", agent: null };
 const reviewer: Source = { harness: "test-reviewer", model: "model-b", agent: null };
@@ -159,6 +159,51 @@ test("task submit resolves from inside a managed build worktree", async () => {
   ]);
   assert.equal(result.exitCode, 0, result.stderr);
   assert.equal(service.showTask(buildTask.id).task.status, "submitted");
+});
+
+test("seed conflict keeps a build task and workspace", () => {
+  const { root, service } = fixture();
+  const { wave, work, buildTask } = driveToBuild(service);
+  commitCandidate(buildTask.workspace as string, "seed");
+  const proposalId = service.submitTask(buildTask.id, buildResult(work.id)).task
+    .proposalId as string;
+  const review = service.openReview("build-review", wave.id, reviewer).task;
+  service.submitTask(review.id, {
+    decision: "approve",
+    selectedProposalId: proposalId,
+    summary: "Approved",
+    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    acceptance: [
+      { id: work.acceptance[0]?.id as string, status: "passed", summary: "Ok" },
+    ],
+  });
+  writeFileSync(resolve(root, "result.txt"), "main-advance\n");
+  git(root, ["add", "result.txt"]);
+  git(root, [
+    "-c",
+    "user.name=Test",
+    "-c",
+    "user.email=test@example.com",
+    "commit",
+    "-m",
+    "advance main",
+  ]);
+  const rebuilt = service.openProducer("build", wave.id, producer, proposalId);
+  assert.ok(rebuilt.task.id);
+  assert.equal(rebuilt.task.status, "failed");
+  assert.equal(rebuilt.task.failure?.code, "SEED_CONFLICT");
+  assert.equal(existsSync(rebuilt.task.workspace as string), true);
+  const rebuiltWave = service.show("wave", wave.id) as { status: string };
+  assert.equal(rebuiltWave.status, "building");
+  assert.ok(
+    service
+      .list("task")
+      .some(
+        (task) =>
+          (task as { id: string }).id === rebuilt.task.id &&
+          (task as { workspace: string | null }).workspace !== null,
+      ),
+  );
 });
 
 test("non-managed directories keep typed repository errors", async () => {

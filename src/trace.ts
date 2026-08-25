@@ -70,6 +70,7 @@ export function doctorSignals(
     createdAt: string;
     next: string;
   }>;
+  unsippedReadyWaves: Array<{ id: string; next: string }>;
 } {
   const threshold = Math.max(0, maxReviewReturns - 1);
   const activeWaves = state.waves.filter(
@@ -117,7 +118,10 @@ export function doctorSignals(
       createdAt: task.createdAt,
       next: task.operation,
     }));
-  return { atRiskWaves, recurringAcceptanceFailures, openTasks };
+  const unsippedReadyWaves = state.waves
+    .filter((wave) => wave.status === "ready-to-ship" && wave.ship === null)
+    .map((wave) => ({ id: wave.id, next: "ship" }));
+  return { atRiskWaves, recurringAcceptanceFailures, openTasks, unsippedReadyWaves };
 }
 
 export function timelineFromHistory(

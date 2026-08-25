@@ -383,3 +383,29 @@ test("doctor lists the lifecycle step for open tasks", async () => {
   assert.ok(listed.createdAt);
   assert.equal(listed.next, "build");
 });
+
+test("doctor lists unsipped ready-to-ship waves and omits accepted ones", async () => {
+  const { root, service } = fixture();
+  const { wave, work, buildTask } = driveToBuild(service);
+  commitCandidate(buildTask.workspace as string, "ready");
+  const proposalId = service.submitTask(buildTask.id, {
+    summary: "Candidate",
+    works: [{ workId: work.id, summary: "Implemented" }],
+  }).task.proposalId as string;
+  approveBuild(service, wave.id, work.acceptance[0]?.id as string, proposalId);
+
+  const ready = await runCli(["node", "codepatrol", "--workspace", root, "doctor"]);
+  assert.equal(ready.exitCode, 0, ready.stderr);
+  const readyPayload = JSON.parse(ready.stdout) as {
+    unsippedReadyWaves: Array<{ id: string; next: string }>;
+  };
+  assert.deepEqual(readyPayload.unsippedReadyWaves, [{ id: wave.id, next: "ship" }]);
+
+  service.shipAccept(wave.id);
+  const shipped = await runCli(["node", "codepatrol", "--workspace", root, "doctor"]);
+  assert.equal(shipped.exitCode, 0, shipped.stderr);
+  const shippedPayload = JSON.parse(shipped.stdout) as {
+    unsippedReadyWaves: Array<{ id: string; next: string }>;
+  };
+  assert.deepEqual(shippedPayload.unsippedReadyWaves, []);
+});
