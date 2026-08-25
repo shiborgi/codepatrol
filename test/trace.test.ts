@@ -238,9 +238,11 @@ test("doctor lists at-risk waves and recurring acceptance failures, and stays em
   const healthyPayload = JSON.parse(healthyDoctor.stdout) as {
     atRiskWaves: unknown[];
     recurringAcceptanceFailures: unknown[];
+    openTasks: unknown[];
   };
   assert.deepEqual(healthyPayload.atRiskWaves, []);
   assert.deepEqual(healthyPayload.recurringAcceptanceFailures, []);
+  assert.deepEqual(healthyPayload.openTasks, []);
 
   const { root, service } = fixture();
   const { wave, work, buildTask } = driveToBuild(service);
@@ -354,4 +356,28 @@ test("doctor ignores return risks after a wave is shipped", async () => {
   };
   assert.deepEqual(payload.atRiskWaves, []);
   assert.deepEqual(payload.recurringAcceptanceFailures, []);
+});
+
+test("doctor lists open tasks with a submit or cancel next command", async () => {
+  const { root, service } = fixture();
+  const { wave, buildTask } = driveToBuild(service);
+  const doctor = await runCli(["node", "codepatrol", "--workspace", root, "doctor"]);
+  assert.equal(doctor.exitCode, 0, doctor.stderr);
+  const payload = JSON.parse(doctor.stdout) as {
+    openTasks: Array<{
+      id: string;
+      operation: string;
+      subjectId: string;
+      status: string;
+      createdAt: string;
+      nextCommand: string;
+    }>;
+  };
+  const listed = payload.openTasks.find((entry) => entry.id === buildTask.id);
+  assert.ok(listed);
+  assert.equal(listed.operation, "build");
+  assert.equal(listed.subjectId, wave.id);
+  assert.equal(listed.status, "open");
+  assert.ok(listed.createdAt);
+  assert.match(listed.nextCommand, /task (submit|cancel)/);
 });

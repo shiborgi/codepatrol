@@ -62,6 +62,14 @@ export function doctorSignals(
     acceptanceId: string;
     rounds: number;
   }>;
+  openTasks: Array<{
+    id: string;
+    operation: string;
+    subjectId: string;
+    status: string;
+    createdAt: string;
+    nextCommand: string;
+  }>;
 } {
   const threshold = Math.max(0, maxReviewReturns - 1);
   const activeWaves = state.waves.filter(
@@ -99,7 +107,17 @@ export function doctorSignals(
         rounds: rounds.size,
       };
     });
-  return { atRiskWaves, recurringAcceptanceFailures };
+  const openTasks = state.tasks
+    .filter((task) => ["preparing", "open", "blocked"].includes(task.status))
+    .map((task) => ({
+      id: task.id,
+      operation: task.operation,
+      subjectId: task.subjectId,
+      status: task.status,
+      createdAt: task.createdAt,
+      nextCommand: `task submit --task ${task.id}`,
+    }));
+  return { atRiskWaves, recurringAcceptanceFailures, openTasks };
 }
 
 export function timelineFromHistory(
