@@ -10,7 +10,10 @@ export function git(cwd: string, args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf8" });
 }
 
-export function fixture(agentCatalog?: Config["agentCatalog"]): {
+export function fixture(
+  agentCatalog?: Config["agentCatalog"],
+  sharedPaths?: string[],
+): {
   root: string;
   home: string;
   repo: Repository;
@@ -29,6 +32,7 @@ export function fixture(agentCatalog?: Config["agentCatalog"]): {
       verification: {
         argv: [process.execPath, "-e", "process.exit(0)"],
         timeoutMs: 10_000,
+        ...(sharedPaths ? { sharedPaths } : {}),
       },
       maxReviewReturns: 3,
       ...(agentCatalog ? { agentCatalog } : {}),
@@ -51,6 +55,7 @@ export function fixture(agentCatalog?: Config["agentCatalog"]): {
     verification: {
       argv: [process.execPath, "-e", "process.exit(0)"],
       timeoutMs: 10_000,
+      ...(sharedPaths ? { sharedPaths } : {}),
     },
     maxReviewReturns: 3,
     ...(agentCatalog ? { agentCatalog } : {}),

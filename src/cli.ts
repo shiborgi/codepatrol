@@ -162,7 +162,8 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     ctx = systemRunContext({
       log: stderrLogger(globals.verbose ? "debug" : "silent"),
     });
-    const repo = Repository.open(globals.workspace, ctx);
+    const opened = Repository.open(globals.workspace, ctx);
+    const repo = opened.resolveManagedOwner() ?? opened;
     const command = globals.args[0] as string;
     const action =
       command === "setup" ? undefined : (globals.args[1] as string | undefined);

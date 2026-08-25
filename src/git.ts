@@ -48,6 +48,7 @@ export interface StateStore {
     waveId: string,
     proposalId: string,
     baseCommit: string,
+    sharedPaths?: string[],
   ): {
     ref: string;
     baseCommit: string;
@@ -402,11 +403,28 @@ export class Repository implements StateStore {
     }
   }
 
+  resolveManagedOwner(): Repository | null {
+    const ownGitDir = resolve(this.root, ".git");
+    if (resolve(this.commonDir) === ownGitDir) return null;
+    const mainRoot = dirname(this.commonDir);
+    try {
+      const main = new Repository(mainRoot, this.ctx);
+      let current = this.root;
+      try {
+        current = realpathSync(this.root);
+      } catch {}
+      return main.listManagedWorktrees().includes(current) ? main : null;
+    } catch {
+      return null;
+    }
+  }
+
   submitCandidate(
     taskId: string,
     waveId: string,
     proposalId: string,
     baseCommit: string,
+    sharedPaths: string[] = [],
   ): {
     ref: string;
     baseCommit: string;
@@ -415,7 +433,10 @@ export class Repository implements StateStore {
     changedPaths: string[];
   } {
     const path = this.workspacePath(taskId);
-    const status = this.git(["status", "--porcelain"], path);
+    const status = filterSharedPathEntries(
+      this.git(["status", "--porcelain"], path),
+      sharedPaths,
+    );
     assertDomain(
       !status.trim(),
       ERROR_CODES.DIRTY_WORKTREE,
@@ -547,6 +568,27 @@ export class Repository implements StateStore {
   shipRecoveryPending(): boolean {
     return shipJournalExists(this.commonDir);
   }
+}
+
+export function filterSharedPathEntries(status: string, sharedPaths: string[]): string {
+  if (sharedPaths.length === 0) return status;
+  const ignored = new Set(sharedPaths.map((entry) => entry.split(/[\\/]/).join("/")));
+  return status
+    .split("\n")
+    .filter((line) => {
+      if (line.length < 4) return true;
+      let path = line.slice(3).trim();
+      if (path.startsWith('"') && path.endsWith('"')) {
+        try {
+          path = JSON.parse(path) as string;
+        } catch {
+          path = path.slice(1, -1);
+        }
+      }
+      if (path.endsWith("/")) path = path.slice(0, -1);
+      return !ignored.has(path.split(/[\\/]/).join("/"));
+    })
+    .join("\n");
 }
 
 function processIsAlive(pid: number): boolean {

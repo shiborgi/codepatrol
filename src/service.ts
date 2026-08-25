@@ -26,7 +26,7 @@ import {
 } from "./core.js";
 import { taskEnvelope, taskWithoutInstructions } from "./envelope.js";
 import { assertDomain, ERROR_CODES } from "./errors.js";
-import type { StateStore } from "./git.js";
+import { filterSharedPathEntries, type StateStore } from "./git.js";
 import { type RunContext, systemRunContext } from "./run-context.js";
 import {
   getInit,
@@ -398,6 +398,7 @@ export class CodePatrolService {
                   task.subjectId,
                   proposalId,
                   task.baseCommit,
+                  this.config.verification.sharedPaths ?? [],
                 );
                 submittedCandidate = candidate;
                 summary = build.summary;
@@ -688,7 +689,13 @@ export class CodePatrolService {
           continue;
         }
         const status = this.repo.tryGit(["status", "--porcelain"], path);
-        if (status.status !== "succeeded" || status.stdout.trim()) {
+        if (
+          status.status !== "succeeded" ||
+          filterSharedPathEntries(
+            status.stdout,
+            this.config.verification.sharedPaths ?? [],
+          ).trim()
+        ) {
           dirty.push(path);
           continue;
         }
