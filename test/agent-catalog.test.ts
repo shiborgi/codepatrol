@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { runCli } from "../src/cli.js";
 import { validateConfig } from "../src/config.js";
 import type { Source } from "../src/core.js";
+import { parseResult } from "../src/validators.js";
 import { fixture } from "./helpers.js";
 
 const resolverScript = resolve(
@@ -149,6 +150,41 @@ test("producer selection is explicit and legacy role flags are rejected", async 
   assert.equal(JSON.parse(invalidReference.stderr).error, "AGENT_RESOLVER_MISMATCH");
 });
 
+test("producer defaults are used only when --agents is omitted", async () => {
+  const log = resolve(tmpdir(), `codepatrol-agent-${process.pid}-${Date.now()}.log`);
+  const { root } = fixture(
+    catalog("valid", log, {
+      spec: { agent: "agentpatrol/default-spec", version: "1.0.0" },
+    }),
+  );
+  const created = await cli(root, "init", "create", "--title", "Default");
+  const initId = (JSON.parse(created.stdout) as { id: string }).id;
+  const opened = await cli(root, "spec", "open", "--init", initId, "--harness", "test");
+  assert.equal(opened.exitCode, 0, opened.stderr);
+  assert.equal(
+    (JSON.parse(opened.stdout) as { tasks: Array<{ task: { source: Source } }> })
+      .tasks[0]?.task.source.agent,
+    "agentpatrol/default-spec",
+  );
+  const explicit = await cli(
+    root,
+    "spec",
+    "open",
+    "--init",
+    initId,
+    "--harness",
+    "test",
+    "--agents",
+    "agentpatrol/explicit@1.0.0",
+  );
+  assert.equal(explicit.exitCode, 0, explicit.stderr);
+  assert.equal(
+    (JSON.parse(explicit.stdout) as { tasks: Array<{ task: { source: Source } }> })
+      .tasks[0]?.task.source.agent,
+    "agentpatrol/explicit",
+  );
+});
+
 test("producer resolver failure leaves state and worktrees untouched", async () => {
   const log = resolve(tmpdir(), `codepatrol-agent-${process.pid}-${Date.now()}.log`);
   const { root, repo } = fixture(catalog("malformed", log));
@@ -222,16 +258,48 @@ test("reviews resolve their configured single default without role flags", async
   assert.equal(requests(log).length, 1);
 });
 
-test("configuration rejects producer defaults", () => {
-  assert.throws(() =>
-    validateConfig({
-      schemaVersion: 1,
-      verification: { argv: ["true"] },
-      maxReviewReturns: 3,
-      agentCatalog: {
-        argv: ["agentpatrol", "resolve", "--json"],
-        defaults: { spec: { agent: "agentpatrol/architect", version: "1.0.0" } },
-      },
-    }),
+test("configuration accepts producer defaults and remains lean without them", () => {
+  const config = validateConfig({
+    schemaVersion: 1,
+    verification: { argv: ["true"] },
+    maxReviewReturns: 3,
+    agentCatalog: {
+      argv: ["agentpatrol", "resolve", "--json"],
+      defaults: { spec: { agent: "agentpatrol/architect", version: "1.0.0" } },
+    },
+  });
+  assert.equal(config.agentCatalog?.defaults.spec?.agent, "agentpatrol/architect");
+  assert.deepEqual(
+    validateConfig({ schemaVersion: 1, verification: { argv: ["true"] } }).agentCatalog,
+    undefined,
   );
+});
+
+test("review candidate scores are optional integers from 0 through 100", () => {
+  const base = {
+    decision: "return" as const,
+    summary: "Reviewed",
+    candidates: [{ proposalId: "PROP-1", status: "failed" as const, summary: "No" }],
+  };
+  const parsed = (value: unknown) => {
+    const result = parseResult("spec-review", value);
+    assert.ok("candidates" in result);
+    return result;
+  };
+  assert.equal(parsed(base).candidates[0]?.score, undefined);
+  assert.equal(
+    parsed({ ...base, candidates: [{ ...base.candidates[0], score: 0 }] }).candidates[0]
+      ?.score,
+    0,
+  );
+  assert.equal(
+    parsed({ ...base, candidates: [{ ...base.candidates[0], score: 100 }] })
+      .candidates[0]?.score,
+    100,
+  );
+  for (const score of [-1, 101, 1.5]) {
+    assert.throws(() =>
+      parsed({ ...base, candidates: [{ ...base.candidates[0], score }] }),
+    );
+  }
 });

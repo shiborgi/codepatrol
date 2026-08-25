@@ -76,7 +76,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
     ),
   producer: async ({ command, options, repo, config, service, ctx }) => {
     const operation = command as ProducerOperation;
-    const agents = await producerAgents(config, options, ctx);
+    const agents = await producerAgents(config, operation, options, ctx);
     const contexts = await taskContexts(config, operation, options, repo, ctx);
     const selections = agents.flatMap((selection) =>
       contexts.map((contextSnapshot) => ({ ...selection, contextSnapshot })),
@@ -177,17 +177,26 @@ export const handlers: Record<Handler, DispatchHandler> = {
 
 async function producerAgents(
   config: ReturnType<typeof loadConfig>,
+  operation: ProducerOperation,
   options: Map<string, string>,
   ctx: RunContext,
 ): Promise<Array<{ source: Source; agentInstructions: string }>> {
-  const requested = required(options, "--agents")
-    .split(",")
-    .map((entry) => {
-      const at = entry.lastIndexOf("@");
-      if (at <= 0 || at === entry.length - 1)
-        usage("--agents entries must be reference@version");
-      return { reference: entry.slice(0, at), version: entry.slice(at + 1) };
-    });
+  const configured = config.agentCatalog?.defaults[operation];
+  const requested =
+    options
+      .get("--agents")
+      ?.split(",")
+      .map((entry) => {
+        const at = entry.lastIndexOf("@");
+        if (at <= 0 || at === entry.length - 1)
+          usage("--agents entries must be reference@version");
+        return { reference: entry.slice(0, at), version: entry.slice(at + 1) };
+      }) ??
+    (configured
+      ? [{ reference: configured.agent, version: configured.version }]
+      : null);
+  if (!requested)
+    usage("--agents is required when no agentCatalog default is configured");
   const harness = required(options, "--harness");
   const resolved: AgentResolution[] = [];
   for (const request of requested)

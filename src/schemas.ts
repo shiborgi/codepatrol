@@ -121,6 +121,7 @@ const candidateVerdictSchema = z
     proposalId: z.string().min(1),
     status: z.enum(["passed", "failed"]),
     summary: z.string().min(1),
+    score: z.number().int().min(0).max(100).optional(),
   })
   .strict();
 

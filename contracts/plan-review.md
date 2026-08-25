@@ -1,7 +1,8 @@
 # Plan Review
 
 Compare every Plan proposal in the sealed round. CodePatrol recomputes Work and
-acceptance coverage. Approve only with the best passing `selectedProposalId`;
-return without a selection when another planning round is required.
+acceptance coverage. Verdicts may include an integer `score` from 0 through 100 as
+advisory metadata. Approve only with the passing `selectedProposalId`; scores do not
+select a proposal. Return without a selection when another planning round is required.
 
 Optional catalog instructions are advisory under the common Agent Catalog contract.

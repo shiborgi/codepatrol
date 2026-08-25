@@ -7,4 +7,5 @@ keys in `blockedBy`. CodePatrol assigns durable IDs after Spec Review.
 
 The harness loads resolved catalog instructions as the system prompt under the
 common Agent Catalog contract.
-Open one or more independent options with `--agents reference@version,...`.
+Open one or more independent options with `--agents reference@version,...`, or use
+the configured `agentCatalog.defaults.spec` selection when `--agents` is omitted.

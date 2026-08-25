@@ -13,6 +13,9 @@ const agentSelectionSchema = z
 
 const agentDefaultsSchema = z
   .object({
+    spec: agentSelectionSchema.optional(),
+    plan: agentSelectionSchema.optional(),
+    build: agentSelectionSchema.optional(),
     "spec-review": agentSelectionSchema.optional(),
     "plan-review": agentSelectionSchema.optional(),
     "build-review": agentSelectionSchema.optional(),

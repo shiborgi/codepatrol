@@ -47,8 +47,8 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
     selectedProposalId: specProposalB,
     summary: "Option B is clearer",
     candidates: [
-      { proposalId: specProposalA, status: "passed", summary: "Valid" },
-      { proposalId: specProposalB, status: "passed", summary: "Best" },
+      { proposalId: specProposalA, status: "passed", summary: "Valid", score: 100 },
+      { proposalId: specProposalB, status: "passed", summary: "Best", score: 0 },
     ],
   });
 
@@ -80,8 +80,8 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
     selectedProposalId: planProposalB,
     summary: "Plan B is smaller",
     candidates: [
-      { proposalId: planProposalA, status: "passed", summary: "Valid" },
-      { proposalId: planProposalB, status: "passed", summary: "Best" },
+      { proposalId: planProposalA, status: "passed", summary: "Valid", score: 100 },
+      { proposalId: planProposalB, status: "passed", summary: "Best", score: 0 },
     ],
   });
 
@@ -109,8 +109,8 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
     selectedProposalId: buildProposalB,
     summary: "Candidate B is better",
     candidates: [
-      { proposalId: buildProposalA, status: "passed", summary: "Valid" },
-      { proposalId: buildProposalB, status: "passed", summary: "Best" },
+      { proposalId: buildProposalA, status: "passed", summary: "Valid", score: 100 },
+      { proposalId: buildProposalB, status: "passed", summary: "Best", score: 0 },
     ],
     acceptance: [
       { id: work.acceptance[0]?.id, status: "passed", summary: "Demonstrated" },

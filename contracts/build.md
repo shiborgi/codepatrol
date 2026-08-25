@@ -7,3 +7,5 @@ creates and anchors one canonical candidate commit from the final tree.
 The harness loads resolved catalog instructions as the system prompt under the
 common Agent Catalog contract.
 Batch openings share one base commit; each returned task has its own workspace.
+Use `agentCatalog.defaults.build` when `--agents` is omitted; without an explicit
+selection or this default, Build Open remains a usage error.

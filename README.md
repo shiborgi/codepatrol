@@ -91,8 +91,11 @@ characters. The instruction digest must match the nonempty instruction text.
 Instructions are limited to 256 KiB, the full response to 512 KiB, and `timeoutMs`
 to 60 seconds with a 10-second default.
 
-Producer Open requires `--agents <reference@version,reference@version,...>`, such
+Producer Open accepts `--agents <reference@version,reference@version,...>`, such
 as `--agents agentpatrol/architect@1.0.0,agentpatrol/architect-lean@1.0.0`.
+When `--agents` is omitted, the optional `defaults.spec`, `defaults.plan`, or
+`defaults.build` selection is used for that operation. Without either an explicit
+selection or an operation default, Producer Open remains a usage error.
 All agents resolve before any state mutation, context is retrieved once, and Open
 returns `{ "tasks": [TaskEnvelope...] }`, including for a single agent. Build tasks
 in a batch share one base commit. Reviews and `ship show` resolve their one configured
