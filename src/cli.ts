@@ -145,6 +145,12 @@ const commandRegistry: CommandSpec[] = [
     handler: "ship",
   },
   { route: "remote:sync", options: [], synopsis: "remote sync", handler: "remote" },
+  {
+    route: "trace:",
+    options: ["--init", "--wave"],
+    synopsis: "trace [--init <id> | --wave <id>]",
+    handler: "trace",
+  },
   { route: "doctor:", options: [], synopsis: "doctor", handler: "doctor" },
   { route: "cleanup:", options: [], synopsis: "cleanup", handler: "cleanup" },
 ];
@@ -165,9 +171,9 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     const opened = Repository.open(globals.workspace, ctx);
     const repo = opened.resolveManagedOwner() ?? opened;
     const command = globals.args[0] as string;
-    const action =
-      command === "setup" ? undefined : (globals.args[1] as string | undefined);
-    const options = parseFlags(globals.args.slice(command === "setup" ? 1 : 2));
+    const standalone = command === "setup" || command === "trace";
+    const action = standalone ? undefined : (globals.args[1] as string | undefined);
+    const options = parseFlags(globals.args.slice(standalone ? 1 : 2));
     const spec = commandRegistry.find(
       (entry) => entry.route === `${command}:${action ?? ""}`,
     );

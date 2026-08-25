@@ -568,6 +568,24 @@ export class Repository implements StateStore {
   shipRecoveryPending(): boolean {
     return shipJournalExists(this.commonDir);
   }
+
+  readStateHistory(): Array<{
+    event: { sequence: number; event: string; at: string };
+    state: State;
+  }> {
+    if (!this.resolveRef(STATE_REF)) return [];
+    return this.git(["rev-list", "--reverse", STATE_REF])
+      .split("\n")
+      .filter(Boolean)
+      .map((commit) => ({
+        event: JSON.parse(this.git(["show", `${commit}:event.json`])) as {
+          sequence: number;
+          event: string;
+          at: string;
+        },
+        state: JSON.parse(this.git(["show", `${commit}:state.json`])) as State,
+      }));
+  }
 }
 
 export function filterSharedPathEntries(status: string, sharedPaths: string[]): string {

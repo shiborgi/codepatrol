@@ -54,6 +54,7 @@ function taskInput(state: State, task: Task): unknown {
       plan: selectedPlan,
       workspace: task.workspace,
       baseCommit: task.baseCommit,
+      previousReviews: reviews(state, wave.id, "build-review"),
     };
   }
   const round = getRound(wave.buildRounds, task.round);

@@ -11,7 +11,9 @@ import { usage } from "./errors.js";
 import { type Repository, STATE_REF } from "./git.js";
 import { syncGitHub } from "./remote.js";
 import type { RunContext } from "./run-context.js";
+import { getInit, getWave } from "./selectors.js";
 import type { CodePatrolService } from "./service.js";
+import { doctorSignals, timelineFromHistory } from "./trace.js";
 
 export type DispatchContext = {
   command: string;
@@ -36,6 +38,7 @@ export type Handler =
   | "ship"
   | "remote"
   | "doctor"
+  | "trace"
   | "cleanup";
 
 function required(options: Map<string, string>, name: string): string {
@@ -134,6 +137,24 @@ export const handlers: Record<Handler, DispatchHandler> = {
     };
   },
   remote: async ({ repo, config, ctx }) => ok(await syncGitHub(repo, config, ctx)),
+  trace: ({ options, repo }) => {
+    const initId = options.get("--init");
+    const waveId = options.get("--wave");
+    if (!initId && !waveId) usage("trace requires --init or --wave");
+    if (initId && waveId) usage("trace accepts only one of --init or --wave");
+    const state = repo.readState().state;
+    if (initId) getInit(state, initId);
+    else getWave(state, waveId as string);
+    const subject = (initId ?? waveId) as string;
+    return ok({
+      subject,
+      entries: timelineFromHistory(
+        repo.readStateHistory(),
+        subject,
+        initId ? "init" : "wave",
+      ),
+    });
+  },
   doctor: ({ repo, config }) => {
     const state = repo.readState();
     return ok({
@@ -147,6 +168,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
       managedWorktrees: repo.listManagedWorktrees(),
       shipRecoveryPending: repo.shipRecoveryPending(),
       remoteEnabled: config.remote?.github.enabled ?? false,
+      ...doctorSignals(state.state, config.maxReviewReturns),
     });
   },
   cleanup: ({ service }) => ok(service.cleanup()),
