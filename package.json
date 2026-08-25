@@ -1,0 +1,68 @@
+{
+  "name": "codepatrol",
+  "version": "1.0.0",
+  "description": "Recoverable local-first workflow for competing coding-agent proposals.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiborgi/codepatrol.git"
+  },
+  "homepage": "https://github.com/shiborgi/codepatrol#readme",
+  "bugs": {
+    "url": "https://github.com/shiborgi/codepatrol/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "codepatrol": "./bin/codepatrol.js"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "!dist/test",
+    "contracts",
+    "docs",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome check",
+    "format": "biome check --write",
+    "test:run": "node --test dist/test/*.test.js",
+    "test": "npm run build && npm run test:run",
+    "check": "npm run typecheck && npm run lint && npm run build && npm run test:run",
+    "smoke:run": "node scripts/smoke.mjs",
+    "smoke": "npm run build && npm run smoke:run",
+    "smoke:installed": "node scripts/smoke-installed.mjs",
+    "cli-check:run": "node bin/codepatrol.js --help",
+    "cli-check": "npm run build && npm run cli-check:run",
+    "verify": "npm run typecheck && npm run lint && npm run build && npm run test:run && npm run smoke:run && npm run cli-check:run",
+    "release-check": "npm run build && npm run smoke:installed",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.8",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "agents",
+    "orchestration",
+    "git",
+    "workflow",
+    "code-review"
+  ]
+}
