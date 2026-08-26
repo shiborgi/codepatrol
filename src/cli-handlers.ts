@@ -5,7 +5,11 @@ import { resolve } from "node:path";
 import { type AgentResolution, resolveAgent } from "./agent-catalog.js";
 import type { CliResult } from "./cli.js";
 import type { loadConfig } from "./config.js";
-import { type ContextSnapshot, resolveContext } from "./context-provider.js";
+import {
+  type ContextSnapshot,
+  type ContextTarget,
+  resolveContext,
+} from "./context-provider.js";
 import type { Operation, ProducerOperation, ReviewOperation, Source } from "./core.js";
 import { usage } from "./errors.js";
 import { type Repository, STATE_REF } from "./git.js";
@@ -274,13 +278,14 @@ async function taskContext(
   if (profiles.length > 1) usage("--context-profile accepts one profile here");
   const profile = profiles[0];
   if (!profile) return undefined;
+  const anchor = contextAnchor(operation, options, repo, config);
   return resolveContext(
     config.contextPatrol,
     profile,
     repo.root,
     "Analyze the relevant code structure, dependencies, source boundaries, changes, and test signals for the requested change.",
-    { kind: "commit", oid: repo.currentCommit(config.baseBranch) },
-    undefined,
+    anchor.target,
+    anchor.baseline,
     ctx,
   );
 }
@@ -293,6 +298,7 @@ async function taskContexts(
   ctx: RunContext,
 ): Promise<Array<ContextSnapshot | undefined>> {
   const profiles = contextProfiles(config, operation, options);
+  const anchor = contextAnchor(operation, options, repo, config);
   return Promise.all(
     profiles.map((profile) =>
       profile === undefined
@@ -302,12 +308,40 @@ async function taskContexts(
             profile,
             repo.root,
             "Analyze the relevant code structure, dependencies, source boundaries, changes, and test signals for the requested change.",
-            { kind: "commit", oid: repo.currentCommit(config.baseBranch) },
-            undefined,
+            anchor.target,
+            anchor.baseline,
             ctx,
           ),
     ),
   );
+}
+
+function contextAnchor(
+  operation: Operation | "ship",
+  options: Map<string, string>,
+  repo: Repository,
+  config: ReturnType<typeof loadConfig>,
+): { target: ContextTarget; baseline: { oid: string } | undefined } {
+  const head: ContextTarget = {
+    kind: "commit",
+    oid: repo.currentCommit(config.baseBranch),
+  };
+  if (operation !== "build-review" && operation !== "ship")
+    return { target: head, baseline: undefined };
+  const state = repo.readState().state;
+  const wave = getWave(state, required(options, "--wave"));
+  const proposalId =
+    operation === "ship"
+      ? wave.selectedBuildId
+      : wave.buildRounds.at(-1)?.proposalIds[0];
+  const candidate = state.proposals.find(
+    (proposal) => proposal.id === proposalId,
+  )?.candidate;
+  if (!candidate) return { target: head, baseline: undefined };
+  return {
+    target: { kind: "commit", oid: candidate.commit },
+    baseline: { oid: candidate.baseCommit },
+  };
 }
 
 function contextProfiles(

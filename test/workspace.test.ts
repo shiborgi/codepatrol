@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { runCli } from "../src/cli.js";
 import type { ContextSnapshot } from "../src/context-provider.js";
 import type { Source } from "../src/core.js";
@@ -204,6 +211,92 @@ test("seed conflict keeps a build task and workspace", () => {
           (task as { workspace: string | null }).workspace !== null,
       ),
   );
+});
+
+test("build worktrees survive submit until build-review submits", () => {
+  const { service } = fixture();
+  const { wave, work, buildTask } = driveToBuild(service);
+  const workspace = buildTask.workspace as string;
+  commitCandidate(workspace, "keep-until-review");
+  service.submitTask(buildTask.id, buildResult(work.id));
+  assert.equal(existsSync(workspace), true);
+  const cleanup = service.cleanup();
+  assert.equal(cleanup.preservedWorktrees.includes(workspace), true);
+  assert.equal(existsSync(workspace), true);
+  const proposalId = service.showTask(buildTask.id).task.proposalId as string;
+  const review = service.openReview("build-review", wave.id, reviewer).task;
+  service.submitTask(review.id, {
+    decision: "approve",
+    selectedProposalId: proposalId,
+    summary: "Approved",
+    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    acceptance: [
+      { id: work.acceptance[0]?.id as string, status: "passed", summary: "Ok" },
+    ],
+  });
+  assert.equal(existsSync(workspace), false);
+});
+
+test("build-review context targets the candidate commit against the build base", async () => {
+  const log = resolve(tmpdir(), `codepatrol-context-${process.pid}-${Date.now()}.log`);
+  const provider = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../test/fixtures/fake-context-provider.mjs",
+  );
+  const { root, repo, service } = fixture();
+  const { wave, work, buildTask } = driveToBuild(service);
+  commitCandidate(buildTask.workspace as string, "context-target");
+  const submitted = service.submitTask(buildTask.id, buildResult(work.id));
+  const stored = repo
+    .readState()
+    .state.proposals.find((entry) => entry.id === submitted.task.proposalId);
+  assert.ok(stored?.candidate);
+  writeFileSync(
+    resolve(root, "codepatrol.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      baseBranch: "main",
+      verification: {
+        argv: [process.execPath, "-e", "process.exit(0)"],
+        timeoutMs: 10_000,
+      },
+      maxReviewReturns: 3,
+      contextPatrol: {
+        argv: [process.execPath, provider, log],
+        timeoutMs: 10_000,
+        profiles: {
+          impact: { facets: ["changes", "symbols"], maxOutputBytes: 14400 },
+        },
+        defaults: { "build-review": "impact" },
+      },
+    }),
+  );
+  const opened = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "build-review",
+    "open",
+    "--wave",
+    wave.id,
+    "--harness",
+    "reviewer",
+  ]);
+  assert.equal(opened.exitCode, 0, opened.stderr);
+  const envelope = JSON.parse(opened.stdout) as {
+    contextSnapshot: {
+      report: { target: { commit: string } };
+    };
+  };
+  const recorded = JSON.parse(readFileSync(log, "utf8").trim()) as {
+    target: { kind: string; oid: string };
+    baseline: { oid: string };
+  };
+  assert.equal(recorded.target.kind, "commit");
+  assert.equal(recorded.target.oid, stored.candidate.commit);
+  assert.equal(recorded.baseline.oid, stored.candidate.baseCommit);
+  assert.equal(envelope.contextSnapshot.report.target.commit, stored.candidate.commit);
 });
 
 test("non-managed directories keep typed repository errors", async () => {

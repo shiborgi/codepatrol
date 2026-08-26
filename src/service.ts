@@ -368,8 +368,8 @@ export class CodePatrolService {
         `${before.operation} submit ${before.subjectId}`,
         (state) => {
           const refsToDelete: Array<{ ref: string; commit: string }> = [];
-          let submittedBuildTask: string | null = null;
           let submittedCandidate: Proposal["candidate"] = null;
+          const releasedBuildWorkspaces: string[] = [];
           try {
             const task = getTask(state, taskId);
             assertDomain(
@@ -421,7 +421,6 @@ export class CodePatrolService {
                 );
                 submittedCandidate = candidate;
                 summary = build.summary;
-                submittedBuildTask = task.id;
               }
               const proposal: Proposal = {
                 id: proposalId,
@@ -446,11 +445,22 @@ export class CodePatrolService {
               refsToDelete.push(
                 ...applyReview(state, task, review, this.config.maxReviewReturns),
               );
+              if (task.operation === "build-review") {
+                for (const producer of state.tasks) {
+                  if (
+                    producer.operation === "build" &&
+                    producer.subjectId === task.subjectId &&
+                    producer.round === task.round &&
+                    producer.workspace
+                  )
+                    releasedBuildWorkspaces.push(producer.id);
+                }
+              }
             }
             task.status = "submitted";
             task.result = parsed;
             task.finishedAt = this.ctx.now().toISOString();
-            return { refsToDelete, submittedBuildTask, submittedCandidate };
+            return { refsToDelete, releasedBuildWorkspaces, submittedCandidate };
           } catch (error) {
             if (submittedCandidate)
               throw new CandidateMutationError(submittedCandidate, error);
@@ -458,8 +468,8 @@ export class CodePatrolService {
           }
         },
       );
-      if (mutation.submittedBuildTask)
-        this.repo.removeWorkspace(mutation.submittedBuildTask);
+      for (const taskId of mutation.releasedBuildWorkspaces)
+        this.repo.removeWorkspace(taskId);
       for (const candidate of mutation.refsToDelete) {
         try {
           this.repo.deleteRef(candidate.ref, candidate.commit);
@@ -695,7 +705,7 @@ export class CodePatrolService {
       const state = this.repo.readState().state;
       const activeWorkspaces = new Set(
         state.tasks
-          .filter((task) => ["preparing", "open", "blocked"].includes(task.status))
+          .filter((task) => preserveWorkspace(state, task))
           .map((task) => task.workspace)
           .filter((path): path is string => Boolean(path)),
       );
@@ -817,6 +827,19 @@ function createTask(
 
 function isProducer(operation: Operation): operation is ProducerOperation {
   return ["spec", "plan", "build"].includes(operation);
+}
+
+function preserveWorkspace(state: State, task: Task): boolean {
+  if (!task.workspace) return false;
+  if (["preparing", "open", "blocked"].includes(task.status)) return true;
+  if (task.operation !== "build" || task.status !== "submitted") return false;
+  return !state.tasks.some(
+    (review) =>
+      review.operation === "build-review" &&
+      review.subjectId === task.subjectId &&
+      review.round === task.round &&
+      review.status === "submitted",
+  );
 }
 
 function updateInitTerminal(state: State, initId: string): void {
