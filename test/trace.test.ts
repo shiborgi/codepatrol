@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { runCli } from "../src/cli.js";
 import type { Source } from "../src/core.js";
+import { problemsFromHistory, type StateHistoryEntry } from "../src/trace.js";
 import { commitCandidate, fixture } from "./helpers.js";
 
 const producer: Source = { harness: "test-producer", model: "model-a", agent: null };
@@ -309,7 +310,7 @@ test("trace includes cancelled producers and detects duplicate and abandoned wor
   );
 });
 
-test("trace detects a review that remains open across a later state event", async () => {
+test("trace emits one review dwell finding for a later event in the same Wave", async () => {
   const { root, service } = fixture();
   const { init, wave, work, buildTask } = driveToBuild(service);
   commitCandidate(buildTask.workspace as string, "review-dwell");
@@ -317,8 +318,8 @@ test("trace detects a review that remains open across a later state event", asyn
     summary: "Candidate",
     works: [{ workId: work.id, summary: "Implemented" }],
   }).task.proposalId as string;
-  service.openReview("build-review", wave.id, reviewer);
-  service.createInit("Later event", "Advance committed history");
+  const review = service.openReview("build-review", wave.id, reviewer).task;
+  service.repo.mutate(`ship accept ${wave.id}`, () => {});
 
   const traced = await runCli([
     "node",
@@ -333,7 +334,110 @@ test("trace detects a review that remains open across a later state event", asyn
   const payload = JSON.parse(traced.stdout) as {
     problems: Array<{ kind: string; taskId?: string }>;
   };
-  assert.ok(payload.problems.some((problem) => problem.kind === "review-dwell"));
+  const dwell = payload.problems.filter((problem) => problem.kind === "review-dwell");
+  assert.deepEqual(
+    dwell.map((problem) => problem.taskId),
+    [review.id],
+  );
+  assert.ok(proposalId);
+});
+
+test("trace ignores later events from another Wave", async () => {
+  const { root, service } = fixture();
+  const { init, wave, work, buildTask } = driveToBuild(service);
+  commitCandidate(buildTask.workspace as string, "cross-wave");
+  service.submitTask(buildTask.id, {
+    summary: "Candidate",
+    works: [{ workId: work.id, summary: "Implemented" }],
+  });
+  service.openReview("build-review", wave.id, reviewer);
+  service.createInit("Later event", "Advance committed history");
+
+  const traced = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "trace",
+    "--init",
+    init.id,
+  ]);
+  assert.equal(traced.exitCode, 0, traced.stderr);
+  const payload = JSON.parse(traced.stdout) as { problems: Array<{ kind: string }> };
+  assert.equal(
+    payload.problems.filter((problem) => problem.kind === "review-dwell").length,
+    0,
+  );
+});
+
+test("review submission closes only its matching tracked review", () => {
+  const { service } = fixture();
+  const { init, wave, work, buildTask } = driveToBuild(service);
+  commitCandidate(buildTask.workspace as string, "review-isolation");
+  const proposalId = service.submitTask(buildTask.id, {
+    summary: "Candidate",
+    works: [{ workId: work.id, summary: "Implemented" }],
+  }).task.proposalId as string;
+  const first = service.openReview("build-review", wave.id, reviewer).task;
+  const base = service.repo.readState().state;
+  const originalWave = base.waves.find((entry) => entry.id === wave.id);
+  assert.ok(originalWave);
+  const secondWave = { ...structuredClone(originalWave), id: "WAVE-other" };
+  const second = {
+    ...structuredClone(first),
+    id: "TASK-other",
+    subjectId: secondWave.id,
+  };
+  const openedFirst = structuredClone(base);
+  const openedBoth = structuredClone(base);
+  openedBoth.waves.push(secondWave);
+  openedBoth.tasks.push(second);
+  const submitted = structuredClone(openedBoth);
+  const submittedFirst = submitted.tasks.find((task) => task.id === first.id);
+  assert.ok(submittedFirst);
+  submittedFirst.status = "submitted";
+  const history: StateHistoryEntry[] = [
+    {
+      event: {
+        sequence: 1,
+        event: `build-review open ${wave.id}`,
+        at: "2026-01-01T00:00:00.000Z",
+      },
+      state: openedFirst,
+    },
+    {
+      event: {
+        sequence: 2,
+        event: `build-review open ${secondWave.id}`,
+        at: "2026-01-01T00:01:00.000Z",
+      },
+      state: openedBoth,
+    },
+    {
+      event: {
+        sequence: 3,
+        event: `build-review submit ${wave.id}`,
+        at: "2026-01-01T00:02:00.000Z",
+      },
+      state: submitted,
+    },
+    {
+      event: {
+        sequence: 4,
+        event: `ship accept ${secondWave.id}`,
+        at: "2026-01-01T00:03:00.000Z",
+      },
+      state: submitted,
+    },
+  ];
+
+  const dwell = problemsFromHistory(history, init.id, "init").filter(
+    (problem) => problem.kind === "review-dwell",
+  );
+  assert.deepEqual(
+    dwell.map((problem) => problem.taskId),
+    [second.id],
+  );
   assert.ok(proposalId);
 });
 

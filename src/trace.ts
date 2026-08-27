@@ -210,9 +210,11 @@ export function problemsFromHistory(
       }
       continue;
     }
-    if (index > 0 && reviews.size > 0) {
+    // Preparation is internal to Build Review and is not evidence of user-visible dwell.
+    if (PREPARED.test(event)) continue;
+    if (index > 0 && eventSubject && reviews.size > 0) {
       for (const review of reviews.values()) {
-        if (review.subject === subjectId || kind === "init") {
+        if (review.subject === eventSubject) {
           problems.push({
             kind: "review-dwell",
             subject: review.subject,
@@ -220,9 +222,9 @@ export function problemsFromHistory(
             taskId: review.taskId,
             message: `${review.operation} remained open across a later state event`,
           });
+          reviews.delete(review.taskId);
         }
       }
-      reviews.clear();
     }
   }
   return problems;
