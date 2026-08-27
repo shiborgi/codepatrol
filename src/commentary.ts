@@ -1,3 +1,4 @@
+import { auditContextSnapshot } from "./context-provider.js";
 import type { Operation, PlanDocument, Source, State, Task, Wave } from "./core.js";
 
 export type CommentKind = "todo" | "summary";
@@ -240,6 +241,23 @@ function summaryDone(state: State, task: Task): string[] {
       : []),
     ...(Array.isArray(result?.acceptance)
       ? [`Acceptance evidence: ${result.acceptance.length} item(s).`]
+      : []),
+    ...(task.contextSnapshots && task.contextSnapshots.length > 1
+      ? [
+          `Compared profiles: ${task.contextSnapshots.map((snapshot) => snapshot.profile).join(", ")}.`,
+          ...task.contextSnapshots.map((snapshot) => {
+            const audit = auditContextSnapshot(snapshot);
+            return `Profile ${audit.profile}: ${audit.outputBytes} bytes, limited=${audit.limited}, omitted files=${audit.omittedFiles}, relations=${audit.omittedRelations}, snippets=${audit.omittedSnippets}, symbols=${audit.omittedSymbols}.`;
+          }),
+          ...(typeof result?.contextComparison === "object" &&
+          result.contextComparison !== null &&
+          typeof (result.contextComparison as { selectedContextProfile?: unknown })
+            .selectedContextProfile === "string"
+            ? [
+                `Advisory context winner: ${(result.contextComparison as { selectedContextProfile: string }).selectedContextProfile}.`,
+              ]
+            : []),
+        ]
       : []),
   ];
 }

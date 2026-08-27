@@ -17,6 +17,7 @@ import { getInit, getProposal, getRound, getWave, roundsFor } from "../selectors
 import {
   assertCandidateVerdicts,
   validateBuildApproval,
+  validateContextComparison,
   validatePlan,
 } from "../validators.js";
 import { resultAs } from "./results.js";
@@ -59,6 +60,7 @@ export function applyReview(
     );
   }
   assertCandidateVerdicts(round, result);
+  validateContextComparison(task, result as unknown as Record<string, unknown>);
   const decision = result.decision;
   const selected = result.selectedProposalId;
   if (decision === "approve") {

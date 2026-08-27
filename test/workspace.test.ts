@@ -557,3 +557,128 @@ test("oversized neutral queries are deterministically truncated", async () => {
   assert.ok(Buffer.byteLength(request.query, "utf8") <= 16 * 1024);
   assert.match(request.query, /Oversized/);
 });
+
+test("multi-profile review resolves ordered snapshots and validates contextComparison", async () => {
+  const log = resolve(tmpdir(), `codepatrol-multi-${process.pid}-${Date.now()}.log`);
+  const provider = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../test/fixtures/fake-context-provider.mjs",
+  );
+  const resolver = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../test/fixtures/fake-agent-resolver.mjs",
+  );
+  const { root, repo, service } = fixture();
+  const init = service.createInit("Multi profile", "Compare named profiles");
+  writeFileSync(
+    resolve(root, "codepatrol.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      baseBranch: "main",
+      verification: {
+        argv: [process.execPath, "-e", "process.exit(0)"],
+        timeoutMs: 10_000,
+      },
+      maxReviewReturns: 3,
+      agentCatalog: {
+        argv: [process.execPath, resolver],
+        timeoutMs: 10_000,
+        defaults: {},
+      },
+      contextPatrol: {
+        argv: [process.execPath, provider, log],
+        timeoutMs: 10_000,
+        profiles: {
+          impact: { facets: ["changes"], maxOutputBytes: 14400 },
+          "impact-wide": { facets: ["changes", "symbols"], maxOutputBytes: 24000 },
+          "impact-grounded": {
+            facets: ["changes", "symbols", "source"],
+            maxOutputBytes: 24000,
+          },
+        },
+        defaults: {},
+      },
+    }),
+  );
+  const specTask = service.openProducer("spec", init.id, producer).task;
+  const specProposalId = service.submitTask(specTask.id, specDoc()).task
+    .proposalId as string;
+  const opened = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "spec-review",
+    "open",
+    "--init",
+    init.id,
+    "--harness",
+    "reviewer",
+    "--context-profile",
+    "impact,impact-wide,impact-grounded",
+  ]);
+  assert.equal(opened.exitCode, 0, opened.stderr);
+  const envelope = JSON.parse(opened.stdout) as {
+    task: { id: string };
+    contextSnapshots: Array<{ profile: string }>;
+  };
+  assert.deepEqual(
+    envelope.contextSnapshots.map((snapshot) => snapshot.profile),
+    ["impact", "impact-wide", "impact-grounded"],
+  );
+  const reviewTask = repo
+    .readState()
+    .state.tasks.find((entry) => entry.id === envelope.task.id);
+  assert.equal(reviewTask?.contextSnapshots?.length, 3);
+  assert.equal(reviewTask?.contextSnapshot, undefined);
+
+  assert.throws(
+    () =>
+      service.submitTask(envelope.task.id, {
+        decision: "approve",
+        selectedProposalId: specProposalId,
+        summary: "Missing comparison",
+        candidates: [
+          { proposalId: specProposalId, status: "passed", summary: "Valid" },
+        ],
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+
+  assert.throws(
+    () =>
+      service.submitTask(envelope.task.id, {
+        decision: "approve",
+        selectedProposalId: specProposalId,
+        summary: "Bad selection",
+        candidates: [
+          { proposalId: specProposalId, status: "passed", summary: "Valid" },
+        ],
+        contextComparison: {
+          verdicts: [
+            { profile: "impact", status: "passed", score: 80, summary: "ok" },
+            { profile: "impact-wide", status: "passed", score: 90, summary: "ok" },
+            { profile: "impact-grounded", status: "failed", score: 40, summary: "no" },
+          ],
+          selectedContextProfile: "impact-grounded",
+        },
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+
+  const approved = service.submitTask(envelope.task.id, {
+    decision: "approve",
+    selectedProposalId: specProposalId,
+    summary: "Compared profiles",
+    candidates: [{ proposalId: specProposalId, status: "passed", summary: "Valid" }],
+    contextComparison: {
+      verdicts: [
+        { profile: "impact", status: "passed", score: 80, summary: "ok" },
+        { profile: "impact-wide", status: "passed", score: 90, summary: "ok" },
+        { profile: "impact-grounded", status: "passed", score: 95, summary: "best" },
+      ],
+      selectedContextProfile: "impact-grounded",
+    },
+  });
+  assert.equal(approved.task.status, "submitted");
+});

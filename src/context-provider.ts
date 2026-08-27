@@ -39,6 +39,47 @@ export type ContextSnapshot = {
   report: Record<string, unknown>;
 };
 
+export type ContextSnapshotAudit = {
+  profile: string;
+  reportDigest: string;
+  requestDigest: string;
+  outputBytes: number;
+  limited: boolean;
+  omittedFiles: number;
+  omittedRelations: number;
+  omittedSnippets: number;
+  omittedSymbols: number;
+};
+
+export function auditContextSnapshot(snapshot: ContextSnapshot): ContextSnapshotAudit {
+  const budget = snapshot.report.budget as
+    | { outputBytes?: unknown; limited?: unknown }
+    | undefined;
+  const coverage = snapshot.report.coverage as
+    | {
+        omittedFiles?: unknown;
+        omittedRelations?: unknown;
+        omittedSnippets?: unknown;
+        omittedSymbols?: unknown;
+      }
+    | undefined;
+  return {
+    profile: snapshot.profile,
+    reportDigest: snapshot.reportDigest,
+    requestDigest: snapshot.requestDigest,
+    outputBytes: typeof budget?.outputBytes === "number" ? budget.outputBytes : 0,
+    limited: budget?.limited === true,
+    omittedFiles:
+      typeof coverage?.omittedFiles === "number" ? coverage.omittedFiles : 0,
+    omittedRelations:
+      typeof coverage?.omittedRelations === "number" ? coverage.omittedRelations : 0,
+    omittedSnippets:
+      typeof coverage?.omittedSnippets === "number" ? coverage.omittedSnippets : 0,
+    omittedSymbols:
+      typeof coverage?.omittedSymbols === "number" ? coverage.omittedSymbols : 0,
+  };
+}
+
 export type ContextTarget = { kind: "working-tree" } | { kind: "commit"; oid: string };
 
 export async function resolveContext(

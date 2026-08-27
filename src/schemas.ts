@@ -125,12 +125,29 @@ const candidateVerdictSchema = z
   })
   .strict();
 
+const contextVerdictSchema = z
+  .object({
+    profile: z.string().min(1),
+    status: z.enum(["passed", "failed"]),
+    score: z.number().int().min(0).max(100),
+    summary: z.string().min(1),
+  })
+  .strict();
+
+const contextComparisonSchema = z
+  .object({
+    verdicts: z.array(contextVerdictSchema).min(1),
+    selectedContextProfile: z.string().min(1).optional(),
+  })
+  .strict();
+
 export const documentReviewSchema = z
   .object({
     decision: z.enum(["approve", "return"]),
     selectedProposalId: z.string().min(1).optional(),
     summary: z.string().min(1),
     candidates: z.array(candidateVerdictSchema).min(1),
+    contextComparison: contextComparisonSchema.optional(),
   })
   .strict();
 
@@ -197,6 +214,7 @@ const taskSchema = z
       })
       .optional(),
     contextSnapshot: contextSnapshotSchema.optional(),
+    contextSnapshots: z.array(contextSnapshotSchema).optional(),
     workspace: z.string().nullable(),
     baseCommit: z.string().nullable(),
     proposalId: z.string().nullable(),
@@ -229,6 +247,17 @@ const taskSchema = z
       delete report.reportDigest;
       const reportDigest = `sha256:${digest(stableJson(report))}`;
       if (reportDigest !== task.contextSnapshot.reportDigest) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "context report digest does not match the snapshot",
+        });
+      }
+    }
+    for (const snapshot of task.contextSnapshots ?? []) {
+      const report = { ...snapshot.report };
+      delete report.reportDigest;
+      const reportDigest = `sha256:${digest(stableJson(report))}`;
+      if (reportDigest !== snapshot.reportDigest) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           message: "context report digest does not match the snapshot",
@@ -354,6 +383,7 @@ export type TaskEnvelope = {
   resultContract: string;
   agentInstructions?: string;
   contextSnapshot?: unknown;
+  contextSnapshots?: unknown;
 };
 
 export { digest, sha256Schema } from "./shared.js";

@@ -237,6 +237,7 @@ export class CodePatrolService {
     source: Source,
     agentInstructions?: string,
     contextSnapshot?: ContextSnapshot,
+    contextSnapshots?: ContextSnapshot[],
   ): TaskEnvelope {
     const producer = producerFor(operation);
     let taskId = "";
@@ -280,6 +281,7 @@ export class CodePatrolService {
         source,
         agentInstructions,
         contextSnapshot,
+        contextSnapshots,
         workspace: null,
         baseCommit: null,
       });
@@ -805,6 +807,7 @@ function createTask(
     source: Source;
     agentInstructions?: string;
     contextSnapshot?: ContextSnapshot;
+    contextSnapshots?: ContextSnapshot[];
     workspace: string | null;
     baseCommit: string | null;
   },
@@ -817,6 +820,9 @@ function createTask(
     ...(seed.contextSnapshot === undefined
       ? {}
       : { contextSnapshot: seed.contextSnapshot }),
+    ...(seed.contextSnapshots === undefined
+      ? {}
+      : { contextSnapshots: seed.contextSnapshots }),
     proposalId: null,
     result: null,
     verification: [],

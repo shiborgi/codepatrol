@@ -20,6 +20,9 @@ export function taskEnvelope(state: State, task: Task): TaskEnvelope {
     ...(task.contextSnapshot === undefined
       ? {}
       : { contextSnapshot: task.contextSnapshot }),
+    ...(task.contextSnapshots === undefined
+      ? {}
+      : { contextSnapshots: task.contextSnapshots }),
   };
 }
 
@@ -89,24 +92,29 @@ export function taskWithoutInstructions(task: Task): Task {
   const sanitized = structuredClone(task);
   delete sanitized.agentInstructions;
   delete sanitized.contextSnapshot;
+  delete sanitized.contextSnapshots;
   return sanitized;
 }
 
 export function contractFor(operation: Operation, state?: State, task?: Task): string {
   const comparison = state && task ? contextProfileComparison(state, task) : undefined;
+  const multi = task?.contextSnapshots && task.contextSnapshots.length > 1;
   if (operation === "spec") return "Submit a SpecDocument with keyed Waves and Works.";
   if (operation === "plan")
     return "Submit a PlanDocument covering every Work and acceptance ID.";
   if (operation === "build")
     return "Commit a clean implementation in workspace and submit its Work summaries.";
+  const multiSuffix = multi
+    ? " Report a contextComparison verdict for every supplied profile."
+    : "";
   if (operation === "build-review") {
     return comparison
-      ? `Compare ${comparison} in the summary, select at most one, and report every acceptance criterion.`
-      : "Evaluate every candidate, select at most one, and report every acceptance criterion.";
+      ? `Compare ${comparison} in the summary, select at most one, and report every acceptance criterion.${multiSuffix}`
+      : `Evaluate every candidate, select at most one, and report every acceptance criterion.${multiSuffix}`;
   }
   return comparison
-    ? `Compare ${comparison} in the summary; approve with selectedProposalId or return without a selection.`
-    : "Evaluate every proposal; approve with selectedProposalId or return without a selection.";
+    ? `Compare ${comparison} in the summary; approve with selectedProposalId or return without a selection.${multiSuffix}`
+    : `Evaluate every proposal; approve with selectedProposalId or return without a selection.${multiSuffix}`;
 }
 
 function contextProfileComparison(state: State, task: Task): string | undefined {

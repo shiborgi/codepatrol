@@ -125,6 +125,56 @@ export function assertCandidateVerdicts(
   );
 }
 
+export function validateContextComparison(
+  task: Task,
+  result: Record<string, unknown>,
+): void {
+  const snapshots = task.contextSnapshots ?? [];
+  const comparison = result.contextComparison as
+    | {
+        verdicts?: Array<{ profile?: string; status?: string }>;
+        selectedContextProfile?: string;
+      }
+    | undefined;
+  if (snapshots.length <= 1) {
+    assertDomain(
+      comparison === undefined,
+      ERROR_CODES.INVALID_RESULT,
+      "contextComparison is only valid when multiple profiles are supplied",
+    );
+    return;
+  }
+  assertDomain(
+    comparison !== undefined,
+    ERROR_CODES.INVALID_RESULT,
+    "multiple context profiles require a contextComparison",
+  );
+  const verdicts = comparison.verdicts ?? [];
+  assertExactSet(
+    verdicts.map((entry) => entry.profile as string),
+    snapshots.map((snapshot) => snapshot.profile),
+    "CONTEXT_COMPARISON_MISMATCH",
+  );
+  if (comparison.selectedContextProfile !== undefined) {
+    assertDomain(
+      snapshots.some(
+        (snapshot) => snapshot.profile === comparison.selectedContextProfile,
+      ),
+      ERROR_CODES.INVALID_RESULT,
+      "selectedContextProfile must name a supplied profile",
+    );
+    assertDomain(
+      verdicts.some(
+        (entry) =>
+          entry.profile === comparison.selectedContextProfile &&
+          entry.status === "passed",
+      ),
+      ERROR_CODES.INVALID_RESULT,
+      "selectedContextProfile must name a passing profile",
+    );
+  }
+}
+
 export function assertExactSet(
   actual: string[],
   expected: string[],

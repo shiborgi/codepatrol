@@ -97,13 +97,37 @@ export const handlers: Record<Handler, DispatchHandler> = {
   review: async ({ command, options, repo, config, service, ctx }) => {
     const operation = command as ReviewOperation;
     const selection = await reviewAgent(config, operation, options, ctx);
+    const profiles = contextProfiles(config, operation, options);
+    const anchor = contextAnchor(operation, options, repo, config);
+    const query = contextQuery(operation, options, repo);
+    const snapshots = await Promise.all(
+      profiles.map((profile) =>
+        profile === undefined
+          ? undefined
+          : resolveContext(
+              config.contextPatrol,
+              profile,
+              repo.root,
+              query,
+              anchor.target,
+              anchor.baseline,
+              ctx,
+            ),
+      ),
+    );
+    const resolved = snapshots.filter(
+      (snapshot): snapshot is ContextSnapshot => snapshot !== undefined,
+    );
+    const contextSnapshot = resolved.length === 1 ? resolved[0] : undefined;
+    const contextSnapshots = resolved.length > 1 ? resolved : undefined;
     return ok(
       service.openReview(
         operation,
         required(options, operation === "spec-review" ? "--init" : "--wave"),
         selection.source,
         selection.instructions,
-        await taskContext(config, operation, options, repo, ctx),
+        contextSnapshot,
+        contextSnapshots,
       ),
     );
   },
@@ -283,7 +307,7 @@ async function taskContext(
     config.contextPatrol,
     profile,
     repo.root,
-    contextQuery(operation, options, repo, config),
+    contextQuery(operation, options, repo),
     anchor.target,
     anchor.baseline,
     ctx,
@@ -299,7 +323,7 @@ async function taskContexts(
 ): Promise<Array<ContextSnapshot | undefined>> {
   const profiles = contextProfiles(config, operation, options);
   const anchor = contextAnchor(operation, options, repo, config);
-  const query = contextQuery(operation, options, repo, config);
+  const query = contextQuery(operation, options, repo);
   return Promise.all(
     profiles.map((profile) =>
       profile === undefined
@@ -323,7 +347,6 @@ function contextQuery(
   operation: Operation | "ship",
   options: Map<string, string>,
   repo: Repository,
-  config: ReturnType<typeof loadConfig>,
 ): string {
   const state = repo.readState().state;
   const sections: string[] = [];
