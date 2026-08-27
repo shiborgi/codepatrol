@@ -385,3 +385,175 @@ test("non-managed directories keep typed repository errors", async () => {
   assert.equal(result.exitCode, 2);
   assert.match(result.stderr, /NOT_A_REPOSITORY/);
 });
+
+test("neutral context queries derive from task intent without lifecycle IDs", async () => {
+  const log = resolve(tmpdir(), `codepatrol-query-${process.pid}-${Date.now()}.log`);
+  const provider = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../test/fixtures/fake-context-provider.mjs",
+  );
+  const resolver = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../test/fixtures/fake-agent-resolver.mjs",
+  );
+  const { root, repo, service } = fixture();
+  const init = service.createInit(
+    "Neutral query flow",
+    "Derive bounded neutral analysis text from task intent",
+  );
+  writeFileSync(
+    resolve(root, "codepatrol.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      baseBranch: "main",
+      verification: {
+        argv: [process.execPath, "-e", "process.exit(0)"],
+        timeoutMs: 10_000,
+      },
+      maxReviewReturns: 3,
+      agentCatalog: {
+        argv: [process.execPath, resolver],
+        timeoutMs: 10_000,
+        defaults: {},
+      },
+      contextPatrol: {
+        argv: [process.execPath, provider, log],
+        timeoutMs: 10_000,
+        profiles: {
+          orientation: { facets: ["structure"], maxOutputBytes: 9600 },
+          implementation: { facets: ["symbols"], maxOutputBytes: 14400 },
+        },
+        defaults: {
+          spec: "orientation",
+          plan: "implementation",
+        },
+      },
+    }),
+  );
+  const specOpen = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "spec",
+    "open",
+    "--init",
+    init.id,
+    "--harness",
+    "producer",
+    "--agents",
+    "agentpatrol/architect@1.0.0",
+  ]);
+  assert.equal(specOpen.exitCode, 0, specOpen.stderr);
+  const specRequest = JSON.parse(
+    readFileSync(log, "utf8").trim().split("\n")[0] as string,
+  ) as {
+    query: string;
+  };
+  assert.match(specRequest.query, /Neutral query flow/);
+  assert.match(specRequest.query, /Derive bounded neutral analysis text/);
+  assert.doesNotMatch(specRequest.query, /INIT-/);
+  assert.doesNotMatch(specRequest.query, /spec open/);
+
+  const specTask = JSON.parse(specOpen.stdout) as {
+    tasks: Array<{ task: { id: string } }>;
+  };
+  const specProposalId = service.submitTask(
+    specTask.tasks[0]?.task.id as string,
+    specDoc(),
+  ).task.proposalId as string;
+  const specReview = service.openReview("spec-review", init.id, reviewer).task;
+  service.submitTask(specReview.id, {
+    decision: "approve",
+    selectedProposalId: specProposalId,
+    summary: "Approved",
+    candidates: [{ proposalId: specProposalId, status: "passed", summary: "Valid" }],
+  });
+  const wave = service.list("wave")[0] as { id: string };
+  const planOpen = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "plan",
+    "open",
+    "--wave",
+    wave.id,
+    "--harness",
+    "producer",
+    "--agents",
+    "agentpatrol/tech-lead@1.0.0",
+  ]);
+  assert.equal(planOpen.exitCode, 0, planOpen.stderr);
+  const planRequest = JSON.parse(
+    readFileSync(log, "utf8").trim().split("\n")[1] as string,
+  ) as {
+    query: string;
+  };
+  assert.match(planRequest.query, /Build the feature/);
+  assert.match(planRequest.query, /The selected implementation is shipped/);
+  assert.doesNotMatch(planRequest.query, /WORK-/);
+  assert.doesNotMatch(planRequest.query, /WAVE-/);
+  assert.doesNotMatch(planRequest.query, /agentpatrol/);
+  assert.doesNotMatch(planRequest.query, /architect/);
+  assert.doesNotMatch(planRequest.query, /tech-lead/);
+  assert.equal(repo.readState().state.sequence > 0, true);
+});
+
+test("oversized neutral queries are deterministically truncated", async () => {
+  const log = resolve(tmpdir(), `codepatrol-query-${process.pid}-${Date.now()}.log`);
+  const provider = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../test/fixtures/fake-context-provider.mjs",
+  );
+  const resolver = resolve(
+    fileURLToPath(new URL(".", import.meta.url)),
+    "../../test/fixtures/fake-agent-resolver.mjs",
+  );
+  const { root, service } = fixture();
+  const longBrief = "x".repeat(20_000);
+  const init = service.createInit("Oversized", longBrief);
+  writeFileSync(
+    resolve(root, "codepatrol.json"),
+    JSON.stringify({
+      schemaVersion: 1,
+      baseBranch: "main",
+      verification: {
+        argv: [process.execPath, "-e", "process.exit(0)"],
+        timeoutMs: 10_000,
+      },
+      maxReviewReturns: 3,
+      agentCatalog: {
+        argv: [process.execPath, resolver],
+        timeoutMs: 10_000,
+        defaults: {},
+      },
+      contextPatrol: {
+        argv: [process.execPath, provider, log],
+        timeoutMs: 10_000,
+        profiles: {
+          orientation: { facets: ["structure"], maxOutputBytes: 9600 },
+        },
+        defaults: { spec: "orientation" },
+      },
+    }),
+  );
+  const opened = await runCli([
+    "node",
+    "codepatrol",
+    "--workspace",
+    root,
+    "spec",
+    "open",
+    "--init",
+    init.id,
+    "--harness",
+    "producer",
+    "--agents",
+    "agentpatrol/architect@1.0.0",
+  ]);
+  assert.equal(opened.exitCode, 0, opened.stderr);
+  const request = JSON.parse(readFileSync(log, "utf8").trim()) as { query: string };
+  assert.ok(Buffer.byteLength(request.query, "utf8") <= 16 * 1024);
+  assert.match(request.query, /Oversized/);
+});

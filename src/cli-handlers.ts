@@ -15,7 +15,7 @@ import { usage } from "./errors.js";
 import { type Repository, STATE_REF } from "./git.js";
 import { syncGitHub } from "./remote.js";
 import type { RunContext } from "./run-context.js";
-import { getInit, getWave } from "./selectors.js";
+import { getInit, getWave, getWork } from "./selectors.js";
 import type { CodePatrolService } from "./service.js";
 import { doctorSignals, problemsFromHistory, timelineFromHistory } from "./trace.js";
 
@@ -283,7 +283,7 @@ async function taskContext(
     config.contextPatrol,
     profile,
     repo.root,
-    "Analyze the relevant code structure, dependencies, source boundaries, changes, and test signals for the requested change.",
+    contextQuery(operation, options, repo, config),
     anchor.target,
     anchor.baseline,
     ctx,
@@ -299,6 +299,7 @@ async function taskContexts(
 ): Promise<Array<ContextSnapshot | undefined>> {
   const profiles = contextProfiles(config, operation, options);
   const anchor = contextAnchor(operation, options, repo, config);
+  const query = contextQuery(operation, options, repo, config);
   return Promise.all(
     profiles.map((profile) =>
       profile === undefined
@@ -307,13 +308,60 @@ async function taskContexts(
             config.contextPatrol,
             profile,
             repo.root,
-            "Analyze the relevant code structure, dependencies, source boundaries, changes, and test signals for the requested change.",
+            query,
             anchor.target,
             anchor.baseline,
             ctx,
           ),
     ),
   );
+}
+
+const CONTEXT_QUERY_BYTES = 16 * 1024;
+
+function contextQuery(
+  operation: Operation | "ship",
+  options: Map<string, string>,
+  repo: Repository,
+  config: ReturnType<typeof loadConfig>,
+): string {
+  const state = repo.readState().state;
+  const sections: string[] = [];
+  if (operation === "spec" || operation === "spec-review") {
+    const init = getInit(state, required(options, "--init"));
+    sections.push(init.title, init.brief);
+  } else {
+    const wave = getWave(state, required(options, "--wave"));
+    if (operation === "build-review" || operation === "ship") {
+      const proposalId =
+        operation === "ship"
+          ? wave.selectedBuildId
+          : wave.buildRounds.at(-1)?.proposalIds[0];
+      const candidate = state.proposals.find(
+        (proposal) => proposal.id === proposalId,
+      )?.candidate;
+      if (candidate) sections.push(...candidate.changedPaths);
+    }
+    for (const workId of wave.workIds) {
+      const work = getWork(state, workId);
+      sections.push(work.description, ...work.acceptance.map((entry) => entry.text));
+    }
+  }
+  const body = sections
+    .map((section) => section.trim())
+    .filter((section) => section.length > 0)
+    .join("\n");
+  const query = `Analyze the relevant code structure, dependencies, source boundaries, changes, and test signals for the requested change.\n${body}`;
+  return truncateUtf8(query, CONTEXT_QUERY_BYTES);
+}
+
+function truncateUtf8(value: string, maxBytes: number): string {
+  if (Buffer.byteLength(value, "utf8") <= maxBytes) return value;
+  let end = value.length;
+  while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > maxBytes) {
+    end -= 1;
+  }
+  return value.slice(0, end);
 }
 
 function contextAnchor(
