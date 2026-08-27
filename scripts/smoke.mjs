@@ -160,7 +160,20 @@ const specB = submit(
   open("spec", "--init", init.id).id,
   specDocument("Spec B"),
 ).proposalId;
-submit(open("spec-review", "--init", init.id).id, {
+const specReviewEnvelope = command([
+  "spec-review",
+  "open",
+  "--init",
+  init.id,
+  "--harness",
+  "smoke",
+]);
+const specAProposal = specReviewEnvelope.input.proposals.find(
+  (proposal) => proposal.id === specA,
+);
+if (specAProposal?.contextProfile !== "smoke")
+  throw new Error("submitted proposal did not record contextProfile provenance");
+submit(specReviewEnvelope.task.id, {
   decision: "approve",
   selectedProposalId: specB,
   summary: "Select B",

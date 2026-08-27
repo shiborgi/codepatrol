@@ -127,7 +127,10 @@ test("submitted proposals record contextProfile without leaking snapshots into r
     null,
   );
   assert.ok(mixedInput.proposals.every((proposal) => !("contextSnapshot" in proposal)));
-  assert.match(mixed.resultContract, /with-context and without-context/);
+  assert.match(
+    mixed.resultContract,
+    /named profile "orientation" versus null \(no context\)/,
+  );
   service.submitTask(mixed.task.id, {
     decision: "approve",
     selectedProposalId: withId,

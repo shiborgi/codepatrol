@@ -68,7 +68,10 @@ function taskInput(state: State, task: Task): unknown {
 }
 
 function proposals(state: State, round: Round): Proposal[] {
-  return round.proposalIds.map((proposalId) => getProposal(state, proposalId));
+  return round.proposalIds.map((proposalId) => {
+    const proposal = getProposal(state, proposalId);
+    return { ...proposal, contextProfile: proposal.contextProfile ?? null };
+  });
 }
 
 function reviews(state: State, subjectId: string, operation: ReviewOperation): Task[] {
@@ -90,31 +93,36 @@ export function taskWithoutInstructions(task: Task): Task {
 }
 
 export function contractFor(operation: Operation, state?: State, task?: Task): string {
-  const mixed = state && task ? mixedContextTracks(state, task) : false;
+  const comparison = state && task ? contextProfileComparison(state, task) : undefined;
   if (operation === "spec") return "Submit a SpecDocument with keyed Waves and Works.";
   if (operation === "plan")
     return "Submit a PlanDocument covering every Work and acceptance ID.";
   if (operation === "build")
     return "Commit a clean implementation in workspace and submit its Work summaries.";
   if (operation === "build-review") {
-    return mixed
-      ? "Compare the with-context and without-context candidates in the summary, select at most one, and report every acceptance criterion."
+    return comparison
+      ? `Compare ${comparison} in the summary, select at most one, and report every acceptance criterion.`
       : "Evaluate every candidate, select at most one, and report every acceptance criterion.";
   }
-  return mixed
-    ? "Compare the with-context and without-context proposals in the summary; approve with selectedProposalId or return without a selection."
+  return comparison
+    ? `Compare ${comparison} in the summary; approve with selectedProposalId or return without a selection.`
     : "Evaluate every proposal; approve with selectedProposalId or return without a selection.";
 }
 
-function mixedContextTracks(state: State, task: Task): boolean {
+function contextProfileComparison(state: State, task: Task): string | undefined {
   const round = reviewRound(state, task);
-  if (!round) return false;
+  if (!round) return undefined;
   const profiles = new Set(
     round.proposalIds.map(
       (proposalId) => getProposal(state, proposalId).contextProfile ?? null,
     ),
   );
-  return profiles.size > 1;
+  if (profiles.size <= 1) return undefined;
+  const named = [...profiles]
+    .filter((profile): profile is string => profile !== null)
+    .sort((left, right) => left.localeCompare(right));
+  const namedText = `${named.length === 1 ? "named profile" : "named profiles"} ${named.map((profile) => JSON.stringify(profile)).join(", ")}`;
+  return profiles.has(null) ? `${namedText} versus null (no context)` : namedText;
 }
 
 function reviewRound(state: State, task: Task): Round | undefined {
