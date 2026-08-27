@@ -21,6 +21,18 @@
     ],
     "timeoutMs": 10000,
     "defaults": {
+      "spec": {
+        "agent": "agentpatrol/architect",
+        "version": "1.0.0"
+      },
+      "plan": {
+        "agent": "agentpatrol/tech-lead",
+        "version": "1.0.0"
+      },
+      "build": {
+        "agent": "agentpatrol/developer",
+        "version": "1.0.0"
+      },
       "spec-review": {
         "agent": "agentpatrol/chief-architect",
         "version": "1.0.0"
