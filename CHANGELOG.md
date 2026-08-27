@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Record optional `contextProfile` provenance on submitted proposals and require
+  mixed-track reviews to compare with-context and without-context options.
 - Add optional deterministic out-of-process agent catalog resolution with exact
   provenance and immutable advisory instruction snapshots.
 - Add optional bounded out-of-process code-context profiles and advisory report

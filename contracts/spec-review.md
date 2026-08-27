@@ -2,7 +2,9 @@
 
 Compare every Spec proposal in the sealed round. Report one verdict per proposal;
 each verdict may include an integer `score` from 0 through 100 as advisory metadata.
-Approve only with the passing `selectedProposalId`; scores do not select a proposal.
+When proposals differ by `contextProfile`, the summary must compare the
+with-context and without-context options. Approve only with the passing
+`selectedProposalId`; scores do not select a proposal.
 Return without a selection when none is adequate. Approval materializes the Init's
 Waves and Works.
 

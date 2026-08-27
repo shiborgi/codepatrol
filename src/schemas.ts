@@ -257,6 +257,7 @@ const proposalSchema = z
       .strict()
       .nullable(),
     summary: z.string().nullable(),
+    contextProfile: z.string().min(1).nullable().optional(),
     createdAt: z.string(),
   })
   .strict();

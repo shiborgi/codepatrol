@@ -432,6 +432,7 @@ export class CodePatrolService {
                 document,
                 candidate,
                 summary,
+                contextProfile: task.contextSnapshot?.profile ?? null,
                 createdAt: this.ctx.now().toISOString(),
               };
               state.proposals.push(proposal);

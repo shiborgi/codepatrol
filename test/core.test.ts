@@ -63,3 +63,20 @@ test("State v1 validates resolved instruction snapshots", () => {
   task.agentInstructions = "tampered";
   assert.equal(stateSchema.safeParse(resolved).success, false);
 });
+
+test("State v1 accepts proposals without contextProfile", () => {
+  const state = createState("project");
+  state.proposals.push({
+    id: "PROP-1",
+    taskId: "TASK-1",
+    operation: "spec",
+    subjectId: "INIT-1",
+    round: 1,
+    source: { harness: "test", model: null, agent: null },
+    document: { title: "Legacy" },
+    candidate: null,
+    summary: null,
+    createdAt: new Date(0).toISOString(),
+  });
+  assert.equal(stateSchema.safeParse(state).success, true);
+});

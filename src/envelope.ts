@@ -13,7 +13,7 @@ export function taskEnvelope(state: State, task: Task): TaskEnvelope {
   return {
     task: taskWithoutInstructions(task),
     input: taskInput(state, task),
-    resultContract: contractFor(task.operation),
+    resultContract: contractFor(task.operation, state, task),
     ...(task.agentInstructions === undefined
       ? {}
       : { agentInstructions: task.agentInstructions }),
@@ -89,14 +89,43 @@ export function taskWithoutInstructions(task: Task): Task {
   return sanitized;
 }
 
-export function contractFor(operation: Operation): string {
+export function contractFor(operation: Operation, state?: State, task?: Task): string {
+  const mixed = state && task ? mixedContextTracks(state, task) : false;
   if (operation === "spec") return "Submit a SpecDocument with keyed Waves and Works.";
   if (operation === "plan")
     return "Submit a PlanDocument covering every Work and acceptance ID.";
   if (operation === "build")
     return "Commit a clean implementation in workspace and submit its Work summaries.";
   if (operation === "build-review") {
-    return "Evaluate every candidate, select at most one, and report every acceptance criterion.";
+    return mixed
+      ? "Compare the with-context and without-context candidates in the summary, select at most one, and report every acceptance criterion."
+      : "Evaluate every candidate, select at most one, and report every acceptance criterion.";
   }
-  return "Evaluate every proposal; approve with selectedProposalId or return without a selection.";
+  return mixed
+    ? "Compare the with-context and without-context proposals in the summary; approve with selectedProposalId or return without a selection."
+    : "Evaluate every proposal; approve with selectedProposalId or return without a selection.";
+}
+
+function mixedContextTracks(state: State, task: Task): boolean {
+  const round = reviewRound(state, task);
+  if (!round) return false;
+  const profiles = new Set(
+    round.proposalIds.map(
+      (proposalId) => getProposal(state, proposalId).contextProfile ?? null,
+    ),
+  );
+  return profiles.size > 1;
+}
+
+function reviewRound(state: State, task: Task): Round | undefined {
+  if (task.operation === "spec-review")
+    return getRound(getInit(state, task.subjectId).specRounds, task.round);
+  if (task.operation === "plan-review" || task.operation === "build-review") {
+    const wave = getWave(state, task.subjectId);
+    return getRound(
+      task.operation === "plan-review" ? wave.planRounds : wave.buildRounds,
+      task.round,
+    );
+  }
+  return undefined;
 }

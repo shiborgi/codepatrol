@@ -65,9 +65,10 @@ inputs, result schemas, contracts, verification, review, or Ship gates.
 Context provider resolution is separately optional and out-of-process. A selected
 profile produces a bounded code-analysis report from a neutral query before task
 publication. The complete report is an immutable task snapshot exposed only at
-the envelope boundary; task lists, proposals, and historical reviews keep it out
-of nested data. Context is advisory and cannot grant authority or alter lifecycle
-contracts, verification, review, or Ship gates.
+the envelope boundary; task lists and historical reviews keep the report out of
+nested data. A proposal may record the profile name as `contextProfile` provenance
+without embedding the report. Context is advisory and cannot grant authority or
+alter lifecycle contracts, verification, review, or Ship gates.
 
 ## Module Map
 

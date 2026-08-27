@@ -98,6 +98,76 @@ function buildResult(workId: string) {
   return { summary: "Candidate", works: [{ workId, summary: "Implemented" }] };
 }
 
+test("submitted proposals record contextProfile without leaking snapshots into review input", () => {
+  const { service } = fixture();
+  const init = service.createInit("Provenance", "Context profile on proposals");
+  const withContext = service.openProducer(
+    "spec",
+    init.id,
+    producer,
+    undefined,
+    "",
+    contextSnapshot("orientation"),
+  ).task;
+  const withoutContext = service.openProducer("spec", init.id, producer).task;
+  const withId = service.submitTask(withContext.id, specDoc()).task
+    .proposalId as string;
+  const withoutId = service.submitTask(withoutContext.id, specDoc()).task
+    .proposalId as string;
+  const mixed = service.openReview("spec-review", init.id, reviewer);
+  const mixedInput = mixed.input as {
+    proposals: Array<{ id: string; contextProfile?: string | null }>;
+  };
+  assert.equal(
+    mixedInput.proposals.find((proposal) => proposal.id === withId)?.contextProfile,
+    "orientation",
+  );
+  assert.equal(
+    mixedInput.proposals.find((proposal) => proposal.id === withoutId)?.contextProfile,
+    null,
+  );
+  assert.ok(mixedInput.proposals.every((proposal) => !("contextSnapshot" in proposal)));
+  assert.match(mixed.resultContract, /with-context and without-context/);
+  service.submitTask(mixed.task.id, {
+    decision: "approve",
+    selectedProposalId: withId,
+    summary: "Compared tracks",
+    candidates: [
+      { proposalId: withId, status: "passed", summary: "With context", score: 1 },
+      { proposalId: withoutId, status: "passed", summary: "Without context", score: 0 },
+    ],
+  });
+});
+
+test("single-track review keeps the existing resultContract", () => {
+  const { service } = fixture();
+  const init = service.createInit("Single", "One profile");
+  const task = service.openProducer(
+    "spec",
+    init.id,
+    producer,
+    undefined,
+    "",
+    contextSnapshot("orientation"),
+  ).task;
+  const proposalId = service.submitTask(task.id, specDoc()).task.proposalId as string;
+  const review = service.openReview("spec-review", init.id, reviewer);
+  const reviewInput = review.input as {
+    proposals: Array<{ contextProfile?: string | null }>;
+  };
+  assert.equal(
+    review.resultContract,
+    "Evaluate every proposal; approve with selectedProposalId or return without a selection.",
+  );
+  assert.equal(reviewInput.proposals[0]?.contextProfile, "orientation");
+  service.submitTask(review.task.id, {
+    decision: "approve",
+    selectedProposalId: proposalId,
+    summary: "Single track",
+    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+  });
+});
+
 test("producer selections retain their individual context snapshots", () => {
   const { service } = fixture();
   const init = service.createInit("Context", "Per-task context");
