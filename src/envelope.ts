@@ -20,9 +20,9 @@ export function taskEnvelope(state: State, task: Task): TaskEnvelope {
     ...(task.contextSnapshot === undefined
       ? {}
       : { contextSnapshot: task.contextSnapshot }),
-    ...(task.contextSnapshots === undefined
+    ...(task.contextProfileArtifacts === undefined
       ? {}
-      : { contextSnapshots: task.contextSnapshots }),
+      : { contextProfileArtifacts: task.contextProfileArtifacts }),
   };
 }
 
@@ -93,6 +93,7 @@ export function taskWithoutInstructions(task: Task): Task {
   delete sanitized.agentInstructions;
   delete sanitized.contextSnapshot;
   delete sanitized.contextSnapshots;
+  delete sanitized.contextProfileArtifacts;
   return sanitized;
 }
 

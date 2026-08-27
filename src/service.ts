@@ -2,7 +2,7 @@ import type { AgentResolution } from "./agent-catalog.js";
 import type { CommandResult } from "./command.js";
 import { describeCommand } from "./command.js";
 import type { Config } from "./config.js";
-import type { ContextSnapshot } from "./context-provider.js";
+import type { ContextProfileArtifact, ContextSnapshot } from "./context-provider.js";
 import {
   buildResultSchema,
   buildReviewSchema,
@@ -238,6 +238,7 @@ export class CodePatrolService {
     agentInstructions?: string,
     contextSnapshot?: ContextSnapshot,
     contextSnapshots?: ContextSnapshot[],
+    contextProfileArtifacts?: ContextProfileArtifact[],
   ): TaskEnvelope {
     const producer = producerFor(operation);
     let taskId = "";
@@ -282,6 +283,7 @@ export class CodePatrolService {
         agentInstructions,
         contextSnapshot,
         contextSnapshots,
+        contextProfileArtifacts,
         workspace: null,
         baseCommit: null,
       });
@@ -808,6 +810,7 @@ function createTask(
     agentInstructions?: string;
     contextSnapshot?: ContextSnapshot;
     contextSnapshots?: ContextSnapshot[];
+    contextProfileArtifacts?: ContextProfileArtifact[];
     workspace: string | null;
     baseCommit: string | null;
   },
@@ -823,6 +826,9 @@ function createTask(
     ...(seed.contextSnapshots === undefined
       ? {}
       : { contextSnapshots: seed.contextSnapshots }),
+    ...(seed.contextProfileArtifacts === undefined
+      ? {}
+      : { contextProfileArtifacts: seed.contextProfileArtifacts }),
     proposalId: null,
     result: null,
     verification: [],

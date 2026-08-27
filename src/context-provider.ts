@@ -6,6 +6,19 @@ import { type RunContext, systemRunContext } from "./run-context.js";
 import { LIMITS, sha256, sha256Schema, stableJson } from "./shared.js";
 
 const facetOrder = ["structure", "symbols", "relations", "source", "changes", "tests"];
+export const contextProfileUnavailableReasons = [
+  "CONTEXT_PROFILE_NOT_FOUND",
+  "CONTEXT_PROVIDER_DIGEST_MISMATCH",
+  "CONTEXT_PROVIDER_FAILED",
+  "CONTEXT_PROVIDER_INVALID_RESPONSE",
+  "CONTEXT_PROVIDER_MISMATCH",
+  "CONTEXT_PROVIDER_NOT_CONFIGURED",
+  "CONTEXT_PROVIDER_RESPONSE_TOO_LARGE",
+  "CONTEXT_PROVIDER_TIMEOUT",
+  "CONTEXT_PROVIDER_UNAVAILABLE",
+] as const;
+type ContextProfileUnavailableReason =
+  (typeof contextProfileUnavailableReasons)[number];
 const responseSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -50,6 +63,88 @@ export type ContextSnapshotAudit = {
   omittedSnippets: number;
   omittedSymbols: number;
 };
+
+export type ContextProfileArtifact = {
+  schemaVersion: 1;
+  profile: string;
+  requestDigest: string | null;
+  reportDigest: string | null;
+  coverage: {
+    limited: boolean;
+    outputBytes: number;
+    omittedFiles: number;
+    omittedRelations: number;
+    omittedSnippets: number;
+    omittedSymbols: number;
+  };
+  evidenceRefs: string[];
+  availability:
+    | { status: "available" }
+    | { status: "unavailable"; reason: ContextProfileUnavailableReason };
+};
+
+export function contextProfileArtifact(
+  snapshot: ContextSnapshot,
+): ContextProfileArtifact {
+  const audit = auditContextSnapshot(snapshot);
+  const evidence = snapshot.report.evidence;
+  const refs = Array.isArray(evidence)
+    ? evidence
+        .map((item) =>
+          typeof item === "string"
+            ? item
+            : typeof item === "object" && item !== null && typeof item.ref === "string"
+              ? item.ref
+              : undefined,
+        )
+        .filter((ref): ref is string => ref !== undefined)
+    : [];
+  return {
+    schemaVersion: 1,
+    profile: snapshot.profile,
+    requestDigest: snapshot.requestDigest,
+    reportDigest: snapshot.reportDigest,
+    coverage: {
+      limited: audit.limited,
+      outputBytes: audit.outputBytes,
+      omittedFiles: audit.omittedFiles,
+      omittedRelations: audit.omittedRelations,
+      omittedSnippets: audit.omittedSnippets,
+      omittedSymbols: audit.omittedSymbols,
+    },
+    evidenceRefs: [...new Set(refs)].sort((left, right) => left.localeCompare(right)),
+    availability: { status: "available" },
+  };
+}
+
+export function unavailableContextProfileArtifact(
+  profile: string,
+  reason: string,
+): ContextProfileArtifact {
+  return {
+    schemaVersion: 1,
+    profile,
+    requestDigest: null,
+    reportDigest: null,
+    coverage: {
+      limited: false,
+      outputBytes: 0,
+      omittedFiles: 0,
+      omittedRelations: 0,
+      omittedSnippets: 0,
+      omittedSymbols: 0,
+    },
+    evidenceRefs: [],
+    availability: {
+      status: "unavailable",
+      reason: contextProfileUnavailableReasons.includes(
+        reason as ContextProfileUnavailableReason,
+      )
+        ? (reason as ContextProfileUnavailableReason)
+        : "CONTEXT_PROVIDER_FAILED",
+    },
+  };
+}
 
 export function auditContextSnapshot(snapshot: ContextSnapshot): ContextSnapshotAudit {
   const budget = snapshot.report.budget as

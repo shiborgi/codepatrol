@@ -8,7 +8,9 @@ import type { loadConfig } from "./config.js";
 import {
   type ContextSnapshot,
   type ContextTarget,
+  contextProfileArtifact,
   resolveContext,
+  unavailableContextProfileArtifact,
 } from "./context-provider.js";
 import type { Operation, ProducerOperation, ReviewOperation, Source } from "./core.js";
 import { usage } from "./errors.js";
@@ -101,25 +103,44 @@ export const handlers: Record<Handler, DispatchHandler> = {
     const anchor = contextAnchor(operation, options, repo, config);
     const query = contextQuery(operation, options, repo);
     const snapshots = await Promise.all(
-      profiles.map((profile) =>
-        profile === undefined
-          ? undefined
-          : resolveContext(
-              config.contextPatrol,
-              profile,
-              repo.root,
-              query,
-              anchor.target,
-              anchor.baseline,
-              ctx,
-            ),
-      ),
+      profiles.map(async (profile) => {
+        if (profile === undefined) return undefined;
+        try {
+          return await resolveContext(
+            config.contextPatrol,
+            profile,
+            repo.root,
+            query,
+            anchor.target,
+            anchor.baseline,
+            ctx,
+          );
+        } catch (error) {
+          return { profile, error };
+        }
+      }),
     );
     const resolved = snapshots.filter(
-      (snapshot): snapshot is ContextSnapshot => snapshot !== undefined,
+      (snapshot): snapshot is ContextSnapshot =>
+        snapshot !== undefined && !("error" in snapshot),
     );
     const contextSnapshot = resolved.length === 1 ? resolved[0] : undefined;
     const contextSnapshots = resolved.length > 1 ? resolved : undefined;
+    const contextProfileArtifacts =
+      profiles.length > 1
+        ? snapshots
+            .filter((snapshot) => snapshot !== undefined)
+            .map((snapshot) =>
+              "error" in snapshot
+                ? unavailableContextProfileArtifact(
+                    snapshot.profile as string,
+                    snapshot.error instanceof Error && "code" in snapshot.error
+                      ? String(snapshot.error.code)
+                      : "CONTEXT_PROVIDER_FAILED",
+                  )
+                : contextProfileArtifact(snapshot),
+            )
+        : undefined;
     return ok(
       service.openReview(
         operation,
@@ -128,6 +149,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
         selection.instructions,
         contextSnapshot,
         contextSnapshots,
+        contextProfileArtifacts,
       ),
     );
   },

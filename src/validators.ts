@@ -129,14 +129,14 @@ export function validateContextComparison(
   task: Task,
   result: Record<string, unknown>,
 ): void {
-  const snapshots = task.contextSnapshots ?? [];
+  const artifacts = task.contextProfileArtifacts ?? [];
   const comparison = result.contextComparison as
     | {
         verdicts?: Array<{ profile?: string; status?: string }>;
         selectedContextProfile?: string;
       }
     | undefined;
-  if (snapshots.length <= 1) {
+  if (artifacts.length <= 1) {
     assertDomain(
       comparison === undefined,
       ERROR_CODES.INVALID_RESULT,
@@ -152,13 +152,15 @@ export function validateContextComparison(
   const verdicts = comparison.verdicts ?? [];
   assertExactSet(
     verdicts.map((entry) => entry.profile as string),
-    snapshots.map((snapshot) => snapshot.profile),
+    artifacts.map((artifact) => artifact.profile),
     "CONTEXT_COMPARISON_MISMATCH",
   );
   if (comparison.selectedContextProfile !== undefined) {
     assertDomain(
-      snapshots.some(
-        (snapshot) => snapshot.profile === comparison.selectedContextProfile,
+      artifacts.some(
+        (artifact) =>
+          artifact.profile === comparison.selectedContextProfile &&
+          artifact.availability.status === "available",
       ),
       ERROR_CODES.INVALID_RESULT,
       "selectedContextProfile must name a supplied profile",
@@ -171,6 +173,15 @@ export function validateContextComparison(
       ),
       ERROR_CODES.INVALID_RESULT,
       "selectedContextProfile must name a passing profile",
+    );
+  }
+  for (const artifact of artifacts) {
+    const verdict = verdicts.find((entry) => entry.profile === artifact.profile);
+    assertDomain(
+      (artifact.availability.status === "unavailable") ===
+        (verdict?.status === "unavailable"),
+      ERROR_CODES.INVALID_RESULT,
+      `context profile ${artifact.profile} availability does not match its verdict`,
     );
   }
 }

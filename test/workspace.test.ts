@@ -12,6 +12,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { runCli } from "../src/cli.js";
 import type { ContextSnapshot } from "../src/context-provider.js";
+import { unavailableContextProfileArtifact } from "../src/context-provider.js";
 import type { Source } from "../src/core.js";
 import { digest, stableJson } from "../src/shared.js";
 import { commitCandidate, fixture, git } from "./helpers.js";
@@ -558,7 +559,7 @@ test("oversized neutral queries are deterministically truncated", async () => {
   assert.match(request.query, /Oversized/);
 });
 
-test("multi-profile review resolves ordered snapshots and validates contextComparison", async () => {
+test("multi-profile review exposes ordered artifacts and validates contextComparison", async () => {
   const log = resolve(tmpdir(), `codepatrol-multi-${process.pid}-${Date.now()}.log`);
   const provider = resolve(
     fileURLToPath(new URL(".", import.meta.url)),
@@ -620,16 +621,24 @@ test("multi-profile review resolves ordered snapshots and validates contextCompa
   assert.equal(opened.exitCode, 0, opened.stderr);
   const envelope = JSON.parse(opened.stdout) as {
     task: { id: string };
-    contextSnapshots: Array<{ profile: string }>;
+    contextProfileArtifacts: Array<{
+      profile: string;
+      report?: unknown;
+      availability: { status: string };
+    }>;
   };
   assert.deepEqual(
-    envelope.contextSnapshots.map((snapshot) => snapshot.profile),
+    envelope.contextProfileArtifacts.map((artifact) => artifact.profile),
     ["impact", "impact-wide", "impact-grounded"],
+  );
+  assert.ok(
+    envelope.contextProfileArtifacts.every((artifact) => !("report" in artifact)),
   );
   const reviewTask = repo
     .readState()
     .state.tasks.find((entry) => entry.id === envelope.task.id);
   assert.equal(reviewTask?.contextSnapshots?.length, 3);
+  assert.equal(reviewTask?.contextProfileArtifacts?.length, 3);
   assert.equal(reviewTask?.contextSnapshot, undefined);
 
   assert.throws(
@@ -681,4 +690,50 @@ test("multi-profile review resolves ordered snapshots and validates contextCompa
     },
   });
   assert.equal(approved.task.status, "submitted");
+});
+
+test("unavailable comparison profiles require an unscoreable verdict", () => {
+  const { service } = fixture();
+  const init = service.createInit("Unavailable", "Compare profile availability");
+  const task = service.openProducer("spec", init.id, producer).task;
+  const proposalId = service.submitTask(task.id, specDoc()).task.proposalId as string;
+  const review = service.openReview(
+    "spec-review",
+    init.id,
+    reviewer,
+    undefined,
+    undefined,
+    undefined,
+    [
+      unavailableContextProfileArtifact("missing", "CONTEXT_PROFILE_NOT_FOUND"),
+      unavailableContextProfileArtifact("offline", "CONTEXT_PROVIDER_UNAVAILABLE"),
+    ],
+  );
+  assert.throws(
+    () =>
+      service.submitTask(review.task.id, {
+        decision: "return",
+        summary: "Scored unavailable profile",
+        candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+        contextComparison: {
+          verdicts: [
+            { profile: "missing", status: "passed", score: 1, summary: "No" },
+            { profile: "offline", status: "unavailable", summary: "No" },
+          ],
+        },
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+  const submitted = service.submitTask(review.task.id, {
+    decision: "return",
+    summary: "Unavailable profiles are not scoreable",
+    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    contextComparison: {
+      verdicts: [
+        { profile: "missing", status: "unavailable", summary: "Not configured" },
+        { profile: "offline", status: "unavailable", summary: "Not reachable" },
+      ],
+    },
+  });
+  assert.equal(submitted.task.status, "submitted");
 });

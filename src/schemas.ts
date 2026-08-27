@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AGENT_REFERENCE, EXACT_AGENT_VERSION } from "./agent-protocol.js";
+import { contextProfileUnavailableReasons } from "./context-provider.js";
 import { digest, sha256Schema, stableJson } from "./shared.js";
 
 export const producerOperations = ["spec", "plan", "build"] as const;
@@ -18,6 +19,55 @@ const contextSnapshotSchema = z
     report: z.record(z.unknown()),
   })
   .strict();
+
+const contextProfileArtifactSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    profile: z.string().min(1),
+    requestDigest: sha256Schema.nullable(),
+    reportDigest: sha256Schema.nullable(),
+    coverage: z
+      .object({
+        limited: z.boolean(),
+        outputBytes: z.number().int().nonnegative(),
+        omittedFiles: z.number().int().nonnegative(),
+        omittedRelations: z.number().int().nonnegative(),
+        omittedSnippets: z.number().int().nonnegative(),
+        omittedSymbols: z.number().int().nonnegative(),
+      })
+      .strict(),
+    evidenceRefs: z.array(z.string()).superRefine((refs, context) => {
+      if (
+        refs.some(
+          (ref, index) => index > 0 && (refs[index - 1] ?? "").localeCompare(ref) >= 0,
+        )
+      )
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "evidence refs must be sorted and unique",
+        });
+    }),
+    availability: z.discriminatedUnion("status", [
+      z.object({ status: z.literal("available") }).strict(),
+      z
+        .object({
+          status: z.literal("unavailable"),
+          reason: z.enum(contextProfileUnavailableReasons),
+        })
+        .strict(),
+    ]),
+  })
+  .strict()
+  .superRefine((artifact, context) => {
+    const hasDigests =
+      artifact.requestDigest !== null && artifact.reportDigest !== null;
+    if ((artifact.availability.status === "available") !== hasDigests) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "artifact availability must match digest availability",
+      });
+    }
+  });
 
 const sourceSchema = z
   .object({
@@ -125,14 +175,23 @@ const candidateVerdictSchema = z
   })
   .strict();
 
-const contextVerdictSchema = z
-  .object({
-    profile: z.string().min(1),
-    status: z.enum(["passed", "failed"]),
-    score: z.number().int().min(0).max(100),
-    summary: z.string().min(1),
-  })
-  .strict();
+const contextVerdictSchema = z.discriminatedUnion("status", [
+  z
+    .object({
+      profile: z.string().min(1),
+      status: z.enum(["passed", "failed"]),
+      score: z.number().int().min(0).max(100),
+      summary: z.string().min(1),
+    })
+    .strict(),
+  z
+    .object({
+      profile: z.string().min(1),
+      status: z.literal("unavailable"),
+      summary: z.string().min(1),
+    })
+    .strict(),
+]);
 
 const contextComparisonSchema = z
   .object({
@@ -215,6 +274,7 @@ const taskSchema = z
       .optional(),
     contextSnapshot: contextSnapshotSchema.optional(),
     contextSnapshots: z.array(contextSnapshotSchema).optional(),
+    contextProfileArtifacts: z.array(contextProfileArtifactSchema).optional(),
     workspace: z.string().nullable(),
     baseCommit: z.string().nullable(),
     proposalId: z.string().nullable(),
@@ -384,6 +444,7 @@ export type TaskEnvelope = {
   agentInstructions?: string;
   contextSnapshot?: unknown;
   contextSnapshots?: unknown;
+  contextProfileArtifacts?: unknown;
 };
 
 export { digest, sha256Schema } from "./shared.js";
