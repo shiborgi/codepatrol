@@ -80,6 +80,24 @@ export function applyReview(
       ERROR_CODES.SELECTED_CANDIDATE_FAILED,
       "selected proposal did not pass review",
     );
+    if (task.reviewProtocol && task.reviewOutcome) {
+      const passing = task.reviewOutcome.candidates.filter(
+        (candidate) => candidate.effectivePassed,
+      );
+      assertDomain(
+        passing.length > 0,
+        ERROR_CODES.SELECTED_CANDIDATE_FAILED,
+        "no candidate passed review",
+      );
+      const selectedOutcome = task.reviewOutcome.candidates.find(
+        (candidate) => candidate.proposalId === selected,
+      );
+      assertDomain(
+        selectedOutcome?.rank === 1,
+        ERROR_CODES.INVALID_SELECTION,
+        "approval must select the rank-one candidate",
+      );
+    }
     round.status = "approved";
     round.selectedProposalId = selected;
     if (operation === "spec-review") {

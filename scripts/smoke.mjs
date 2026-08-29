@@ -178,8 +178,78 @@ submit(specReviewEnvelope.task.id, {
   selectedProposalId: specB,
   summary: "Select B",
   candidates: [
-    { proposalId: specA, status: "passed", summary: "Valid" },
-    { proposalId: specB, status: "passed", summary: "Best" },
+    {
+      proposalId: specA,
+      status: "passed",
+      summary: "Valid",
+      scorecard: {
+        rubricVersion: "spec-v1",
+        assessments: [
+          {
+            category: "intent-alignment",
+            level: 75,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          {
+            category: "scope-completeness",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "work-slicing", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "acceptance-testability",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "domain-fit", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "architectural-fit",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+        ],
+      },
+    },
+    {
+      proposalId: specB,
+      status: "passed",
+      summary: "Best",
+      scorecard: {
+        rubricVersion: "spec-v1",
+        assessments: [
+          {
+            category: "intent-alignment",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          {
+            category: "scope-completeness",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "work-slicing", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "acceptance-testability",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "domain-fit", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "architectural-fit",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+        ],
+      },
+    },
   ],
 });
 
@@ -209,8 +279,78 @@ submit(open("plan-review", "--wave", wave.id).id, {
   selectedProposalId: planB,
   summary: "Select B",
   candidates: [
-    { proposalId: planA, status: "passed", summary: "Valid" },
-    { proposalId: planB, status: "passed", summary: "Best" },
+    {
+      proposalId: planA,
+      status: "passed",
+      summary: "Valid",
+      scorecard: {
+        rubricVersion: "plan-v1",
+        assessments: [
+          {
+            category: "acceptance-traceability",
+            level: 75,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "executability", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "technical-feasibility",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          {
+            category: "verification-strategy",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "minimality", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "architectural-fit",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+        ],
+      },
+    },
+    {
+      proposalId: planB,
+      status: "passed",
+      summary: "Best",
+      scorecard: {
+        rubricVersion: "plan-v1",
+        assessments: [
+          {
+            category: "acceptance-traceability",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "executability", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "technical-feasibility",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          {
+            category: "verification-strategy",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "minimality", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "architectural-fit",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+        ],
+      },
+    },
   ],
 });
 
@@ -231,8 +371,58 @@ submit(open("build-review", "--wave", wave.id).id, {
   selectedProposalId: buildB,
   summary: "Select B",
   candidates: [
-    { proposalId: buildA, status: "passed", summary: "Valid" },
-    { proposalId: buildB, status: "passed", summary: "Best" },
+    {
+      proposalId: buildA,
+      status: "passed",
+      summary: "Valid",
+      scorecard: {
+        rubricVersion: "build-v1",
+        assessments: [
+          {
+            category: "acceptance-fulfillment",
+            level: 75,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "plan-fidelity", level: 100, rationale: "Ok", evidenceRefs: [] },
+          { category: "test-quality", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "verification-evidence",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "minimality", level: 100, rationale: "Ok", evidenceRefs: [] },
+          { category: "repository-fit", level: 100, rationale: "Ok", evidenceRefs: [] },
+        ],
+      },
+    },
+    {
+      proposalId: buildB,
+      status: "passed",
+      summary: "Best",
+      scorecard: {
+        rubricVersion: "build-v1",
+        assessments: [
+          {
+            category: "acceptance-fulfillment",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "plan-fidelity", level: 100, rationale: "Ok", evidenceRefs: [] },
+          { category: "test-quality", level: 100, rationale: "Ok", evidenceRefs: [] },
+          {
+            category: "verification-evidence",
+            level: 100,
+            rationale: "Ok",
+            evidenceRefs: [],
+          },
+          { category: "minimality", level: 100, rationale: "Ok", evidenceRefs: [] },
+          { category: "repository-fit", level: 100, rationale: "Ok", evidenceRefs: [] },
+        ],
+      },
+    },
   ],
   acceptance: [{ id: work.acceptance[0].id, status: "passed", summary: "Verified" }],
 });

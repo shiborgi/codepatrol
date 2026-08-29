@@ -302,6 +302,16 @@ function entriesFor(snapshot: StateHistoryEntry, subject: string): TimelineEntry
         timestamp: task.finishedAt ?? event.at,
         ...(result.candidates ? { candidates: result.candidates } : {}),
         ...(failed.length > 0 ? { failedAcceptanceIds: failed } : {}),
+        ...(task.reviewOutcome
+          ? {
+              reviewOutcome: {
+                rubricVersion: task.reviewOutcome.rubricVersion,
+                hardGateStatus: task.reviewOutcome.hardGateStatus,
+                winner: task.reviewOutcome.winner,
+                decidingComparator: task.reviewOutcome.decidingComparator,
+              },
+            }
+          : {}),
       });
     }
     return entries;

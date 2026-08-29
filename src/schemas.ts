@@ -167,12 +167,29 @@ export const buildResultSchema = z
   })
   .strict();
 
+const scorecardAssessmentSchema = z
+  .object({
+    category: z.string().min(1),
+    level: z.number().int().min(0).max(100),
+    rationale: z.string().min(1),
+    evidenceRefs: z.array(z.string().min(1)),
+  })
+  .strict();
+
+const candidateScorecardSchema = z
+  .object({
+    rubricVersion: z.string().min(1),
+    assessments: z.array(scorecardAssessmentSchema),
+  })
+  .strict();
+
 const candidateVerdictSchema = z
   .object({
     proposalId: z.string().min(1),
     status: z.enum(["passed", "failed"]),
     summary: z.string().min(1),
     score: z.number().int().min(0).max(100).optional(),
+    scorecard: candidateScorecardSchema.optional(),
   })
   .strict();
 
@@ -222,6 +239,52 @@ export const buildReviewSchema = documentReviewSchema.extend({
       .strict(),
   ),
 });
+
+const rubricCategorySchema = z
+  .object({ category: z.string().min(1), weight: z.number().int().positive() })
+  .strict();
+
+const rubricSchema = z
+  .object({
+    version: z.string().min(1),
+    categories: z.array(rubricCategorySchema),
+  })
+  .strict();
+
+export const reviewProtocolSchema = z
+  .object({
+    rubricVersion: z.string().min(1),
+    rubric: rubricSchema,
+    anchors: z.array(z.number().int().min(0).max(100)),
+    labels: z.record(z.string(), z.string().min(1)),
+    auditProvenance: z.record(z.string(), z.string().min(1)),
+    evidenceCatalog: z.array(z.string().min(1)),
+  })
+  .strict();
+
+const rankedCandidateSchema = z
+  .object({
+    label: z.string().min(1),
+    proposalId: z.string().min(1),
+    total: z.number().int().min(0).max(100),
+    levels: z.array(z.number().int().min(0).max(100)),
+    rank: z.number().int().positive(),
+    effectivePassed: z.boolean(),
+    decidingComparator: z.string().nullable(),
+  })
+  .strict();
+
+export const reviewOutcomeSchema = z
+  .object({
+    rubricVersion: z.string().min(1),
+    hardGateStatus: z.enum(["passed", "failed", "blocked"]),
+    candidates: z.array(rankedCandidateSchema),
+    winner: z.string().nullable(),
+    decidingComparator: z.string().nullable(),
+    execution: z.object({ descriptors: z.array(z.string().min(1)) }).strict(),
+    digestClasses: z.record(z.string(), z.string()),
+  })
+  .strict();
 
 const acceptanceSchema = z.object({ id: z.string(), text: z.string().min(1) }).strict();
 const workSchema = z
@@ -278,6 +341,8 @@ const taskSchema = z
     contextProfileArtifacts: z.array(contextProfileArtifactSchema).optional(),
     execution: executionRecordSchema.optional(),
     fingerprint: fingerprintSchema.optional(),
+    reviewProtocol: reviewProtocolSchema.optional(),
+    reviewOutcome: reviewOutcomeSchema.optional(),
     workspace: z.string().nullable(),
     baseCommit: z.string().nullable(),
     proposalId: z.string().nullable(),
@@ -442,6 +507,9 @@ export type PlanDocument = z.infer<typeof planDocumentSchema>;
 export type BuildResult = z.infer<typeof buildResultSchema>;
 export type DocumentReview = z.infer<typeof documentReviewSchema>;
 export type BuildReview = z.infer<typeof buildReviewSchema>;
+export type ReviewProtocol = z.infer<typeof reviewProtocolSchema>;
+export type ReviewOutcome = z.infer<typeof reviewOutcomeSchema>;
+export type CandidateScorecard = z.infer<typeof candidateScorecardSchema>;
 export type TaskEnvelope = {
   task: Task;
   input: unknown;
@@ -452,6 +520,8 @@ export type TaskEnvelope = {
   contextProfileArtifacts?: unknown;
   execution?: unknown;
   fingerprint?: unknown;
+  reviewProtocol?: ReviewProtocol;
+  reviewOutcome?: ReviewOutcome;
 };
 
 export { digest, sha256Schema } from "./shared.js";

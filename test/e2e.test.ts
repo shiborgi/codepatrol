@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import type { Source } from "../src/core.js";
-import { commitCandidate, fixture, git } from "./helpers.js";
+import { commitCandidate, fixture, git, scorecardFor } from "./helpers.js";
 
 const producer: Source = { harness: "test-producer", model: "model-a", agent: null };
 const reviewer: Source = { harness: "test-reviewer", model: "model-b", agent: null };
@@ -47,8 +47,18 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
     selectedProposalId: specProposalB,
     summary: "Option B is clearer",
     candidates: [
-      { proposalId: specProposalA, status: "passed", summary: "Valid", score: 100 },
-      { proposalId: specProposalB, status: "passed", summary: "Best", score: 0 },
+      {
+        proposalId: specProposalA,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("spec-review", specProposalA, 25),
+      },
+      {
+        proposalId: specProposalB,
+        status: "passed",
+        summary: "Best",
+        scorecard: scorecardFor("spec-review", specProposalB, 75),
+      },
     ],
   });
 
@@ -80,8 +90,18 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
     selectedProposalId: planProposalB,
     summary: "Plan B is smaller",
     candidates: [
-      { proposalId: planProposalA, status: "passed", summary: "Valid", score: 100 },
-      { proposalId: planProposalB, status: "passed", summary: "Best", score: 0 },
+      {
+        proposalId: planProposalA,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("plan-review", planProposalA, 25),
+      },
+      {
+        proposalId: planProposalB,
+        status: "passed",
+        summary: "Best",
+        scorecard: scorecardFor("plan-review", planProposalB, 75),
+      },
     ],
   });
 
@@ -109,8 +129,18 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
     selectedProposalId: buildProposalB,
     summary: "Candidate B is better",
     candidates: [
-      { proposalId: buildProposalA, status: "passed", summary: "Valid", score: 100 },
-      { proposalId: buildProposalB, status: "passed", summary: "Best", score: 0 },
+      {
+        proposalId: buildProposalA,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("build-review", buildProposalA, 25),
+      },
+      {
+        proposalId: buildProposalB,
+        status: "passed",
+        summary: "Best",
+        scorecard: scorecardFor("build-review", buildProposalB, 75),
+      },
     ],
     acceptance: [
       { id: work.acceptance[0]?.id, status: "passed", summary: "Demonstrated" },
@@ -169,4 +199,229 @@ test("invalid results leave a task open", () => {
     (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
   );
   assert.equal(service.showTask(task.id).task.status, "open");
+});
+
+test("approval must select the rank-one effective passing candidate", () => {
+  const { service } = fixture();
+  const init = service.createInit("Ranking", "Enforce rank-one selection");
+  const specA = service.openProducer("spec", init.id, producer).task;
+  const proposalA = service.submitTask(specA.id, spec("Option A")).task
+    .proposalId as string;
+  const specB = service.openProducer("spec", init.id, producer).task;
+  const proposalB = service.submitTask(specB.id, spec("Option B")).task
+    .proposalId as string;
+  const review = service.openReview("spec-review", init.id, reviewer).task;
+  assert.throws(
+    () =>
+      service.submitTask(review.id, {
+        decision: "approve",
+        selectedProposalId: proposalA,
+        summary: "Selecting lower-ranked",
+        candidates: [
+          {
+            proposalId: proposalA,
+            status: "passed",
+            summary: "Lower",
+            scorecard: scorecardFor("spec-review", proposalA, 25),
+          },
+          {
+            proposalId: proposalB,
+            status: "passed",
+            summary: "Higher",
+            scorecard: scorecardFor("spec-review", proposalB, 75),
+          },
+        ],
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_SELECTION",
+  );
+  const approved = service.submitTask(review.id, {
+    decision: "approve",
+    selectedProposalId: proposalB,
+    summary: "Selecting rank one",
+    candidates: [
+      {
+        proposalId: proposalA,
+        status: "passed",
+        summary: "Lower",
+        scorecard: scorecardFor("spec-review", proposalA, 25),
+      },
+      {
+        proposalId: proposalB,
+        status: "passed",
+        summary: "Higher",
+        scorecard: scorecardFor("spec-review", proposalB, 75),
+      },
+    ],
+  });
+  assert.equal(approved.task.status, "submitted");
+});
+
+test("approval rejects when no candidate passes review", () => {
+  const { service } = fixture();
+  const init = service.createInit("NoPass", "Reject no-passing approval");
+  const specA = service.openProducer("spec", init.id, producer).task;
+  const proposalA = service.submitTask(specA.id, spec("Option A")).task
+    .proposalId as string;
+  const review = service.openReview("spec-review", init.id, reviewer).task;
+  assert.throws(
+    () =>
+      service.submitTask(review.id, {
+        decision: "approve",
+        selectedProposalId: proposalA,
+        summary: "No passing candidate",
+        candidates: [
+          {
+            proposalId: proposalA,
+            status: "failed",
+            summary: "Failed",
+            scorecard: scorecardFor("spec-review", proposalA, 0),
+          },
+        ],
+      }),
+    (error: unknown) =>
+      (error as { code?: string }).code === "SELECTED_CANDIDATE_FAILED",
+  );
+});
+
+test("malformed scorecards are rejected on protocol-bearing reviews", () => {
+  const { service } = fixture();
+  const init = service.createInit("Malformed", "Reject malformed scorecards");
+  const specA = service.openProducer("spec", init.id, producer).task;
+  const proposalA = service.submitTask(specA.id, spec("Option A")).task
+    .proposalId as string;
+  const review = service.openReview("spec-review", init.id, reviewer).task;
+  const scorecard = scorecardFor("spec-review", proposalA);
+  assert.throws(
+    () =>
+      service.submitTask(review.id, {
+        decision: "return",
+        summary: "Missing scorecard",
+        candidates: [{ proposalId: proposalA, status: "failed", summary: "No" }],
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+  assert.throws(
+    () =>
+      service.submitTask(review.id, {
+        decision: "return",
+        summary: "Wrong version",
+        candidates: [
+          {
+            proposalId: proposalA,
+            status: "failed",
+            summary: "No",
+            scorecard: { ...scorecard, rubricVersion: "plan-v1" },
+          },
+        ],
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+  assert.throws(
+    () =>
+      service.submitTask(review.id, {
+        decision: "return",
+        summary: "Reviewer total",
+        candidates: [
+          {
+            proposalId: proposalA,
+            status: "failed",
+            summary: "No",
+            scorecard,
+            total: 99,
+          },
+        ],
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+});
+
+test("a higher-scoring failed candidate cannot be selected over a passing one", () => {
+  const { service } = fixture();
+  const init = service.createInit("FailedHigh", "Failed cannot outrank passed");
+  const specA = service.openProducer("spec", init.id, producer).task;
+  const proposalA = service.submitTask(specA.id, spec("Option A")).task
+    .proposalId as string;
+  const specB = service.openProducer("spec", init.id, producer).task;
+  const proposalB = service.submitTask(specB.id, spec("Option B")).task
+    .proposalId as string;
+  const review = service.openReview("spec-review", init.id, reviewer).task;
+  assert.throws(
+    () =>
+      service.submitTask(review.id, {
+        decision: "approve",
+        selectedProposalId: proposalB,
+        summary: "Selecting failed high scorer",
+        candidates: [
+          {
+            proposalId: proposalA,
+            status: "passed",
+            summary: "Passing",
+            scorecard: scorecardFor("spec-review", proposalA, 25),
+          },
+          {
+            proposalId: proposalB,
+            status: "failed",
+            summary: "Failed but high",
+            scorecard: scorecardFor("spec-review", proposalB, 100),
+          },
+        ],
+      }),
+    (error: unknown) =>
+      (error as { code?: string }).code === "SELECTED_CANDIDATE_FAILED",
+  );
+  const approved = service.submitTask(review.id, {
+    decision: "approve",
+    selectedProposalId: proposalA,
+    summary: "Selecting passing candidate",
+    candidates: [
+      {
+        proposalId: proposalA,
+        status: "passed",
+        summary: "Passing",
+        scorecard: scorecardFor("spec-review", proposalA, 25),
+      },
+      {
+        proposalId: proposalB,
+        status: "failed",
+        summary: "Failed but high",
+        scorecard: scorecardFor("spec-review", proposalB, 100),
+      },
+    ],
+  });
+  assert.equal(approved.task.status, "submitted");
+});
+
+test("review envelope exposes the anonymized protocol and candidates first", () => {
+  const { service } = fixture();
+  const init = service.createInit("Envelope", "Expose protocol");
+  const specA = service.openProducer("spec", init.id, producer).task;
+  const proposalA = service.submitTask(specA.id, spec("Option A")).task
+    .proposalId as string;
+  const specB = service.openProducer("spec", init.id, producer).task;
+  const proposalB = service.submitTask(specB.id, spec("Option B")).task
+    .proposalId as string;
+  const review = service.openReview("spec-review", init.id, reviewer);
+  const protocol = review.reviewProtocol as {
+    rubricVersion: string;
+    labels: Record<string, string>;
+    auditProvenance: Record<string, string>;
+    evidenceCatalog: string[];
+  };
+  assert.equal(protocol.rubricVersion, "spec-v1");
+  const sorted = [proposalA, proposalB].sort((a, b) => a.localeCompare(b));
+  assert.deepEqual(protocol.labels, {
+    [sorted[0] as string]: "C01",
+    [sorted[1] as string]: "C02",
+  });
+  assert.deepEqual(protocol.auditProvenance, {
+    C01: sorted[0] as string,
+    C02: sorted[1] as string,
+  });
+  const input = review.input as {
+    candidates: Array<{ label: string; proposalId: string }>;
+  };
+  assert.deepEqual(input.candidates, [
+    { label: protocol.labels[proposalA] as string, proposalId: proposalA },
+    { label: protocol.labels[proposalB] as string, proposalId: proposalB },
+  ]);
 });

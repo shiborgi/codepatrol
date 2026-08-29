@@ -5,8 +5,10 @@ import { describeCommand } from "./command.js";
 import type { Config } from "./config.js";
 import type { ContextProfileArtifact, ContextSnapshot } from "./context-provider.js";
 import {
+  type BuildReview,
   buildResultSchema,
   buildReviewSchema,
+  type DocumentReview,
   documentReviewSchema,
   type Init,
   id,
@@ -37,6 +39,12 @@ import {
 } from "./execution.js";
 import { filterSharedPathEntries, type StateStore } from "./git.js";
 import { type RunContext, systemRunContext } from "./run-context.js";
+import {
+  buildReviewProtocol,
+  type CandidateScorecard,
+  computeReviewOutcome,
+  validateScorecard,
+} from "./scorecards.js";
 import {
   getInit,
   getOpenRound,
@@ -333,6 +341,7 @@ export class CodePatrolService {
         workspace: null,
         baseCommit: null,
       });
+      task.reviewProtocol = buildReviewProtocol(state, task, round.proposalIds);
       state.tasks.push(task);
       round.status = "reviewing";
       round.reviewTaskId = taskId;
@@ -506,6 +515,20 @@ export class CodePatrolService {
                 task.operation === "build-review"
                   ? resultAs(parsed, buildReviewSchema)
                   : resultAs(parsed, documentReviewSchema);
+              if (task.reviewProtocol) {
+                validateReviewScorecards(task, review);
+                const outcome = computeReviewOutcome(
+                  state,
+                  task,
+                  task.reviewProtocol,
+                  review.candidates.map((entry) => ({
+                    proposalId: entry.proposalId,
+                    status: entry.status,
+                    scorecard: entry.scorecard as CandidateScorecard,
+                  })),
+                );
+                task.reviewOutcome = outcome;
+              }
               refsToDelete.push(
                 ...applyReview(state, task, review, this.config.maxReviewReturns),
               );
@@ -663,10 +686,18 @@ export class CodePatrolService {
       `${waveId} is not ready to ship`,
     );
     const proposal = getProposal(state, wave.selectedBuildId as string);
+    const review = state.tasks.find(
+      (task) =>
+        task.operation === "build-review" &&
+        task.subjectId === waveId &&
+        task.status === "submitted" &&
+        task.reviewOutcome,
+    );
     return {
       waveId,
       proposal,
       currentBase: this.repo.currentCommit(this.config.baseBranch),
+      ...(review?.reviewOutcome ? { reviewOutcome: review.reviewOutcome } : {}),
     };
   }
 
@@ -901,6 +932,23 @@ function createTask(
 
 function isProducer(operation: Operation): operation is ProducerOperation {
   return ["spec", "plan", "build"].includes(operation);
+}
+
+function validateReviewScorecards(
+  task: Task,
+  review: DocumentReview | BuildReview,
+): void {
+  const protocol = task.reviewProtocol;
+  if (!protocol) return;
+  for (const verdict of review.candidates) {
+    if (!verdict.scorecard) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        `candidate ${verdict.proposalId} requires a scorecard`,
+      );
+    }
+    validateScorecard(protocol, verdict.scorecard);
+  }
 }
 
 function preserveWorkspace(state: State, task: Task): boolean {

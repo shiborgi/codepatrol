@@ -29,6 +29,31 @@ and creates one canonical commit from its final tree and fixed base. The commit 
 anchored under `refs/codepatrol/v1/candidates/<wave>/<proposal>`. Review runs the
 configured command in a fresh detached worktree, with bounded output and timeout.
 
+## Review Protocol and Scorecards
+
+Every newly opened review persists a complete anonymized review protocol snapshot:
+the exact operation rubric (`spec-v1`, `plan-v1`, or `build-v1`) with its category
+weights, the shared anchors `[0,25,50,75,100]`, deterministic `C01..` labels
+assigned by lexical `proposalId`, a separate audit-provenance map, and a sorted
+host-addressable evidence catalog. The envelope exposes anonymized candidates
+first. Category quality is advisory to objective verification and acceptance
+gates; `contextComparison` remains a separate advisory dimension outside rubric
+totals.
+
+Protocol-bearing reviews require a strict `scorecard` per candidate verdict with
+`rubricVersion` and one `assessments` entry per category exactly once in rubric
+order. Rationales are nonempty and `evidenceRefs` are sorted, unique, and present
+in the task's frozen evidence catalog. Reviewer-provided totals, ranks, legacy
+scores, and unknown fields are rejected on new reviews. The integer total is
+`floor((sum(weight * level) + 50) / 100)`. Candidates sort by effective passed
+before failed, total descending, category levels lexicographically descending in
+rubric order, then `proposalId` lexical ascending; the rank and the first
+comparator that resolved each tie are persisted in an immutable review outcome.
+Approval must select the rank-one effective passing candidate, and effective
+passing status is distinct from objective Build verification and selected-candidate
+acceptance. Historical review tasks without a persisted protocol retain the legacy
+optional score path with no fabricated scorecard, rubric, total, rank, or outcome.
+
 Ship Accept requires a clean checked-out base branch, pre-applies the reviewed
 tree, and updates the base ref, state ref, and selected candidate ref in one Git
 reference transaction. Rollback atomically updates state and removes the selected
@@ -88,6 +113,7 @@ or persistence code.
 | `service.ts` | Lifecycle orchestration facade | Domain modules, `git`, `verification` |
 | `service/results.ts` | Producer and review result parsing | `errors`, `schemas` |
 | `service/review.ts` | Review selection, sealing, and Spec materialization | `core`, `errors`, `selectors`, `service/results`, `validators` |
+| `scorecards.ts` | Immutable rubric constants, review protocol, scorecard validation, and deterministic ranking | `core`, `errors`, `selectors` |
 | `validators.ts` | Contract and acceptance validation | `core`, `errors`, `selectors`, `service/results` |
 | `selectors.ts` | State lookup helpers | `core`, `errors` |
 | `git.ts` | Git state, refs, worktrees, and locks | `command`, `core`, `errors`, `run-context` |

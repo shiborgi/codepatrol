@@ -77,3 +77,56 @@ export function commitCandidate(workspace: string, content: string): void {
     `candidate ${content}`,
   ]);
 }
+
+const SCORECARD_CATEGORIES: Record<string, string[]> = {
+  "spec-review": [
+    "intent-alignment",
+    "scope-completeness",
+    "work-slicing",
+    "acceptance-testability",
+    "domain-fit",
+    "architectural-fit",
+  ],
+  "plan-review": [
+    "acceptance-traceability",
+    "executability",
+    "technical-feasibility",
+    "verification-strategy",
+    "minimality",
+    "architectural-fit",
+  ],
+  "build-review": [
+    "acceptance-fulfillment",
+    "plan-fidelity",
+    "test-quality",
+    "verification-evidence",
+    "minimality",
+    "repository-fit",
+  ],
+};
+
+export function scorecardFor(
+  operation: "spec-review" | "plan-review" | "build-review",
+  proposalId: string,
+  level = 50,
+): {
+  rubricVersion: string;
+  assessments: Array<{
+    category: string;
+    level: number;
+    rationale: string;
+    evidenceRefs: string[];
+  }>;
+} {
+  const categories = SCORECARD_CATEGORIES[operation];
+  if (!categories) throw new Error(`no scorecard categories for ${operation}`);
+  return {
+    rubricVersion: `${operation.replace("-review", "")}-v1`,
+    assessments: categories.map((category) => ({
+      category,
+      level,
+      rationale: `Assessed ${category}`,
+      evidenceRefs: [`proposal:${proposalId}`],
+    })),
+  };
+}

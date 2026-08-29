@@ -15,7 +15,7 @@ import type { ContextSnapshot } from "../src/context-provider.js";
 import { unavailableContextProfileArtifact } from "../src/context-provider.js";
 import type { Source } from "../src/core.js";
 import { digest, stableJson } from "../src/shared.js";
-import { commitCandidate, fixture, git } from "./helpers.js";
+import { commitCandidate, fixture, git, scorecardFor } from "./helpers.js";
 
 const producer: Source = { harness: "test-producer", model: "model-a", agent: null };
 const reviewer: Source = { harness: "test-reviewer", model: "model-b", agent: null };
@@ -65,7 +65,14 @@ function driveToBuild(service: ReturnType<typeof fixture>["service"]) {
     decision: "approve",
     selectedProposalId: specProposalId,
     summary: "Approved",
-    candidates: [{ proposalId: specProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: specProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("spec-review", specProposalId),
+      },
+    ],
   });
   const wave = service.list("wave")[0] as { id: string };
   const work = service.list("work")[0] as {
@@ -89,7 +96,14 @@ function driveToBuild(service: ReturnType<typeof fixture>["service"]) {
     decision: "approve",
     selectedProposalId: planProposalId,
     summary: "Approved",
-    candidates: [{ proposalId: planProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: planProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("plan-review", planProposalId),
+      },
+    ],
   });
   const buildTask = service.openProducer("build", wave.id, producer).task;
   return { wave, work, buildTask };
@@ -137,8 +151,18 @@ test("submitted proposals record contextProfile without leaking snapshots into r
     selectedProposalId: withId,
     summary: "Compared tracks",
     candidates: [
-      { proposalId: withId, status: "passed", summary: "With context", score: 1 },
-      { proposalId: withoutId, status: "passed", summary: "Without context", score: 0 },
+      {
+        proposalId: withId,
+        status: "passed",
+        summary: "With context",
+        scorecard: scorecardFor("spec-review", withId, 25),
+      },
+      {
+        proposalId: withoutId,
+        status: "passed",
+        summary: "Without context",
+        scorecard: scorecardFor("spec-review", withoutId, 0),
+      },
     ],
   });
 });
@@ -168,7 +192,14 @@ test("single-track review keeps the existing resultContract", () => {
     decision: "approve",
     selectedProposalId: proposalId,
     summary: "Single track",
-    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("spec-review", proposalId),
+      },
+    ],
   });
 });
 
@@ -253,7 +284,14 @@ test("seed conflict keeps a build task and workspace", () => {
     decision: "approve",
     selectedProposalId: proposalId,
     summary: "Approved",
-    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("build-review", proposalId),
+      },
+    ],
     acceptance: [
       { id: work.acceptance[0]?.id as string, status: "passed", summary: "Ok" },
     ],
@@ -303,7 +341,14 @@ test("build worktrees survive submit until build-review submits", () => {
     decision: "approve",
     selectedProposalId: proposalId,
     summary: "Approved",
-    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("build-review", proposalId),
+      },
+    ],
     acceptance: [
       { id: work.acceptance[0]?.id as string, status: "passed", summary: "Ok" },
     ],
@@ -468,7 +513,14 @@ test("neutral context queries derive from task intent without lifecycle IDs", as
     decision: "approve",
     selectedProposalId: specProposalId,
     summary: "Approved",
-    candidates: [{ proposalId: specProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: specProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("spec-review", specProposalId),
+      },
+    ],
   });
   const wave = service.list("wave")[0] as { id: string };
   const planOpen = await runCli([
@@ -679,7 +731,14 @@ test("multi-profile review exposes ordered artifacts and validates contextCompar
     decision: "approve",
     selectedProposalId: specProposalId,
     summary: "Compared profiles",
-    candidates: [{ proposalId: specProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: specProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("spec-review", specProposalId),
+      },
+    ],
     contextComparison: {
       verdicts: [
         { profile: "impact", status: "passed", score: 80, summary: "ok" },
@@ -714,7 +773,14 @@ test("unavailable comparison profiles require an unscoreable verdict", () => {
       service.submitTask(review.task.id, {
         decision: "return",
         summary: "Scored unavailable profile",
-        candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+        candidates: [
+          {
+            proposalId,
+            status: "passed",
+            summary: "Valid",
+            scorecard: scorecardFor("spec-review", proposalId),
+          },
+        ],
         contextComparison: {
           verdicts: [
             { profile: "missing", status: "passed", score: 1, summary: "No" },
@@ -727,7 +793,14 @@ test("unavailable comparison profiles require an unscoreable verdict", () => {
   const submitted = service.submitTask(review.task.id, {
     decision: "return",
     summary: "Unavailable profiles are not scoreable",
-    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("spec-review", proposalId),
+      },
+    ],
     contextComparison: {
       verdicts: [
         { profile: "missing", status: "unavailable", summary: "Not configured" },

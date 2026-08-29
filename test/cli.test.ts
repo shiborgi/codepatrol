@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 import { runCli } from "../src/cli.js";
-import { commitCandidate, fixture, git } from "./helpers.js";
+import { commitCandidate, fixture, git, scorecardFor } from "./helpers.js";
 
 test("CLI creates an Init", async () => {
   const { root } = fixture();
@@ -99,7 +99,14 @@ function readyToShip(remote?: { enabled: boolean; gitRemote?: string }) {
     decision: "approve",
     selectedProposalId: specProposal,
     summary: "Selected",
-    candidates: [{ proposalId: specProposal, status: "passed", summary: "Selected" }],
+    candidates: [
+      {
+        proposalId: specProposal,
+        status: "passed",
+        summary: "Selected",
+        scorecard: scorecardFor("spec-review", specProposal),
+      },
+    ],
   });
   const wave = service.list("wave")[0] as { id: string };
   const work = service.list("work")[0] as {
@@ -123,7 +130,14 @@ function readyToShip(remote?: { enabled: boolean; gitRemote?: string }) {
     decision: "approve",
     selectedProposalId: planProposal,
     summary: "Selected",
-    candidates: [{ proposalId: planProposal, status: "passed", summary: "Selected" }],
+    candidates: [
+      {
+        proposalId: planProposal,
+        status: "passed",
+        summary: "Selected",
+        scorecard: scorecardFor("plan-review", planProposal),
+      },
+    ],
   });
   const build = service.openProducer("build", wave.id, source).task;
   commitCandidate(build.workspace as string, "ship");
@@ -136,7 +150,14 @@ function readyToShip(remote?: { enabled: boolean; gitRemote?: string }) {
     decision: "approve",
     selectedProposalId: buildProposal,
     summary: "Selected",
-    candidates: [{ proposalId: buildProposal, status: "passed", summary: "Selected" }],
+    candidates: [
+      {
+        proposalId: buildProposal,
+        status: "passed",
+        summary: "Selected",
+        scorecard: scorecardFor("build-review", buildProposal),
+      },
+    ],
     acceptance: [{ id: work.acceptance[0]?.id, status: "passed", summary: "Verified" }],
   });
   return { ...fixtureState, waveId: wave.id };

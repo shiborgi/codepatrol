@@ -25,6 +25,10 @@ export function taskEnvelope(state: State, task: Task): TaskEnvelope {
       : { contextProfileArtifacts: task.contextProfileArtifacts }),
     ...(task.execution === undefined ? {} : { execution: task.execution }),
     ...(task.fingerprint === undefined ? {} : { fingerprint: task.fingerprint }),
+    ...(task.reviewProtocol === undefined
+      ? {}
+      : { reviewProtocol: task.reviewProtocol }),
+    ...(task.reviewOutcome === undefined ? {} : { reviewOutcome: task.reviewOutcome }),
   };
 }
 
@@ -38,7 +42,11 @@ function taskInput(state: State, task: Task): unknown {
   }
   if (task.operation === "spec-review") {
     const round = getRound(getInit(state, task.subjectId).specRounds, task.round);
-    return { init: getInit(state, task.subjectId), proposals: proposals(state, round) };
+    return {
+      init: getInit(state, task.subjectId),
+      proposals: proposals(state, round),
+      candidates: anonymizedCandidates(state, task, round),
+    };
   }
   const wave = getWave(state, task.subjectId);
   const works = wave.workIds.map((workId) => getWork(state, workId));
@@ -47,7 +55,12 @@ function taskInput(state: State, task: Task): unknown {
   }
   if (task.operation === "plan-review") {
     const round = getRound(wave.planRounds, task.round);
-    return { wave, works, proposals: proposals(state, round) };
+    return {
+      wave,
+      works,
+      proposals: proposals(state, round),
+      candidates: anonymizedCandidates(state, task, round),
+    };
   }
   const selectedPlan = wave.selectedPlanId
     ? getProposal(state, wave.selectedPlanId)
@@ -68,8 +81,22 @@ function taskInput(state: State, task: Task): unknown {
     works,
     plan: selectedPlan,
     candidates: proposals(state, round),
+    anonymizedCandidates: anonymizedCandidates(state, task, round),
     verification: task.verification,
   };
+}
+
+function anonymizedCandidates(
+  _state: State,
+  task: Task,
+  round: Round,
+): Array<{ label: string; proposalId: string }> {
+  const protocol = task.reviewProtocol;
+  if (!protocol) return [];
+  return round.proposalIds.map((proposalId) => ({
+    label: protocol.labels[proposalId] ?? proposalId,
+    proposalId,
+  }));
 }
 
 function proposals(state: State, round: Round): Proposal[] {

@@ -280,6 +280,24 @@ function summaryDone(state: State, task: Task): string[] {
     ...(Array.isArray(result?.acceptance)
       ? [`Acceptance evidence: ${result.acceptance.length} item(s).`]
       : []),
+    ...(task.reviewOutcome
+      ? [
+          `Rubric: ${task.reviewOutcome.rubricVersion}.`,
+          `Hard gate: ${task.reviewOutcome.hardGateStatus}.`,
+          `Ranking: ${task.reviewOutcome.candidates
+            .map(
+              (candidate) =>
+                `${candidate.label}=${candidate.total}#${candidate.rank}${candidate.effectivePassed ? "" : "!"}`,
+            )
+            .join(", ")}.`,
+          ...(task.reviewOutcome.winner
+            ? [`Winner: ${task.reviewOutcome.winner}.`]
+            : []),
+          ...(task.reviewOutcome.decidingComparator
+            ? [`Deciding comparator: ${task.reviewOutcome.decidingComparator}.`]
+            : []),
+        ]
+      : []),
     ...(task.contextSnapshots && task.contextSnapshots.length > 1
       ? [
           `Compared profiles: ${task.contextSnapshots.map((snapshot) => snapshot.profile).join(", ")}.`,

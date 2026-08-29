@@ -71,7 +71,54 @@ function driveToBuild(service: ReturnType<typeof fixture>["service"]) {
     decision: "approve",
     selectedProposalId: specProposalId,
     summary: "Approved",
-    candidates: [{ proposalId: specProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: specProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: {
+          rubricVersion: "spec-v1",
+          assessments: [
+            {
+              category: "intent-alignment",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "scope-completeness",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "work-slicing",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "acceptance-testability",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "domain-fit",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "architectural-fit",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+          ],
+        },
+      },
+    ],
   });
   const wave = service.list("wave")[0] as { id: string };
   const work = service.list("work")[0] as {
@@ -95,7 +142,54 @@ function driveToBuild(service: ReturnType<typeof fixture>["service"]) {
     decision: "approve",
     selectedProposalId: planProposalId,
     summary: "Approved",
-    candidates: [{ proposalId: planProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: planProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: {
+          rubricVersion: "plan-v1",
+          assessments: [
+            {
+              category: "acceptance-traceability",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "executability",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "technical-feasibility",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "verification-strategy",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "minimality",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+            {
+              category: "architectural-fit",
+              level: 100 as const,
+              rationale: "Satisfies the rubric category with passing verification.",
+              evidenceRefs: [],
+            },
+          ],
+        },
+      },
+    ],
   });
   const buildTask = service.openProducer("build", wave.id, producer).task;
   return { init, wave, work, buildTask };
@@ -708,7 +802,54 @@ test("shared Build base is preserved across an --executions batch", async () => 
     decision: "approve",
     selectedProposalId: proposalId,
     summary: "Approved",
-    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: {
+          rubricVersion: "build-v1",
+          assessments: [
+            {
+              category: "acceptance-fulfillment",
+              level: 100 as const,
+              rationale: "Ok",
+              evidenceRefs: [],
+            },
+            {
+              category: "plan-fidelity",
+              level: 100 as const,
+              rationale: "Ok",
+              evidenceRefs: [],
+            },
+            {
+              category: "test-quality",
+              level: 100 as const,
+              rationale: "Ok",
+              evidenceRefs: [],
+            },
+            {
+              category: "verification-evidence",
+              level: 100 as const,
+              rationale: "Ok",
+              evidenceRefs: [],
+            },
+            {
+              category: "minimality",
+              level: 100 as const,
+              rationale: "Ok",
+              evidenceRefs: [],
+            },
+            {
+              category: "repository-fit",
+              level: 100 as const,
+              rationale: "Ok",
+              evidenceRefs: [],
+            },
+          ],
+        },
+      },
+    ],
     acceptance: [
       { id: work.acceptance[0]?.id as string, status: "passed", summary: "Ok" },
     ],

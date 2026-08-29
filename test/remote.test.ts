@@ -4,7 +4,7 @@ import type { Config } from "../src/config.js";
 import { newRound } from "../src/core.js";
 import { syncGitHub, upsertGitHubComments } from "../src/remote.js";
 import { noopLogger, type RunContext } from "../src/run-context.js";
-import { commitCandidate, fixture } from "./helpers.js";
+import { commitCandidate, fixture, scorecardFor } from "./helpers.js";
 
 test("GitHub sync reconciles markers without duplicate milestones or issues", async () => {
   const { repo } = fixture();
@@ -217,7 +217,14 @@ test("terminal lifecycle sync preserves historical plan and build todo and summa
     decision: "approve",
     selectedProposalId: specProposal,
     summary: "Both waves are valid",
-    candidates: [{ proposalId: specProposal, status: "passed", summary: "Selected" }],
+    candidates: [
+      {
+        proposalId: specProposal,
+        status: "passed",
+        summary: "Selected",
+        scorecard: scorecardFor("spec-review", specProposal),
+      },
+    ],
   });
   for (const [index, wave] of (
     service.list("wave") as Array<{ id: string }>
@@ -245,7 +252,14 @@ test("terminal lifecycle sync preserves historical plan and build todo and summa
       decision: "approve",
       selectedProposalId: planProposal,
       summary: "Plan selected",
-      candidates: [{ proposalId: planProposal, status: "passed", summary: "Selected" }],
+      candidates: [
+        {
+          proposalId: planProposal,
+          status: "passed",
+          summary: "Selected",
+          scorecard: scorecardFor("plan-review", planProposal),
+        },
+      ],
     });
     const build = service.openProducer("build", wave.id, source).task;
     commitCandidate(build.workspace as string, `candidate-${index}`);
@@ -259,7 +273,12 @@ test("terminal lifecycle sync preserves historical plan and build todo and summa
       selectedProposalId: buildProposal,
       summary: "Build selected",
       candidates: [
-        { proposalId: buildProposal, status: "passed", summary: "Selected" },
+        {
+          proposalId: buildProposal,
+          status: "passed",
+          summary: "Selected",
+          scorecard: scorecardFor("build-review", buildProposal),
+        },
       ],
       acceptance: [
         { id: work.acceptance[0]?.id, status: "passed", summary: "Verified" },

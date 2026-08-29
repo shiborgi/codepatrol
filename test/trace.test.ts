@@ -3,7 +3,7 @@ import test from "node:test";
 import { runCli } from "../src/cli.js";
 import type { Source } from "../src/core.js";
 import { problemsFromHistory, type StateHistoryEntry } from "../src/trace.js";
-import { commitCandidate, fixture } from "./helpers.js";
+import { commitCandidate, fixture, scorecardFor } from "./helpers.js";
 
 const producer: Source = { harness: "test-producer", model: "model-a", agent: null };
 const reviewer: Source = { harness: "test-reviewer", model: "model-b", agent: null };
@@ -40,7 +40,14 @@ function driveToBuild(service: ReturnType<typeof fixture>["service"]) {
     decision: "approve",
     selectedProposalId: specProposalId,
     summary: "Approved",
-    candidates: [{ proposalId: specProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: specProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("spec-review", specProposalId),
+      },
+    ],
   });
   const wave = service.list("wave")[0] as { id: string };
   const work = service.list("work")[0] as {
@@ -64,7 +71,14 @@ function driveToBuild(service: ReturnType<typeof fixture>["service"]) {
     decision: "approve",
     selectedProposalId: planProposalId,
     summary: "Approved",
-    candidates: [{ proposalId: planProposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId: planProposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("plan-review", planProposalId),
+      },
+    ],
   });
   const buildTask = service.openProducer("build", wave.id, producer).task;
   return { init, wave, work, buildTask };
@@ -81,7 +95,14 @@ function approveBuild(
     decision: "approve",
     selectedProposalId: proposalId,
     summary: "Approved",
-    candidates: [{ proposalId, status: "passed", summary: "Valid" }],
+    candidates: [
+      {
+        proposalId,
+        status: "passed",
+        summary: "Valid",
+        scorecard: scorecardFor("build-review", proposalId),
+      },
+    ],
     acceptance: [{ id: acceptanceId, status: "passed", summary: "Demonstrated" }],
   });
 }
@@ -97,7 +118,14 @@ function returnBuild(
   service.submitTask(review.id, {
     decision: "return",
     summary,
-    candidates: [{ proposalId, status: "failed", summary }],
+    candidates: [
+      {
+        proposalId,
+        status: "failed",
+        summary,
+        scorecard: scorecardFor("build-review", proposalId, 0),
+      },
+    ],
     acceptance: [{ id: acceptanceId, status: "failed", summary }],
   });
 }
