@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { AGENT_REFERENCE, EXACT_AGENT_VERSION } from "./agent-protocol.js";
 import { contextProfileUnavailableReasons } from "./context-provider.js";
+import { executionRecordSchema, fingerprintSchema } from "./execution.js";
 import { digest, sha256Schema, stableJson } from "./shared.js";
 
 export const producerOperations = ["spec", "plan", "build"] as const;
@@ -275,6 +276,8 @@ const taskSchema = z
     contextSnapshot: contextSnapshotSchema.optional(),
     contextSnapshots: z.array(contextSnapshotSchema).optional(),
     contextProfileArtifacts: z.array(contextProfileArtifactSchema).optional(),
+    execution: executionRecordSchema.optional(),
+    fingerprint: fingerprintSchema.optional(),
     workspace: z.string().nullable(),
     baseCommit: z.string().nullable(),
     proposalId: z.string().nullable(),
@@ -347,6 +350,8 @@ const proposalSchema = z
       .nullable(),
     summary: z.string().nullable(),
     contextProfile: z.string().min(1).nullable().optional(),
+    execution: executionRecordSchema.optional(),
+    fingerprint: fingerprintSchema.optional(),
     createdAt: z.string(),
   })
   .strict();
@@ -445,6 +450,8 @@ export type TaskEnvelope = {
   contextSnapshot?: unknown;
   contextSnapshots?: unknown;
   contextProfileArtifacts?: unknown;
+  execution?: unknown;
+  fingerprint?: unknown;
 };
 
 export { digest, sha256Schema } from "./shared.js";

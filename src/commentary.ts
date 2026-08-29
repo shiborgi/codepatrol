@@ -239,6 +239,44 @@ function summaryDone(state: State, task: Task): string[] {
     ...(task.verification.length
       ? [`Verification: ${task.verification.map((item) => item.status).join(", ")}.`]
       : []),
+    ...(task.fingerprint
+      ? [
+          `Configuration digest: ${task.fingerprint.configurationDigest}.`,
+          ...(task.fingerprint.artifactDigest
+            ? [`Artifact digest: ${task.fingerprint.artifactDigest}.`]
+            : []),
+          ...(task.fingerprint.agentDigest
+            ? [`Agent digest: ${task.fingerprint.agentDigest}.`]
+            : []),
+          ...(task.fingerprint.agentInstructionsDigest
+            ? [
+                `Agent instructions digest: ${task.fingerprint.agentInstructionsDigest}.`,
+              ]
+            : []),
+          ...(task.fingerprint.contextRequestDigest
+            ? [`Context request digest: ${task.fingerprint.contextRequestDigest}.`]
+            : []),
+          ...(task.fingerprint.contextReportDigest
+            ? [`Context report digest: ${task.fingerprint.contextReportDigest}.`]
+            : []),
+          ...(task.fingerprint.contextSectionDigests
+            ? [
+                `Context sections: ${task.fingerprint.contextSectionDigests.map((entry) => `${entry.section}=${entry.digest}`).join(", ")}.`,
+              ]
+            : []),
+          ...(task.fingerprint.candidateCommit
+            ? [`Candidate commit: ${task.fingerprint.candidateCommit}.`]
+            : []),
+          ...(task.fingerprint.candidateTree
+            ? [`Candidate tree: ${task.fingerprint.candidateTree}.`]
+            : []),
+          ...(task.fingerprint.verificationOutputDigest
+            ? [
+                `Verification output digest: ${task.fingerprint.verificationOutputDigest}.`,
+              ]
+            : []),
+        ]
+      : []),
     ...(Array.isArray(result?.acceptance)
       ? [`Acceptance evidence: ${result.acceptance.length} item(s).`]
       : []),

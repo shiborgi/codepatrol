@@ -23,6 +23,8 @@ export function taskEnvelope(state: State, task: Task): TaskEnvelope {
     ...(task.contextProfileArtifacts === undefined
       ? {}
       : { contextProfileArtifacts: task.contextProfileArtifacts }),
+    ...(task.execution === undefined ? {} : { execution: task.execution }),
+    ...(task.fingerprint === undefined ? {} : { fingerprint: task.fingerprint }),
   };
 }
 
@@ -96,7 +98,6 @@ export function taskWithoutInstructions(task: Task): Task {
   delete sanitized.contextProfileArtifacts;
   return sanitized;
 }
-
 export function contractFor(operation: Operation, state?: State, task?: Task): string {
   const comparison = state && task ? contextProfileComparison(state, task) : undefined;
   const multi = task?.contextSnapshots && task.contextSnapshots.length > 1;

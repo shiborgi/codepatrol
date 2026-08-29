@@ -85,6 +85,7 @@ const commandRegistry: CommandSpec[] = [
       ...(command === "build" ? ["--from"] : []),
       ...commonSource,
       "--agents",
+      "--executions",
     ],
     synopsis: `${command} open ...`,
     handler: "producer" as Handler,

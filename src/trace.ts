@@ -16,6 +16,7 @@ export type TimelineEntry = {
   failedAcceptanceIds?: string[];
   candidates?: Array<{ proposalId: string; status: string }>;
   taskId?: string;
+  batchId?: string;
 };
 
 export type Problem = {
@@ -263,16 +264,16 @@ function entriesFor(snapshot: StateHistoryEntry, subject: string): TimelineEntry
   const opened = event.event.match(OPEN);
   if (opened) {
     const operation = opened[1] as string;
-    const task = latestTask(state, operation, subject);
-    return [
-      {
-        subject,
-        operation,
-        kind: "opened",
-        outcome: task?.status ?? "open",
-        timestamp: task?.createdAt ?? event.at,
-      },
-    ];
+    const tasks = tasksFor(state, operation, subject);
+    if (tasks.length === 0) return [];
+    return tasks.map((task) => ({
+      subject,
+      operation,
+      kind: "opened",
+      outcome: task.status,
+      timestamp: task.createdAt,
+      ...(task.execution ? { batchId: task.execution.batch.id } : {}),
+    }));
   }
   const submitted = event.event.match(SUBMIT);
   if (submitted) {
@@ -356,4 +357,14 @@ function latestTask(
   return [...state.tasks]
     .reverse()
     .find((task) => task.operation === operation && task.subjectId === subjectId);
+}
+
+function tasksFor(state: State, operation: string, subjectId: string): Task[] {
+  const matching = state.tasks.filter(
+    (task) => task.operation === operation && task.subjectId === subjectId,
+  );
+  const latest = matching.at(-1);
+  if (!latest?.execution) return latest ? [latest] : [];
+  const batchId = latest.execution.batch.id;
+  return matching.filter((task) => task.execution?.batch.id === batchId);
 }

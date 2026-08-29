@@ -14,6 +14,7 @@ import {
 } from "./context-provider.js";
 import type { Operation, ProducerOperation, ReviewOperation, Source } from "./core.js";
 import { usage } from "./errors.js";
+import { type ExecutionDescriptor, executionDescriptorSchema } from "./execution.js";
 import { type Repository, STATE_REF } from "./git.js";
 import { syncGitHub } from "./remote.js";
 import type { RunContext } from "./run-context.js";
@@ -82,6 +83,19 @@ export const handlers: Record<Handler, DispatchHandler> = {
     ),
   producer: async ({ command, options, repo, config, service, ctx }) => {
     const operation = command as ProducerOperation;
+    if (options.has("--executions")) {
+      const batch = await executionsBatch(config, operation, options, repo, ctx);
+      return ok(
+        service.openProducers(
+          operation,
+          required(options, operation === "spec" ? "--init" : "--wave"),
+          batch.selections,
+          options.get("--from"),
+          undefined,
+          batch.descriptors,
+        ),
+      );
+    }
     const agents = await producerAgents(config, operation, options, ctx);
     const contexts = await taskContexts(config, operation, options, repo, ctx);
     const selections = agents.flatMap((selection) =>
@@ -224,6 +238,92 @@ export const handlers: Record<Handler, DispatchHandler> = {
   cleanup: ({ service }) => ok(service.cleanup()),
   setup: () => usage("setup must be dispatched before configuration loading"),
 };
+
+async function executionsBatch(
+  config: ReturnType<typeof loadConfig>,
+  operation: ProducerOperation,
+  options: Map<string, string>,
+  repo: Repository,
+  ctx: RunContext,
+): Promise<{
+  selections: Array<{
+    source: Source;
+    agentInstructions: string;
+    contextSnapshot?: ContextSnapshot;
+  }>;
+  descriptors: ExecutionDescriptor[];
+}> {
+  for (const flag of ["--harness", "--model", "--context-profile", "--agents"]) {
+    if (options.has(flag)) usage(`--executions is mutually exclusive with ${flag}`);
+  }
+  const raw = options.get("--executions");
+  if (!raw) usage("--executions requires a JSON array");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    usage("--executions must be a JSON array");
+  }
+  if (!Array.isArray(parsed) || parsed.length < 2)
+    usage("--executions must be a JSON array of at least two descriptors");
+  const descriptors = parsed.map((entry) => {
+    const result = executionDescriptorSchema.safeParse(entry);
+    if (!result.success) usage("--executions contains an invalid descriptor");
+    return result.data;
+  });
+  const seen = new Set<string>();
+  for (const descriptor of descriptors) {
+    const key = JSON.stringify(descriptor);
+    if (seen.has(key)) usage("--executions contains duplicate descriptors");
+    seen.add(key);
+  }
+  const anchor = contextAnchor(operation, options, repo, config);
+  const query = contextQuery(operation, options, repo);
+  const selections: Array<{
+    source: Source;
+    agentInstructions: string;
+    contextSnapshot?: ContextSnapshot;
+  }> = [];
+  for (const descriptor of descriptors) {
+    const source: Source = {
+      harness: descriptor.harness,
+      model: descriptor.model,
+      agent: descriptor.agentProfile?.reference ?? null,
+      ...(descriptor.agentProfile
+        ? {
+            agentVersion: descriptor.agentProfile.version,
+          }
+        : {}),
+    };
+    let agentInstructions = "";
+    if (descriptor.agentProfile) {
+      const resolved = await resolveAgent(
+        config.agentCatalog,
+        descriptor.agentProfile,
+        ctx,
+      );
+      source.agent = resolved.agent.reference;
+      source.agentVersion = resolved.agent.version;
+      source.agentDigest = resolved.agent.digest;
+      source.agentInstructionsDigest = resolved.instructionsDigest;
+      agentInstructions = resolved.instructions;
+    }
+    let contextSnapshot: ContextSnapshot | undefined;
+    if (descriptor.contextProfile) {
+      contextSnapshot = await resolveContext(
+        config.contextPatrol,
+        descriptor.contextProfile,
+        repo.root,
+        query,
+        anchor.target,
+        anchor.baseline,
+        ctx,
+      );
+    }
+    selections.push({ source, agentInstructions, contextSnapshot });
+  }
+  return { selections, descriptors };
+}
 
 async function producerAgents(
   config: ReturnType<typeof loadConfig>,

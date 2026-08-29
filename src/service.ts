@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { AgentResolution } from "./agent-catalog.js";
 import type { CommandResult } from "./command.js";
 import { describeCommand } from "./command.js";
@@ -26,6 +27,14 @@ import {
 } from "./core.js";
 import { taskEnvelope, taskWithoutInstructions } from "./envelope.js";
 import { assertDomain, CodePatrolError, ERROR_CODES } from "./errors.js";
+import {
+  computeFingerprint,
+  configurationDigest,
+  descriptorFromSource,
+  type ExecutionDescriptor,
+  type ExecutionRecord,
+  producerArtifactDigest,
+} from "./execution.js";
 import { filterSharedPathEntries, type StateStore } from "./git.js";
 import { type RunContext, systemRunContext } from "./run-context.js";
 import {
@@ -103,12 +112,48 @@ export class CodePatrolService {
     }>,
     seedProposalId?: string,
     contextSnapshot?: ContextSnapshot,
+    descriptors?: ExecutionDescriptor[],
   ): { tasks: TaskEnvelope[] } {
     assertDomain(
       selections.length > 0,
       ERROR_CODES.INVALID_TASK,
       "at least one producer selection is required",
     );
+    assertDomain(
+      !descriptors || descriptors.length === selections.length,
+      ERROR_CODES.INVALID_TASK,
+      "execution descriptors must match the producer selections",
+    );
+    const batchId = randomUUID();
+    const executions = selections.map((selection, index) => {
+      const descriptor =
+        descriptors?.[index] ??
+        descriptorFromSource(
+          selection.source,
+          selection.contextSnapshot?.profile ?? contextSnapshot?.profile ?? null,
+        );
+      return {
+        schemaVersion: 1 as const,
+        descriptor,
+        configurationDigest: configurationDigest(descriptor),
+        batch: {
+          id: batchId,
+          ordinal: index + 1,
+          total: selections.length,
+        },
+      };
+    });
+    const seen = new Set<string>();
+    if (descriptors) {
+      for (const execution of executions) {
+        assertDomain(
+          !seen.has(execution.configurationDigest),
+          ERROR_CODES.DUPLICATE_EXECUTION,
+          "repeated canonical configuration digest in producer batch",
+        );
+        seen.add(execution.configurationDigest);
+      }
+    }
     const allocatedTaskIds: string[] = [];
     try {
       const taskIds = this.repo.mutate(`${operation} open ${subjectId}`, (state) => {
@@ -173,7 +218,7 @@ export class CodePatrolService {
             );
           }
         }
-        for (const selection of selections) {
+        for (const [index, selection] of selections.entries()) {
           const taskId = id("TASK");
           allocatedTaskIds.push(taskId);
           let workspace: string | null = null;
@@ -213,6 +258,7 @@ export class CodePatrolService {
             source: selection.source,
             agentInstructions: selection.agentInstructions || undefined,
             contextSnapshot: selection.contextSnapshot ?? contextSnapshot,
+            execution: executions[index],
             workspace,
             baseCommit,
           });
@@ -395,14 +441,17 @@ export class CodePatrolService {
               let candidate: Proposal["candidate"] = null;
               let document: Record<string, unknown> | null = null;
               let summary: string | null = null;
+              let artifactDigest: string | undefined;
               if (task.operation === "spec") {
                 const spec = resultAs(parsed, specDocumentSchema);
                 validateSpec(spec);
                 document = spec;
+                artifactDigest = producerArtifactDigest("spec", spec);
               } else if (task.operation === "plan") {
                 const plan = resultAs(parsed, planDocumentSchema);
                 validatePlan(state, getWave(state, task.subjectId), plan);
                 document = plan;
+                artifactDigest = producerArtifactDigest("plan", plan);
               } else {
                 const build = resultAs(parsed, buildResultSchema);
                 const wave = getWave(state, task.subjectId);
@@ -425,7 +474,14 @@ export class CodePatrolService {
                 );
                 submittedCandidate = candidate;
                 summary = build.summary;
+                artifactDigest = producerArtifactDigest("build", build);
               }
+              const fingerprint = computeFingerprint(task, {
+                artifactDigest,
+                ...(candidate
+                  ? { candidate: { commit: candidate.commit, tree: candidate.tree } }
+                  : {}),
+              });
               const proposal: Proposal = {
                 id: proposalId,
                 taskId: task.id,
@@ -437,11 +493,14 @@ export class CodePatrolService {
                 candidate,
                 summary,
                 contextProfile: task.contextSnapshot?.profile ?? null,
+                ...(task.execution === undefined ? {} : { execution: task.execution }),
+                ...(fingerprint === undefined ? {} : { fingerprint }),
                 createdAt: this.ctx.now().toISOString(),
               };
               state.proposals.push(proposal);
               round.proposalIds.push(proposalId);
               task.proposalId = proposalId;
+              if (fingerprint !== undefined) task.fingerprint = fingerprint;
             } else {
               const review =
                 task.operation === "build-review"
@@ -811,6 +870,7 @@ function createTask(
     contextSnapshot?: ContextSnapshot;
     contextSnapshots?: ContextSnapshot[];
     contextProfileArtifacts?: ContextProfileArtifact[];
+    execution?: ExecutionRecord;
     workspace: string | null;
     baseCommit: string | null;
   },
@@ -829,6 +889,7 @@ function createTask(
     ...(seed.contextProfileArtifacts === undefined
       ? {}
       : { contextProfileArtifacts: seed.contextProfileArtifacts }),
+    ...(seed.execution === undefined ? {} : { execution: seed.execution }),
     proposalId: null,
     result: null,
     verification: [],
