@@ -46,6 +46,7 @@ function taskInput(state: State, task: Task): unknown {
       init: getInit(state, task.subjectId),
       proposals: proposals(state, round),
       candidates: anonymizedCandidates(state, task, round),
+      ...reviewContext(task),
     };
   }
   const wave = getWave(state, task.subjectId);
@@ -60,6 +61,7 @@ function taskInput(state: State, task: Task): unknown {
       works,
       proposals: proposals(state, round),
       candidates: anonymizedCandidates(state, task, round),
+      ...reviewContext(task),
     };
   }
   const selectedPlan = wave.selectedPlanId
@@ -83,6 +85,17 @@ function taskInput(state: State, task: Task): unknown {
     candidates: proposals(state, round),
     anonymizedCandidates: anonymizedCandidates(state, task, round),
     verification: task.verification,
+    ...reviewContext(task),
+  };
+}
+
+function reviewContext(task: Task): Record<string, unknown> {
+  const artifacts = task.contextProfileArtifacts ?? [];
+  if (artifacts.length <= 1) return {};
+  return {
+    contextProfiles: artifacts.map((artifact) => artifact.profile),
+    contextProfileArtifacts: artifacts,
+    scorecardDimensions: task.reviewProtocol?.dimensions ?? [],
   };
 }
 
@@ -127,7 +140,11 @@ export function taskWithoutInstructions(task: Task): Task {
 }
 export function contractFor(operation: Operation, state?: State, task?: Task): string {
   const comparison = state && task ? contextProfileComparison(state, task) : undefined;
-  const multi = task?.contextSnapshots && task.contextSnapshots.length > 1;
+  const multi =
+    (task?.contextProfileArtifacts?.length ?? task?.contextSnapshots?.length ?? 0) > 1;
+  const scorecardSuffix = multi
+    ? " Include the protocol's ordered stage scorecard dimensions."
+    : "";
   if (operation === "spec") return "Submit a SpecDocument with keyed Waves and Works.";
   if (operation === "plan")
     return "Submit a PlanDocument covering every Work and acceptance ID.";
@@ -138,28 +155,36 @@ export function contractFor(operation: Operation, state?: State, task?: Task): s
     : "";
   if (operation === "build-review") {
     return comparison
-      ? `Compare ${comparison} in the summary, select at most one, and report every acceptance criterion.${multiSuffix}`
-      : `Evaluate every candidate, select at most one, and report every acceptance criterion.${multiSuffix}`;
+      ? `Compare ${comparison} in the summary, select at most one, and report every acceptance criterion.${multiSuffix}${scorecardSuffix}`
+      : `Evaluate every candidate, select at most one, and report every acceptance criterion.${multiSuffix}${scorecardSuffix}`;
   }
   return comparison
-    ? `Compare ${comparison} in the summary; approve with selectedProposalId or return without a selection.${multiSuffix}`
-    : `Evaluate every proposal; approve with selectedProposalId or return without a selection.${multiSuffix}`;
+    ? `Compare ${comparison} in the summary; approve with selectedProposalId or return without a selection.${multiSuffix}${scorecardSuffix}`
+    : `Evaluate every proposal; approve with selectedProposalId or return without a selection.${multiSuffix}${scorecardSuffix}`;
 }
 
 function contextProfileComparison(state: State, task: Task): string | undefined {
   const round = reviewRound(state, task);
   if (!round) return undefined;
-  const profiles = new Set(
-    round.proposalIds.map(
-      (proposalId) => getProposal(state, proposalId).contextProfile ?? null,
-    ),
-  );
+  const supplied = task.contextProfileArtifacts;
+  const profiles =
+    supplied && supplied.length > 1
+      ? new Set(supplied.map((artifact) => artifact.profile))
+      : new Set(
+          round.proposalIds.map(
+            (proposalId) => getProposal(state, proposalId).contextProfile ?? null,
+          ),
+        );
   if (profiles.size <= 1) return undefined;
   const named = [...profiles]
     .filter((profile): profile is string => profile !== null)
-    .sort((left, right) => left.localeCompare(right));
+    .sort(compareLexical);
   const namedText = `${named.length === 1 ? "named profile" : "named profiles"} ${named.map((profile) => JSON.stringify(profile)).join(", ")}`;
   return profiles.has(null) ? `${namedText} versus null (no context)` : namedText;
+}
+
+function compareLexical(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function reviewRound(state: State, task: Task): Round | undefined {

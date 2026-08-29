@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import type { Source } from "../src/core.js";
-import { commitCandidate, fixture, git, scorecardFor } from "./helpers.js";
+import {
+  commitCandidate,
+  fixture,
+  git,
+  scorecardFor,
+  stageScorecardFor,
+} from "./helpers.js";
 
 const producer: Source = { harness: "test-producer", model: "model-a", agent: null };
 const reviewer: Source = { harness: "test-reviewer", model: "model-b", agent: null };
@@ -51,13 +57,13 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
         proposalId: specProposalA,
         status: "passed",
         summary: "Valid",
-        scorecard: scorecardFor("spec-review", specProposalA, 25),
+        scorecard: stageScorecardFor("spec-review", specProposalA, 25),
       },
       {
         proposalId: specProposalB,
         status: "passed",
         summary: "Best",
-        scorecard: scorecardFor("spec-review", specProposalB, 75),
+        scorecard: stageScorecardFor("spec-review", specProposalB, 75),
       },
     ],
   });
@@ -94,13 +100,13 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
         proposalId: planProposalA,
         status: "passed",
         summary: "Valid",
-        scorecard: scorecardFor("plan-review", planProposalA, 25),
+        scorecard: stageScorecardFor("plan-review", planProposalA, 25),
       },
       {
         proposalId: planProposalB,
         status: "passed",
         summary: "Best",
-        scorecard: scorecardFor("plan-review", planProposalB, 75),
+        scorecard: stageScorecardFor("plan-review", planProposalB, 75),
       },
     ],
   });
@@ -133,13 +139,13 @@ test("golden path selects among multiple Specs, Plans, and Builds", () => {
         proposalId: buildProposalA,
         status: "passed",
         summary: "Valid",
-        scorecard: scorecardFor("build-review", buildProposalA, 25),
+        scorecard: stageScorecardFor("build-review", buildProposalA, 25),
       },
       {
         proposalId: buildProposalB,
         status: "passed",
         summary: "Best",
-        scorecard: scorecardFor("build-review", buildProposalB, 75),
+        scorecard: stageScorecardFor("build-review", buildProposalB, 75),
       },
     ],
     acceptance: [
@@ -333,6 +339,63 @@ test("malformed scorecards are rejected on protocol-bearing reviews", () => {
       }),
     (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
   );
+});
+
+test("review submission rejects mixed scorecard shapes without sealing the round", () => {
+  const { service } = fixture();
+  const init = service.createInit("Mixed scorecards", "Reject incompatible vectors");
+  const specA = service.openProducer("spec", init.id, producer).task;
+  const proposalA = service.submitTask(specA.id, spec("Option A")).task
+    .proposalId as string;
+  const specB = service.openProducer("spec", init.id, producer).task;
+  const proposalB = service.submitTask(specB.id, spec("Option B")).task
+    .proposalId as string;
+  const review = service.openReview("spec-review", init.id, reviewer).task;
+
+  assert.throws(
+    () =>
+      service.submitTask(review.id, {
+        decision: "return",
+        summary: "Mixed scorecards are invalid",
+        candidates: [
+          {
+            proposalId: proposalA,
+            status: "failed",
+            summary: "Stage card",
+            scorecard: stageScorecardFor("spec-review", proposalA),
+          },
+          {
+            proposalId: proposalB,
+            status: "failed",
+            summary: "Legacy card",
+            scorecard: scorecardFor("spec-review", proposalB),
+          },
+        ],
+      }),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+  assert.equal(service.showTask(review.id).task.status, "open");
+
+  const submitted = service.submitTask(review.id, {
+    decision: "approve",
+    selectedProposalId: proposalB,
+    summary: "Uniform stage cards",
+    candidates: [
+      {
+        proposalId: proposalA,
+        status: "passed",
+        summary: "Stage card",
+        scorecard: stageScorecardFor("spec-review", proposalA, 25),
+      },
+      {
+        proposalId: proposalB,
+        status: "passed",
+        summary: "Stage card",
+        scorecard: stageScorecardFor("spec-review", proposalB, 75),
+      },
+    ],
+  });
+  assert.equal(submitted.task.status, "submitted");
 });
 
 test("a higher-scoring failed candidate cannot be selected over a passing one", () => {

@@ -33,22 +33,25 @@ configured command in a fresh detached worktree, with bounded output and timeout
 
 Every newly opened review persists a complete anonymized review protocol snapshot:
 the exact operation rubric (`spec-v1`, `plan-v1`, or `build-v1`) with its category
-weights, the shared anchors `[0,25,50,75,100]`, deterministic `C01..` labels
-assigned by lexical `proposalId`, a separate audit-provenance map, and a sorted
-host-addressable evidence catalog. The envelope exposes anonymized candidates
-first. Category quality is advisory to objective verification and acceptance
-gates; `contextComparison` remains a separate advisory dimension outside rubric
-totals.
+weights, the operation-specific dimensions and their weights, the shared anchors
+`[0,25,50,75,100]`, deterministic `C01..` labels assigned by lexical `proposalId`,
+a separate audit-provenance map, and a sorted host-addressable evidence catalog.
+Mixed-profile envelopes also expose profiles and artifacts in lexical order. The
+envelope exposes anonymized candidates first. Category and dimension quality is
+advisory to objective verification and acceptance gates; `contextComparison`
+remains a separate advisory dimension outside rubric totals.
 
-Protocol-bearing reviews require a strict `scorecard` per candidate verdict with
-`rubricVersion` and one `assessments` entry per category exactly once in rubric
-order. Rationales are nonempty and `evidenceRefs` are sorted, unique, and present
-in the task's frozen evidence catalog. Reviewer-provided totals, ranks, legacy
-scores, and unknown fields are rejected on new reviews. The integer total is
-`floor((sum(weight * level) + 50) / 100)`. Candidates sort by effective passed
-before failed, total descending, category levels lexicographically descending in
-rubric order, then `proposalId` lexical ascending; the rank and the first
-comparator that resolved each tie are persisted in an immutable review outcome.
+Protocol-bearing reviews require either the historical `scorecard` shape with
+`rubricVersion` and one `assessments` entry per category, or the explicit stage
+shape with the review operation and one `dimensions` entry per stage dimension,
+each exactly once in declared order. All candidates in one review use one shape.
+Stage dimensions have integer levels from 0 through 100, nonempty rationales, and
+nonempty sorted, unique evidence references from the task's frozen evidence
+catalog. The host derives the integer total from declared weights. Candidates sort
+by effective passed before failed, total descending, dimension levels
+lexicographically descending in declared order, profile lexical ascending, then
+`proposalId` lexical ascending; the rank and the first comparator that resolved
+each tie are persisted in an immutable review outcome.
 Approval must select the rank-one effective passing candidate, and effective
 passing status is distinct from objective Build verification and selected-candidate
 acceptance. Historical review tasks without a persisted protocol retain the legacy

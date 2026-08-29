@@ -550,7 +550,13 @@ function contextProfiles(
     : [config.contextPatrol?.defaults[operation]];
   if (explicit && profiles.some((profile) => !profile))
     usage("--context-profile entries must not be empty");
-  return profiles.map((profile) => (profile === "none" ? undefined : profile));
+  return profiles
+    .map((profile) => (profile === "none" ? undefined : profile))
+    .sort((left, right) => compareLexical(left ?? "", right ?? ""));
+}
+
+function compareLexical(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 async function readJson(ctx: RunContext, location: string): Promise<unknown> {

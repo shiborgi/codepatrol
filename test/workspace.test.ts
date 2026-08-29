@@ -673,6 +673,11 @@ test("multi-profile review exposes ordered artifacts and validates contextCompar
   assert.equal(opened.exitCode, 0, opened.stderr);
   const envelope = JSON.parse(opened.stdout) as {
     task: { id: string };
+    input: {
+      contextProfiles: string[];
+      contextProfileArtifacts: Array<{ profile: string }>;
+      scorecardDimensions: Array<{ dimension: string }>;
+    };
     contextProfileArtifacts: Array<{
       profile: string;
       report?: unknown;
@@ -681,7 +686,25 @@ test("multi-profile review exposes ordered artifacts and validates contextCompar
   };
   assert.deepEqual(
     envelope.contextProfileArtifacts.map((artifact) => artifact.profile),
-    ["impact", "impact-wide", "impact-grounded"],
+    ["impact", "impact-grounded", "impact-wide"],
+  );
+  assert.deepEqual(envelope.input.contextProfiles, [
+    "impact",
+    "impact-grounded",
+    "impact-wide",
+  ]);
+  assert.deepEqual(
+    envelope.input.contextProfileArtifacts.map((artifact) => artifact.profile),
+    ["impact", "impact-grounded", "impact-wide"],
+  );
+  assert.deepEqual(
+    envelope.input.scorecardDimensions.map((dimension) => dimension.dimension),
+    [
+      "scope-coverage",
+      "requirement-grounding",
+      "acceptance-clarity",
+      "unresolved-ambiguity",
+    ],
   );
   assert.ok(
     envelope.contextProfileArtifacts.every((artifact) => !("report" in artifact)),

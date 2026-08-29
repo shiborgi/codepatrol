@@ -69,17 +69,51 @@ export function rubricCategories(rubricVersion: string): string[] {
   return rubric.categories.map((entry) => entry.category);
 }
 
-export function totalFor(rubric: Rubric, levels: number[]): number {
+export function totalFor(rubric: Rubric | StageDimension[], levels: number[]): number {
+  const categories = Array.isArray(rubric) ? rubric : rubric.categories;
+  const totalWeight = categories.reduce((sum, entry) => sum + entry.weight, 0);
   let weighted = 0;
-  rubric.categories.forEach((entry, index) => {
+  categories.forEach((entry, index) => {
     weighted += entry.weight * (levels[index] ?? 0);
   });
-  return Math.floor((weighted + 50) / 100);
+  return Math.floor((weighted + totalWeight / 2) / totalWeight);
+}
+
+export interface StageDimension {
+  dimension: string;
+  weight: number;
+}
+
+export const STAGE_DIMENSIONS: Record<ReviewOperation, StageDimension[]> = {
+  "spec-review": [
+    { dimension: "scope-coverage", weight: 25 },
+    { dimension: "requirement-grounding", weight: 25 },
+    { dimension: "acceptance-clarity", weight: 25 },
+    { dimension: "unresolved-ambiguity", weight: 25 },
+  ],
+  "plan-review": [
+    { dimension: "acceptance-mapping", weight: 25 },
+    { dimension: "code-locality", weight: 25 },
+    { dimension: "dependency-risk-coverage", weight: 25 },
+    { dimension: "verification-specificity", weight: 25 },
+  ],
+  "build-review": [
+    { dimension: "acceptance-evidence", weight: 25 },
+    { dimension: "test-verification-evidence", weight: 25 },
+    { dimension: "regression-risk", weight: 25 },
+    { dimension: "change-scope", weight: 25 },
+  ],
+};
+
+export function stageDimensionsFor(operation: ReviewOperation): StageDimension[] {
+  return STAGE_DIMENSIONS[operation].map((dimension) => ({ ...dimension }));
 }
 
 export interface ReviewProtocol {
   rubricVersion: string;
   rubric: Rubric;
+  operation?: ReviewOperation;
+  dimensions?: StageDimension[];
   anchors: number[];
   labels: Record<string, string>;
   auditProvenance: Record<string, string>;
@@ -92,7 +126,8 @@ export function buildReviewProtocol(
   proposalIds: string[],
 ): ReviewProtocol {
   const rubric = rubricFor(task.operation as ReviewOperation);
-  const sorted = [...proposalIds].sort((left, right) => left.localeCompare(right));
+  const operation = task.operation as ReviewOperation;
+  const sorted = [...proposalIds].sort(compareLexical);
   const labels: Record<string, string> = {};
   const auditProvenance: Record<string, string> = {};
   sorted.forEach((proposalId, index) => {
@@ -103,6 +138,8 @@ export function buildReviewProtocol(
   return {
     rubricVersion: rubric.version,
     rubric,
+    operation,
+    dimensions: stageDimensionsFor(operation),
     anchors: [...SCORECARD_ANCHORS],
     labels,
     auditProvenance,
@@ -133,7 +170,7 @@ function buildEvidenceCatalog(
     const candidate = getProposal(state, proposalId).candidate;
     if (candidate) refs.push(`repository:${candidate.commit}`);
   }
-  return [...new Set(refs)].sort((left, right) => left.localeCompare(right));
+  return [...new Set(refs)].sort(compareLexical);
 }
 
 export interface ScorecardAssessment {
@@ -143,15 +180,42 @@ export interface ScorecardAssessment {
   evidenceRefs: string[];
 }
 
-export interface CandidateScorecard {
-  rubricVersion: string;
-  assessments: ScorecardAssessment[];
+export interface StageScorecardAssessment {
+  dimension: string;
+  level: number;
+  rationale: string;
+  evidenceRefs: string[];
+}
+
+export type CandidateScorecard =
+  // Keep the WAVE-12.2 rubric shape readable while new reviews use stage dimensions.
+  | {
+      rubricVersion: string;
+      assessments: ScorecardAssessment[];
+    }
+  | {
+      operation: ReviewOperation;
+      dimensions: StageScorecardAssessment[];
+      rubricVersion?: string;
+    };
+
+function isStageScorecard(
+  scorecard: CandidateScorecard,
+): scorecard is Extract<
+  CandidateScorecard,
+  { dimensions: StageScorecardAssessment[] }
+> {
+  return "dimensions" in scorecard;
 }
 
 export function validateScorecard(
   protocol: ReviewProtocol,
   scorecard: CandidateScorecard,
 ): void {
+  if (isStageScorecard(scorecard)) {
+    validateStageScorecard(protocol, scorecard);
+    return;
+  }
   if (scorecard.rubricVersion !== protocol.rubricVersion) {
     throw new CodePatrolError(
       ERROR_CODES.INVALID_RESULT,
@@ -183,30 +247,112 @@ export function validateScorecard(
         `scorecard assessment ${assessment.category} level ${assessment.level} is not an anchor`,
       );
     }
-    for (let index = 0; index < assessment.evidenceRefs.length; index += 1) {
-      const ref = assessment.evidenceRefs[index] as string;
-      if (
-        index > 0 &&
-        (assessment.evidenceRefs[index - 1] as string).localeCompare(ref) >= 0
-      ) {
-        throw new CodePatrolError(
-          ERROR_CODES.INVALID_RESULT,
-          `scorecard assessment ${assessment.category} evidenceRefs must be sorted and unique`,
-        );
-      }
-      if (!catalog.has(ref)) {
-        throw new CodePatrolError(
-          ERROR_CODES.INVALID_RESULT,
-          `scorecard assessment ${assessment.category} references unknown evidence ${ref}`,
-        );
-      }
+    validateEvidenceRefs(assessment.category, assessment.evidenceRefs, catalog);
+  }
+}
+
+function validateStageScorecard(
+  protocol: ReviewProtocol,
+  scorecard: Extract<CandidateScorecard, { dimensions: StageScorecardAssessment[] }>,
+): void {
+  const expected = protocol.dimensions ?? [];
+  if (scorecard.operation !== protocol.operation || expected.length === 0) {
+    throw new CodePatrolError(
+      ERROR_CODES.INVALID_RESULT,
+      `scorecard operation ${scorecard.operation} does not match the review stage`,
+    );
+  }
+  if (
+    scorecard.rubricVersion !== undefined &&
+    scorecard.rubricVersion !== protocol.rubricVersion
+  ) {
+    throw new CodePatrolError(
+      ERROR_CODES.INVALID_RESULT,
+      `scorecard rubricVersion ${scorecard.rubricVersion} does not match ${protocol.rubricVersion}`,
+    );
+  }
+  const actual = scorecard.dimensions.map((entry) => entry.dimension);
+  const expectedNames = expected.map((entry) => entry.dimension);
+  if (
+    actual.length !== expectedNames.length ||
+    actual.some((value, index) => value !== expectedNames[index])
+  ) {
+    throw new CodePatrolError(
+      ERROR_CODES.INVALID_RESULT,
+      "stage scorecard dimensions must cover every dimension exactly once in stage order",
+    );
+  }
+  const catalog = new Set(protocol.evidenceCatalog);
+  for (const assessment of scorecard.dimensions) {
+    if (
+      !Number.isInteger(assessment.level) ||
+      assessment.level < 0 ||
+      assessment.level > 100
+    ) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        `scorecard dimension ${assessment.dimension} level ${assessment.level} is outside 0..100`,
+      );
+    }
+    if (!assessment.rationale.trim()) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        `scorecard dimension ${assessment.dimension} requires a nonempty rationale`,
+      );
+    }
+    if (assessment.evidenceRefs.length === 0) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        `scorecard dimension ${assessment.dimension} requires evidence`,
+      );
+    }
+    validateEvidenceRefs(assessment.dimension, assessment.evidenceRefs, catalog);
+  }
+}
+
+function validateEvidenceRefs(
+  name: string,
+  evidenceRefs: string[],
+  catalog: Set<string>,
+): void {
+  for (let index = 0; index < evidenceRefs.length; index += 1) {
+    const ref = evidenceRefs[index] as string;
+    if (index > 0 && compareLexical(evidenceRefs[index - 1] as string, ref) >= 0) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        `scorecard assessment ${name} evidenceRefs must be sorted and unique`,
+      );
+    }
+    if (!catalog.has(ref)) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        `scorecard assessment ${name} references unknown evidence ${ref}`,
+      );
     }
   }
+}
+
+export function validateScorecards(
+  protocol: ReviewProtocol,
+  scorecards: CandidateScorecard[],
+): void {
+  const stage = scorecards[0] ? isStageScorecard(scorecards[0]) : undefined;
+  if (
+    stage !== undefined &&
+    scorecards.some((scorecard) => isStageScorecard(scorecard) !== stage)
+  ) {
+    throw new CodePatrolError(
+      ERROR_CODES.INVALID_RESULT,
+      "all candidates in one review must use the same scorecard shape",
+    );
+  }
+  for (const scorecard of scorecards) validateScorecard(protocol, scorecard);
 }
 
 export interface RankedCandidate {
   label: string;
   proposalId: string;
+  profile: string | null;
   total: number;
   levels: number[];
   rank: number;
@@ -216,6 +362,7 @@ export interface RankedCandidate {
 
 export interface ReviewOutcome {
   rubricVersion: string;
+  operation?: ReviewOperation;
   hardGateStatus: "passed" | "failed" | "blocked";
   candidates: RankedCandidate[];
   winner: string | null;
@@ -238,33 +385,55 @@ export function computeReviewOutcome(
   const verification = new Map(
     task.verification.map((entry) => [entry.proposalId, entry.status]),
   );
+  validateScorecards(
+    protocol,
+    verdicts.map((verdict) => verdict.scorecard),
+  );
   const ranked: RankedCandidate[] = verdicts.map((verdict) => {
-    const levels = rubric.categories.map(
-      (entry) =>
-        verdict.scorecard.assessments.find(
-          (assessment) => assessment.category === entry.category,
-        )?.level ?? 0,
-    );
+    const normalized = scorecardLevels(protocol, verdict.scorecard);
     const verificationStatus = verification.get(verdict.proposalId);
     const effectivePassed =
       verdict.status === "passed" &&
       (task.operation !== "build-review" || verificationStatus === "passed");
+    const profile = getProposal(state, verdict.proposalId).contextProfile ?? null;
     return {
       label: protocol.labels[verdict.proposalId] ?? verdict.proposalId,
       proposalId: verdict.proposalId,
-      total: totalFor(rubric, levels),
-      levels,
+      profile,
+      total: normalized.stage
+        ? totalForDimensions(protocol.dimensions ?? [], normalized.levels)
+        : totalFor(rubric, normalized.levels),
+      levels: normalized.levels,
       rank: 0,
       effectivePassed,
       decidingComparator: null,
     };
   });
-  ranked.sort((left, right) => compareCandidates(left, right).order);
+  const levelComparator = verdicts.every((verdict) =>
+    isStageScorecard(verdict.scorecard),
+  )
+    ? "dimension"
+    : "category";
+  ranked.sort((left, right) => compareCandidates(left, right, levelComparator).order);
+  for (let index = 1; index < ranked.length; index += 1) {
+    if (
+      compareCandidates(
+        ranked[index - 1] as RankedCandidate,
+        ranked[index] as RankedCandidate,
+        levelComparator,
+      ).order === 0
+    ) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        "candidate ranking contains an unresolved tie",
+      );
+    }
+  }
   ranked.forEach((candidate, index) => {
     candidate.rank = index + 1;
     const next = ranked[index + 1];
     candidate.decidingComparator = next
-      ? compareCandidates(candidate, next).comparator
+      ? compareCandidates(candidate, next, levelComparator).comparator
       : null;
   });
   const passing = ranked.filter((candidate) => candidate.effectivePassed);
@@ -273,6 +442,7 @@ export function computeReviewOutcome(
   const hardGateStatus = hardGateFor(state, task, verdicts);
   return {
     rubricVersion: protocol.rubricVersion,
+    operation: protocol.operation,
     hardGateStatus,
     candidates: ranked,
     winner,
@@ -281,13 +451,52 @@ export function computeReviewOutcome(
     digestClasses: {
       rubric: protocol.rubricVersion,
       anchors: protocol.anchors.join(","),
+      ...(protocol.operation ? { operation: protocol.operation } : {}),
+      ...(protocol.dimensions
+        ? {
+            dimensions: protocol.dimensions
+              .map((entry) => `${entry.dimension}:${entry.weight}`)
+              .join(","),
+          }
+        : {}),
     },
   };
+}
+
+function scorecardLevels(
+  protocol: ReviewProtocol,
+  scorecard: CandidateScorecard,
+): { levels: number[]; stage: boolean } {
+  if (isStageScorecard(scorecard)) {
+    return {
+      levels: (protocol.dimensions ?? []).map(
+        (entry) =>
+          scorecard.dimensions.find(
+            (assessment) => assessment.dimension === entry.dimension,
+          )?.level ?? 0,
+      ),
+      stage: true,
+    };
+  }
+  return {
+    levels: protocol.rubric.categories.map(
+      (entry) =>
+        scorecard.assessments.find(
+          (assessment) => assessment.category === entry.category,
+        )?.level ?? 0,
+    ),
+    stage: false,
+  };
+}
+
+function totalForDimensions(dimensions: StageDimension[], levels: number[]): number {
+  return totalFor(dimensions, levels);
 }
 
 function compareCandidates(
   left: RankedCandidate,
   right: RankedCandidate,
+  levelComparator: "category" | "dimension",
 ): { order: number; comparator: string } {
   if (left.effectivePassed !== right.effectivePassed)
     return {
@@ -300,14 +509,28 @@ function compareCandidates(
     const leftLevel = left.levels[index] ?? 0;
     const rightLevel = right.levels[index] ?? 0;
     if (leftLevel !== rightLevel)
-      return { order: rightLevel - leftLevel, comparator: `category:${index}` };
+      return {
+        order: rightLevel - leftLevel,
+        comparator: `${levelComparator}:${index}`,
+      };
   }
+  const leftProfile = left.profile ?? "";
+  const rightProfile = right.profile ?? "";
+  if (leftProfile !== rightProfile)
+    return {
+      order: compareLexical(leftProfile, rightProfile),
+      comparator: "profile",
+    };
   if (left.proposalId !== right.proposalId)
     return {
-      order: left.proposalId.localeCompare(right.proposalId),
+      order: compareLexical(left.proposalId, right.proposalId),
       comparator: "proposal-id",
     };
   return { order: 0, comparator: "tie" };
+}
+
+function compareLexical(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function hardGateFor(

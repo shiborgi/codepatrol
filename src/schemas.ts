@@ -176,12 +176,34 @@ const scorecardAssessmentSchema = z
   })
   .strict();
 
-const candidateScorecardSchema = z
+const legacyCandidateScorecardSchema = z
   .object({
     rubricVersion: z.string().min(1),
     assessments: z.array(scorecardAssessmentSchema),
   })
   .strict();
+
+const stageScorecardAssessmentSchema = z
+  .object({
+    dimension: z.string().min(1),
+    level: z.number().int().min(0).max(100),
+    rationale: z.string().min(1),
+    evidenceRefs: z.array(z.string().min(1)),
+  })
+  .strict();
+
+const stageCandidateScorecardSchema = z
+  .object({
+    operation: z.enum(reviewOperations),
+    dimensions: z.array(stageScorecardAssessmentSchema),
+    rubricVersion: z.string().min(1).optional(),
+  })
+  .strict();
+
+const candidateScorecardSchema = z.union([
+  legacyCandidateScorecardSchema,
+  stageCandidateScorecardSchema,
+]);
 
 const candidateVerdictSchema = z
   .object({
@@ -255,6 +277,17 @@ export const reviewProtocolSchema = z
   .object({
     rubricVersion: z.string().min(1),
     rubric: rubricSchema,
+    operation: z.enum(reviewOperations).optional(),
+    dimensions: z
+      .array(
+        z
+          .object({
+            dimension: z.string().min(1),
+            weight: z.number().int().positive(),
+          })
+          .strict(),
+      )
+      .optional(),
     anchors: z.array(z.number().int().min(0).max(100)),
     labels: z.record(z.string(), z.string().min(1)),
     auditProvenance: z.record(z.string(), z.string().min(1)),
@@ -266,6 +299,7 @@ const rankedCandidateSchema = z
   .object({
     label: z.string().min(1),
     proposalId: z.string().min(1),
+    profile: z.string().min(1).nullable().optional(),
     total: z.number().int().min(0).max(100),
     levels: z.array(z.number().int().min(0).max(100)),
     rank: z.number().int().positive(),
@@ -277,6 +311,7 @@ const rankedCandidateSchema = z
 export const reviewOutcomeSchema = z
   .object({
     rubricVersion: z.string().min(1),
+    operation: z.enum(reviewOperations).optional(),
     hardGateStatus: z.enum(["passed", "failed", "blocked"]),
     candidates: z.array(rankedCandidateSchema),
     winner: z.string().nullable(),

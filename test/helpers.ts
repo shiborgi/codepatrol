@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import type { Config } from "../src/config.js";
 import { Repository } from "../src/git.js";
+import { stageDimensionsFor } from "../src/scorecards.js";
 import { CodePatrolService } from "../src/service.js";
 
 export function git(cwd: string, args: string[]): string {
@@ -126,6 +127,30 @@ export function scorecardFor(
       category,
       level,
       rationale: `Assessed ${category}`,
+      evidenceRefs: [`proposal:${proposalId}`],
+    })),
+  };
+}
+
+export function stageScorecardFor(
+  operation: "spec-review" | "plan-review" | "build-review",
+  proposalId: string,
+  level = 50,
+): {
+  operation: "spec-review" | "plan-review" | "build-review";
+  dimensions: Array<{
+    dimension: string;
+    level: number;
+    rationale: string;
+    evidenceRefs: string[];
+  }>;
+} {
+  return {
+    operation,
+    dimensions: stageDimensionsFor(operation).map(({ dimension }) => ({
+      dimension,
+      level,
+      rationale: `Assessed ${dimension}`,
       evidenceRefs: [`proposal:${proposalId}`],
     })),
   };

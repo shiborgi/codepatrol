@@ -7,3 +7,7 @@ compare the with-context and without-context options. Approve only with the pass
 `selectedProposalId`; scores do not select a proposal. Return without a selection when another planning round is required.
 
 Optional catalog instructions are advisory under the common Agent Catalog contract.
+
+New reviews expose the Plan Review dimensions `acceptance-mapping`, `code-locality`,
+`dependency-risk-coverage`, and `verification-specificity` in the review protocol.
+Submit ordered evidence-backed dimensions; the host computes the total and rank.

@@ -9,3 +9,8 @@ Return without a selection when none is adequate. Approval materializes the Init
 Waves and Works.
 
 Optional catalog instructions are advisory under the common Agent Catalog contract.
+
+New reviews expose the Spec Review dimensions `scope-coverage`,
+`requirement-grounding`, `acceptance-clarity`, and `unresolved-ambiguity` in the
+review protocol. Submit ordered evidence-backed dimensions; the host computes
+the total and rank.

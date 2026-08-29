@@ -43,7 +43,7 @@ import {
   buildReviewProtocol,
   type CandidateScorecard,
   computeReviewOutcome,
-  validateScorecard,
+  validateScorecards,
 } from "./scorecards.js";
 import {
   getInit,
@@ -295,6 +295,17 @@ export class CodePatrolService {
     contextProfileArtifacts?: ContextProfileArtifact[],
   ): TaskEnvelope {
     const producer = producerFor(operation);
+    for (const profiles of [
+      contextSnapshots?.map((snapshot) => snapshot.profile),
+      contextProfileArtifacts?.map((artifact) => artifact.profile),
+    ]) {
+      if (profiles && new Set(profiles).size !== profiles.length) {
+        throw new CodePatrolError(
+          ERROR_CODES.CONTEXT_COMPARISON_MISMATCH,
+          "context profiles must be unique",
+        );
+      }
+    }
     let taskId = "";
     this.repo.mutate(`${operation} open ${subjectId}`, (state) => {
       const rounds = roundsFor(state, producer, subjectId);
@@ -515,6 +526,7 @@ export class CodePatrolService {
                 task.operation === "build-review"
                   ? resultAs(parsed, buildReviewSchema)
                   : resultAs(parsed, documentReviewSchema);
+              canonicalizeReview(review);
               if (task.reviewProtocol) {
                 validateReviewScorecards(task, review);
                 const outcome = computeReviewOutcome(
@@ -916,10 +928,18 @@ function createTask(
       : { contextSnapshot: seed.contextSnapshot }),
     ...(seed.contextSnapshots === undefined
       ? {}
-      : { contextSnapshots: seed.contextSnapshots }),
+      : {
+          contextSnapshots: [...seed.contextSnapshots].sort((left, right) =>
+            compareLexical(left.profile, right.profile),
+          ),
+        }),
     ...(seed.contextProfileArtifacts === undefined
       ? {}
-      : { contextProfileArtifacts: seed.contextProfileArtifacts }),
+      : {
+          contextProfileArtifacts: [...seed.contextProfileArtifacts].sort(
+            (left, right) => compareLexical(left.profile, right.profile),
+          ),
+        }),
     ...(seed.execution === undefined ? {} : { execution: seed.execution }),
     proposalId: null,
     result: null,
@@ -934,12 +954,28 @@ function isProducer(operation: Operation): operation is ProducerOperation {
   return ["spec", "plan", "build"].includes(operation);
 }
 
+function compareLexical(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function canonicalizeReview(review: DocumentReview | BuildReview): void {
+  review.candidates.sort((left, right) =>
+    compareLexical(left.proposalId, right.proposalId),
+  );
+  review.contextComparison?.verdicts.sort((left, right) =>
+    compareLexical(left.profile, right.profile),
+  );
+  if ("acceptance" in review)
+    review.acceptance.sort((left, right) => compareLexical(left.id, right.id));
+}
+
 function validateReviewScorecards(
   task: Task,
   review: DocumentReview | BuildReview,
 ): void {
   const protocol = task.reviewProtocol;
   if (!protocol) return;
+  const scorecards: CandidateScorecard[] = [];
   for (const verdict of review.candidates) {
     if (!verdict.scorecard) {
       throw new CodePatrolError(
@@ -947,8 +983,9 @@ function validateReviewScorecards(
         `candidate ${verdict.proposalId} requires a scorecard`,
       );
     }
-    validateScorecard(protocol, verdict.scorecard);
+    scorecards.push(verdict.scorecard);
   }
+  validateScorecards(protocol, scorecards);
 }
 
 function preserveWorkspace(state: State, task: Task): boolean {

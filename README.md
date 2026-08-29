@@ -168,13 +168,14 @@ codepatrol build-review open --wave WAVE-1.1 --harness reviewer
 submit the task. Build Review automatically verifies every immutable candidate.
 
 Every review persists an anonymized review protocol (rubric version, category
-weights, anchors, `C01..` labels, audit provenance, and a sorted evidence
-catalog) and requires a strict `scorecard` per candidate verdict. Category quality
-is advisory to objective verification and acceptance gates; `contextComparison`
-remains a separate advisory dimension. CodePatrol computes integer totals and a
-deterministic rank, and approval must select the rank-one effective passing
-candidate. Historical reviews without a persisted protocol keep the legacy
-optional score path.
+weights, operation-specific dimensions, anchors, `C01..` labels, audit provenance,
+and a sorted evidence catalog) and requires a strict `scorecard` per candidate
+verdict. Stage dimensions use ordered evidence-backed integer levels. Category and
+dimension quality is advisory to objective verification and acceptance gates;
+`contextComparison` remains a separate advisory dimension. CodePatrol computes
+integer totals and a deterministic rank, and approval must select the rank-one
+effective passing candidate. Historical reviews without a persisted protocol keep
+the legacy optional score path.
 
 Inspect and explicitly ship the selected candidate:
 

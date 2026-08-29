@@ -10,6 +10,7 @@ import {
   totalFor,
   validateScorecard,
 } from "../src/scorecards.js";
+import { stableJson } from "../src/shared.js";
 import { fixture } from "./helpers.js";
 
 function task(operation: "spec-review" | "plan-review" | "build-review"): Task {
@@ -147,6 +148,166 @@ test("review protocol assigns deterministic labels and a sorted evidence catalog
   assert.deepEqual(protocol.evidenceCatalog, sorted);
 });
 
+test("review protocols expose ordered operation-specific dimensions", () => {
+  const expected = {
+    "spec-review": [
+      "scope-coverage",
+      "requirement-grounding",
+      "acceptance-clarity",
+      "unresolved-ambiguity",
+    ],
+    "plan-review": [
+      "acceptance-mapping",
+      "code-locality",
+      "dependency-risk-coverage",
+      "verification-specificity",
+    ],
+    "build-review": [
+      "acceptance-evidence",
+      "test-verification-evidence",
+      "regression-risk",
+      "change-scope",
+    ],
+  } as const;
+  for (const operation of Object.keys(expected) as Array<keyof typeof expected>) {
+    const protocol = buildReviewProtocol(stateWith(["PROP-a"]), task(operation), [
+      "PROP-a",
+    ]);
+    assert.equal(protocol.operation, operation);
+    assert.deepEqual(
+      protocol.dimensions?.map((dimension) => dimension.dimension),
+      expected[operation],
+    );
+    assert.equal(
+      protocol.dimensions?.reduce((sum, dimension) => sum + dimension.weight, 0),
+      100,
+    );
+  }
+});
+
+test("stage scorecards validate dimensions and host totals independently of input order", () => {
+  const state = stateWith(["PROP-a"]);
+  const t = task("spec-review");
+  const protocol = buildReviewProtocol(state, t, ["PROP-a"]);
+  const stage = {
+    operation: "spec-review",
+    dimensions: [
+      {
+        dimension: "scope-coverage",
+        level: 25,
+        rationale: "Scope is explicit.",
+        evidenceRefs: ["proposal:PROP-a"],
+      },
+      {
+        dimension: "requirement-grounding",
+        level: 50,
+        rationale: "Requirements are grounded.",
+        evidenceRefs: ["proposal:PROP-a"],
+      },
+      {
+        dimension: "acceptance-clarity",
+        level: 75,
+        rationale: "Acceptance is clear.",
+        evidenceRefs: ["proposal:PROP-a"],
+      },
+      {
+        dimension: "unresolved-ambiguity",
+        level: 100,
+        rationale: "No material ambiguity remains.",
+        evidenceRefs: ["proposal:PROP-a"],
+      },
+    ],
+  };
+  assert.doesNotThrow(() => validateScorecard(protocol, stage as never));
+  const outcome = computeReviewOutcome(state, t, protocol, [
+    { proposalId: "PROP-a", status: "passed", scorecard: stage as never },
+  ]);
+  assert.equal(outcome.candidates[0]?.total, 63);
+
+  const invalid = (change: object) => ({
+    ...stage,
+    dimensions: stage.dimensions.map((entry, index) =>
+      index === 0 ? { ...entry, ...change } : entry,
+    ),
+  });
+  for (const malformed of [
+    invalid({ dimension: "unknown" }),
+    invalid({ level: 101 }),
+    invalid({ evidenceRefs: ["missing:evidence"] }),
+    invalid({ evidenceRefs: [] }),
+  ]) {
+    assert.throws(
+      () => validateScorecard(protocol, malformed as never),
+      (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+    );
+  }
+});
+
+test("stage scorecard ranking uses profile before proposal id and rejects an unresolved tie", () => {
+  const state = stateWith(["PROP-a", "PROP-b"]);
+  const a = state.proposals.find((proposal) => proposal.id === "PROP-a");
+  const b = state.proposals.find((proposal) => proposal.id === "PROP-b");
+  if (a) a.contextProfile = "zeta";
+  if (b) b.contextProfile = "alpha";
+  const t = task("plan-review");
+  const protocol = buildReviewProtocol(state, t, ["PROP-b", "PROP-a"]);
+  const dimensions = [
+    "acceptance-mapping",
+    "code-locality",
+    "dependency-risk-coverage",
+    "verification-specificity",
+  ];
+  const scorecard = (operation: string, proposalId: string) => ({
+    operation,
+    dimensions: dimensions.map((dimension) => ({
+      dimension,
+      level: 50,
+      rationale: "Comparable evidence.",
+      evidenceRefs: [`proposal:${proposalId}`],
+    })),
+  });
+  const outcome = computeReviewOutcome(state, t, protocol, [
+    {
+      proposalId: "PROP-a",
+      status: "passed",
+      scorecard: scorecard("plan-review", "PROP-a") as never,
+    },
+    {
+      proposalId: "PROP-b",
+      status: "passed",
+      scorecard: scorecard("plan-review", "PROP-b") as never,
+    },
+  ]);
+  assert.deepEqual(
+    outcome.candidates.map((candidate) => candidate.proposalId),
+    ["PROP-b", "PROP-a"],
+  );
+  assert.throws(
+    () =>
+      computeReviewOutcome(state, t, protocol, [
+        {
+          proposalId: "PROP-a",
+          status: "passed",
+          scorecard: scorecard("plan-review", "PROP-a") as never,
+        },
+        {
+          proposalId: "PROP-a",
+          status: "passed",
+          scorecard: scorecard("plan-review", "PROP-a") as never,
+        },
+      ]),
+    (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+  );
+});
+
+test("scorecard protocol bytes do not depend on proposal input order", () => {
+  const state = stateWith(["PROP-a", "PROP-b"]);
+  const t = task("build-review");
+  const forward = buildReviewProtocol(state, t, ["PROP-a", "PROP-b"]);
+  const reverse = buildReviewProtocol(state, t, ["PROP-b", "PROP-a"]);
+  assert.equal(stableJson(forward), stableJson(reverse));
+});
+
 test("total uses floor((sum(weight*level)+50)/100)", () => {
   const rubric = rubricFor("spec-review");
   const levels = [50, 50, 50, 50, 50, 50];
@@ -205,6 +366,40 @@ test("scorecard validation rejects wrong version, order, and unknown evidence", 
     () => validateScorecard(protocol, emptyRationale),
     (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
   );
+});
+
+test("a review rejects mixed legacy and stage scorecard shapes for every operation", () => {
+  for (const operation of ["spec-review", "plan-review", "build-review"] as const) {
+    const state = stateWith(["PROP-a", "PROP-b"]);
+    const t = task(operation);
+    const protocol = buildReviewProtocol(state, t, ["PROP-a", "PROP-b"]);
+    const stage = {
+      operation,
+      dimensions: (protocol.dimensions ?? []).map((entry) => ({
+        dimension: entry.dimension,
+        level: 50,
+        rationale: "Stage evidence",
+        evidenceRefs: ["proposal:PROP-a"],
+      })),
+    };
+    const legacy = {
+      rubricVersion: protocol.rubricVersion,
+      assessments: protocol.rubric.categories.map((entry) => ({
+        category: entry.category,
+        level: 50,
+        rationale: "Legacy evidence",
+        evidenceRefs: ["proposal:PROP-b"],
+      })),
+    };
+    assert.throws(
+      () =>
+        computeReviewOutcome(state, t, protocol, [
+          { proposalId: "PROP-a", status: "passed", scorecard: stage as never },
+          { proposalId: "PROP-b", status: "passed", scorecard: legacy },
+        ]),
+      (error: unknown) => (error as { code?: string }).code === "INVALID_RESULT",
+    );
+  }
 });
 
 test("ranking orders by effective passed, total, levels, then proposalId", () => {

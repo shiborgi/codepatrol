@@ -9,3 +9,8 @@ and a passing verdict for every acceptance ID. Infrastructure failure blocks and
 retries the same review.
 
 Optional catalog instructions are advisory under the common Agent Catalog contract.
+
+New reviews expose the Build Review dimensions `acceptance-evidence`,
+`test-verification-evidence`, `regression-risk`, and `change-scope` in the review
+protocol. Submit ordered evidence-backed dimensions; the host computes the total
+and rank.
