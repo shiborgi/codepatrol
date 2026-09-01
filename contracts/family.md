@@ -9,6 +9,10 @@ Complementarity is optional and out-of-process. When configured, the complete
 is no sibling discovery, network lookup, or knowledge of another product's
 storage layout. Typed resolver failures do not fall back.
 
+Configured companion `argv` entries use PATH command names (e.g. `agentpatrol`,
+`contextpatrol`) and must never name a filesystem path into another product
+checkout.
+
 ## Advisory Authority
 
 Agent catalog instructions are an immutable snapshot. They do not extend or

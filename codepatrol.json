@@ -15,8 +15,7 @@
   "maxReviewReturns": 3,
   "agentCatalog": {
     "argv": [
-      "node",
-      "/Users/server/Development/shiborgi/agentpatrol/bin/agentpatrol.js",
+      "agentpatrol",
       "resolve",
       "--json"
     ],
@@ -54,8 +53,7 @@
   },
   "contextPatrol": {
     "argv": [
-      "node",
-      "/Users/server/Development/shiborgi/contextpatrol/bin/contextpatrol.js",
+      "contextpatrol",
       "query",
       "--input",
       "-"
