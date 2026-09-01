@@ -24,6 +24,26 @@ const agentDefaultsSchema = z
   .strict()
   .default({});
 
+const rankingListSchema = z
+  .array(z.string().min(1))
+  .max(50)
+  .superRefine((values, context) => {
+    if (new Set(values).size !== values.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ranking entries must be unique",
+      });
+    }
+    values.forEach((value, index) => {
+      if (Buffer.byteLength(value, "utf8") > 128) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `ranking.${index} exceeds 128 UTF-8 bytes`,
+        });
+      }
+    });
+  });
+
 const contextProfileSchema = z
   .object({
     facets: z
@@ -34,6 +54,15 @@ const contextProfileSchema = z
     maxOutputBytes: z.number().int().min(1_024).max(65_536),
     includePaths: z.array(z.string().min(1)).max(200).optional(),
     excludePaths: z.array(z.string().min(1)).max(200).optional(),
+    sourceDepth: z.enum(["full", "signatures", "listing"]).optional(),
+    ranking: z
+      .object({
+        boostIdents: rankingListSchema.optional(),
+        boostPaths: rankingListSchema.optional(),
+        dampenPaths: rankingListSchema.optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

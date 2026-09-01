@@ -119,12 +119,13 @@ immutable even when the working tree changes afterward.
     "argv": ["contextpatrol", "query", "--input", "-"],
     "timeoutMs": 60000,
     "profiles": {
-      "orientation": {
-        "facets": ["structure", "symbols", "relations"],
-        "maxOutputBytes": 9600
+      "spec-survey": {
+        "facets": ["structure", "symbols", "source"],
+        "maxOutputBytes": 12800,
+        "sourceDepth": "signatures"
       }
     },
-    "defaults": { "spec": "orientation" }
+    "defaults": { "spec": "spec-survey" }
   }
 }
 ```

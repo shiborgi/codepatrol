@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Context profile recipes may set optional `sourceDepth` and `ranking`, which
+  are forwarded on the ContextPatrol request. Stage-typed recipes replace the
+  unused orientation/implementation/impact aliases; plan defaults to `plan-deep`.
 - Record optional `contextProfile` provenance on submitted proposals and require
   mixed-track reviews to compare with-context and without-context options.
 - Add optional deterministic out-of-process agent catalog resolution with exact

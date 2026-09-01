@@ -211,6 +211,8 @@ export async function resolveContext(
     ...(baseline ? { baseline } : {}),
     ...(definition.includePaths ? { includePaths: definition.includePaths } : {}),
     ...(definition.excludePaths ? { excludePaths: definition.excludePaths } : {}),
+    ...(definition.sourceDepth ? { sourceDepth: definition.sourceDepth } : {}),
+    ...(definition.ranking ? { ranking: definition.ranking } : {}),
   };
   const [command, ...args] = provider.argv;
   if (!command)
