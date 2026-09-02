@@ -386,6 +386,7 @@ const taskSchema = z
     failure: z.object({ code: z.string(), message: z.string() }).strict().nullable(),
     createdAt: z.string(),
     finishedAt: z.string().nullable(),
+    routingDecisionId: z.string().optional(),
   })
   .strict()
   .superRefine((task, context) => {
@@ -515,6 +516,65 @@ const initSchema = z
   })
   .strict();
 
+const routeKeySchema = z.string().min(1).max(200);
+
+const scoreComponentSchema = z
+  .object({ name: z.string().min(1), value: z.number().int() })
+  .strict();
+
+const routingDecisionSchema = z
+  .object({
+    decisionId: z.string(),
+    operation: z.enum(operations),
+    policyVersion: z.string(),
+    policyDigest: sha256Schema,
+    taskFeatureDigest: sha256Schema,
+    taskClass: z.string().min(1),
+    memoryDigest: sha256Schema,
+    eligibleRoutes: z.array(routeKeySchema),
+    scoreComponents: z.array(scoreComponentSchema),
+    selectedRoutes: z.array(routeKeySchema),
+    uncertainty: z.number().int(),
+    fanoutReason: z.enum(["confident", "uncertain", "exploration", "explicit"]),
+    overrideMode: z.enum(["none", "agents", "profiles", "both", "executions"]),
+    createdAt: z.string(),
+  })
+  .strict();
+
+const routingObservationSchema = z
+  .object({
+    observationKey: z.string(),
+    decisionId: z.string(),
+    routeKey: routeKeySchema,
+    taskId: z.string(),
+    proposalId: z.string().nullable(),
+    outcome: z.string(),
+    hostEffectivePass: z.boolean().optional(),
+    hostRank: z.number().int().optional(),
+    hostSelected: z.boolean().optional(),
+    hostVerified: z.boolean().optional(),
+    hostReviewScore: z.number().int().optional(),
+    hostReturnCount: z.number().int().optional(),
+    durationMs: z.number().int().optional(),
+    createdAt: z.string(),
+  })
+  .strict();
+
+const routingAggregateSchema = z
+  .object({
+    routeKey: routeKeySchema,
+    operation: z.enum(operations),
+    taskClass: z.string(),
+    observationCount: z.number().int().nonnegative(),
+    effectivePassCount: z.number().int().nonnegative(),
+    selectedCount: z.number().int().nonnegative(),
+    verifiedCount: z.number().int().nonnegative(),
+    reviewScoreTotal: z.number().int().nonnegative(),
+    returnCount: z.number().int().nonnegative(),
+    lastUpdated: z.string(),
+  })
+  .strict();
+
 export const stateSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -526,8 +586,23 @@ export const stateSchema = z
     works: z.array(workSchema),
     tasks: z.array(taskSchema),
     proposals: z.array(proposalSchema),
+    routing: z
+      .object({
+        schemaVersion: z.literal(1),
+        decisions: z.array(routingDecisionSchema).default([]),
+        observations: z.array(routingObservationSchema).default([]),
+        aggregates: z.array(routingAggregateSchema).default([]),
+      })
+      .strict()
+      .optional()
+      .default({ schemaVersion: 1, decisions: [], observations: [], aggregates: [] }),
   })
   .strict();
+
+export type RoutingDecision = z.infer<typeof routingDecisionSchema>;
+export type RoutingObservation = z.infer<typeof routingObservationSchema>;
+export type RoutingAggregate = z.infer<typeof routingAggregateSchema>;
+export type RoutingMemory = z.infer<typeof stateSchema>["routing"];
 
 export type State = z.infer<typeof stateSchema>;
 export type Init = State["inits"][number];

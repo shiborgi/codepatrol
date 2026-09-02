@@ -248,7 +248,13 @@ export class Repository implements StateStore {
           works: [],
           tasks: [],
           proposals: [],
-        },
+          routing: {
+            schemaVersion: 1,
+            decisions: [],
+            observations: [],
+            aggregates: [],
+          },
+        } as any,
       };
     }
     const raw = this.git(["show", `${oid}:state.json`]);
@@ -265,7 +271,16 @@ export class Repository implements StateStore {
     if (!parsed.success) {
       throw new CodePatrolError(ERROR_CODES.STATE_CORRUPT, zodIssues(parsed.error));
     }
-    return { state: parsed.data, oid };
+    const st = parsed.data;
+    if (!st.routing) {
+      st.routing = {
+        schemaVersion: 1,
+        decisions: [],
+        observations: [],
+        aggregates: [],
+      };
+    }
+    return { state: st, oid };
   }
 
   mutate<T>(event: string, transition: (state: State) => T): T {

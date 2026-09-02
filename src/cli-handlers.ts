@@ -16,6 +16,15 @@ import type { Operation, ProducerOperation, ReviewOperation, Source } from "./co
 import { usage } from "./errors.js";
 import { type ExecutionDescriptor, executionDescriptorSchema } from "./execution.js";
 import { type Repository, STATE_REF } from "./git.js";
+import {
+  deriveTaskClass,
+  emptyMemory,
+  isOrchestratorEnabled,
+  loadAgentInventory,
+  makeRouteKey,
+  rankRoutes,
+  selectRoutesForFanout,
+} from "./orchestrator.js";
 import { syncGitHub } from "./remote.js";
 import type { RunContext } from "./run-context.js";
 import { getInit, getWave, getWork } from "./selectors.js";
@@ -96,28 +105,281 @@ export const handlers: Record<Handler, DispatchHandler> = {
         ),
       );
     }
+    const subjectId = required(options, operation === "spec" ? "--init" : "--wave");
+    const state = repo.readState().state;
+    const subjectText =
+      operation === "spec"
+        ? `${getInit(state, subjectId).title} ${getInit(state, subjectId).brief}`
+        : getWave(state, subjectId)
+            .workIds.map((w) => getWork(state, w).description)
+            .join(" ");
+    if (
+      isOrchestratorEnabled(config) &&
+      !options.has("--agents") &&
+      !options.has("--context-profile")
+    ) {
+      const inventory = await loadAgentInventory(config.agentCatalog, ctx);
+      const profiles = config.contextPatrol?.profiles ?? {};
+      const profileMetas: Record<string, any> = {};
+      for (const [k, v] of Object.entries(profiles))
+        profileMetas[k] = {
+          supportedOperations: (v as any).supportedOperations,
+          routingTags: (v as any).routingTags,
+        };
+      const taskClass = deriveTaskClass(subjectText, inventory, profileMetas);
+      // build eligible routes from inventory + defaults or all profiles that match op
+      const orch = config.orchestrator!;
+      const eligible: Array<{
+        key: string;
+        agent: { reference: string; version: string };
+        contextProfile: string | null;
+        tags: string[];
+      }> = [];
+      const defaultAgent = config.agentCatalog?.defaults?.[operation];
+      const candidateAgents = inventory.filter((a) => a.operations.includes(operation));
+      const candidateProfiles = Object.entries(profiles).filter(([_, p]: any) => {
+        const ops = p.supportedOperations as string[] | undefined;
+        if (ops && ops.length) return ops.includes(operation);
+        // legacy: only if default for op
+        return config.contextPatrol?.defaults?.[operation] === _;
+      });
+      if (defaultAgent) {
+        // use default agent + compatible profiles
+        const ag = { reference: defaultAgent.agent, version: defaultAgent.version };
+        if (candidateProfiles.length === 0) {
+          eligible.push({
+            key: makeRouteKey({
+              agentRef: ag.reference,
+              agentVersion: ag.version,
+              contextProfile: null,
+            }),
+            agent: ag,
+            contextProfile: null,
+            tags: [],
+          });
+        } else {
+          for (const [pname, pmeta] of candidateProfiles) {
+            const tags = (pmeta as any).routingTags || [];
+            eligible.push({
+              key: makeRouteKey({
+                agentRef: ag.reference,
+                agentVersion: ag.version,
+                contextProfile: pname,
+              }),
+              agent: ag,
+              contextProfile: pname,
+              tags,
+            });
+          }
+        }
+      } else {
+        for (const a of candidateAgents) {
+          const ag = { reference: a.reference, version: a.version };
+          for (const [pname, pmeta] of candidateProfiles) {
+            const tags = (pmeta as any).routingTags || [];
+            eligible.push({
+              key: makeRouteKey({
+                agentRef: ag.reference,
+                agentVersion: ag.version,
+                contextProfile: pname,
+              }),
+              agent: ag,
+              contextProfile: pname,
+              tags,
+            });
+          }
+          if (candidateProfiles.length === 0) {
+            eligible.push({
+              key: makeRouteKey({
+                agentRef: ag.reference,
+                agentVersion: ag.version,
+                contextProfile: null,
+              }),
+              agent: ag,
+              contextProfile: null,
+              tags: a.capabilities,
+            });
+          }
+        }
+      }
+      const mem = (state as any).routing || emptyMemory();
+      const { ranked, confidence } = rankRoutes(
+        eligible,
+        taskClass,
+        mem,
+        orch,
+        mem.decisions.length,
+      );
+      const uncertain = confidence < orch.uncertaintyThreshold;
+      const { selected, reason } = selectRoutesForFanout(
+        ranked,
+        uncertain,
+        orch.maxFanout,
+        false,
+      );
+      // now resolve each
+      const harness = required(options, "--harness");
+      const model = options.get("--model") ?? null;
+      const selections: any[] = [];
+      for (const sel of selected) {
+        const resolvedAgent = await resolveAgent(
+          config.agentCatalog!,
+          { reference: sel.agent.reference, version: sel.agent.version },
+          ctx,
+        );
+        let ctxSnap: ContextSnapshot | undefined;
+        if (sel.contextProfile) {
+          ctxSnap = await resolveContext(
+            config.contextPatrol!,
+            sel.contextProfile,
+            repo.root,
+            contextQuery(operation, options, repo),
+            contextAnchor(operation, options, repo, config).target,
+            contextAnchor(operation, options, repo, config).baseline,
+            ctx,
+          );
+        }
+        selections.push({
+          source: {
+            harness,
+            model,
+            agent: resolvedAgent.agent.reference,
+            agentVersion: resolvedAgent.agent.version,
+            agentDigest: resolvedAgent.agent.digest,
+            agentInstructionsDigest: resolvedAgent.instructionsDigest,
+          },
+          agentInstructions: resolvedAgent.instructions,
+          contextSnapshot: ctxSnap,
+        });
+      }
+      // TODO: record decision into service open; for now open and let state update later
+      return ok(
+        service.openProducers(operation, subjectId, selections, options.get("--from")),
+      );
+    }
     const agents = await producerAgents(config, operation, options, ctx);
     const contexts = await taskContexts(config, operation, options, repo, ctx);
     const selections = agents.flatMap((selection) =>
       contexts.map((contextSnapshot) => ({ ...selection, contextSnapshot })),
     );
     return ok(
-      service.openProducers(
-        operation,
-        required(options, operation === "spec" ? "--init" : "--wave"),
-        selections,
-        options.get("--from"),
-      ),
+      service.openProducers(operation, subjectId, selections, options.get("--from")),
     );
   },
   review: async ({ command, options, repo, config, service, ctx }) => {
     const operation = command as ReviewOperation;
-    const selection = await reviewAgent(config, operation, options, ctx);
-    const profiles = contextProfiles(config, operation, options);
+    const subjectId = required(
+      options,
+      operation === "spec-review" ? "--init" : "--wave",
+    );
+    let selection = await reviewAgent(config, operation, options, ctx);
+    let usedProfiles = contextProfiles(config, operation, options);
+    if (
+      isOrchestratorEnabled(config) &&
+      !options.has("--agents") &&
+      !options.has("--context-profile")
+    ) {
+      // for 14.1 keep singular review if confident; compute one
+      const state = repo.readState().state;
+      const subjectText = operation.startsWith("spec")
+        ? getInit(state, subjectId).title + " " + getInit(state, subjectId).brief
+        : getWave(state, subjectId)
+            .workIds.map((w: string) => getWork(state, w).description)
+            .join(" ");
+      const inventory = await loadAgentInventory(config.agentCatalog, ctx);
+      const profiles = config.contextPatrol?.profiles ?? {};
+      const profileMetas: Record<string, any> = {};
+      for (const [k, v] of Object.entries(profiles))
+        profileMetas[k] = {
+          supportedOperations: (v as any).supportedOperations,
+          routingTags: (v as any).routingTags,
+        };
+      const taskClass = deriveTaskClass(subjectText, inventory, profileMetas);
+      const orch = config.orchestrator!;
+      const eligible: any[] = [];
+      const defaultsAny = (config.agentCatalog?.defaults as any) || {};
+      const defaultAgent = defaultsAny[operation];
+      const candidateAgents = inventory.filter((a) =>
+        a.operations.includes(operation as any),
+      );
+      const candidateProfiles = Object.entries(profiles).filter(([_, p]: any) => {
+        const ops = p.supportedOperations as string[] | undefined;
+        return !ops || ops.includes(operation as any);
+      });
+      if (defaultAgent) {
+        const ag = { reference: defaultAgent.agent, version: defaultAgent.version };
+        for (const [pname] of candidateProfiles.length
+          ? candidateProfiles
+          : [["", null]]) {
+          eligible.push({
+            key: makeRouteKey({
+              agentRef: ag.reference,
+              agentVersion: ag.version,
+              contextProfile: pname || null,
+            }),
+            agent: ag,
+            contextProfile: pname || null,
+            tags: [],
+          });
+        }
+      } else if (candidateAgents.length) {
+        const first = candidateAgents[0]!;
+        const ag = { reference: first.reference, version: first.version };
+        eligible.push({
+          key: makeRouteKey({
+            agentRef: ag.reference,
+            agentVersion: ag.version,
+            contextProfile: null,
+          }),
+          agent: ag,
+          contextProfile: null,
+          tags: [],
+        });
+      }
+      const mem = (state as any).routing || emptyMemory();
+      const { ranked } = rankRoutes(
+        eligible.length
+          ? eligible
+          : [
+              {
+                key: "default",
+                agent: { reference: "agentpatrol/developer", version: "1.0.0" },
+                contextProfile: null,
+                tags: [],
+              },
+            ],
+        taskClass,
+        mem,
+        orch,
+        mem.decisions.length,
+      );
+      const chosen = ranked[0];
+      if (chosen) {
+        const resolved = await resolveAgent(
+          config.agentCatalog!,
+          { reference: chosen.agent.reference, version: chosen.agent.version },
+          ctx,
+        );
+        selection = {
+          source: {
+            harness: required(options, "--harness"),
+            model: options.get("--model") ?? null,
+            agent: resolved.agent.reference,
+            agentVersion: resolved.agent.version,
+            agentDigest: resolved.agent.digest,
+            agentInstructionsDigest: resolved.instructionsDigest,
+          },
+          instructions: resolved.instructions,
+        };
+        if (chosen.contextProfile) {
+          usedProfiles = [chosen.contextProfile];
+        }
+      }
+    }
     const anchor = contextAnchor(operation, options, repo, config);
     const query = contextQuery(operation, options, repo);
     const snapshots = await Promise.all(
-      profiles.map(async (profile) => {
+      usedProfiles.map(async (profile) => {
         if (profile === undefined) return undefined;
         try {
           return await resolveContext(
@@ -141,7 +403,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
     const contextSnapshot = resolved.length === 1 ? resolved[0] : undefined;
     const contextSnapshots = resolved.length > 1 ? resolved : undefined;
     const contextProfileArtifacts =
-      profiles.length > 1
+      usedProfiles.length > 1
         ? snapshots
             .filter((snapshot) => snapshot !== undefined)
             .map((snapshot) =>
@@ -158,7 +420,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
     return ok(
       service.openReview(
         operation,
-        required(options, operation === "spec-review" ? "--init" : "--wave"),
+        subjectId,
         selection.source,
         selection.instructions,
         contextSnapshot,

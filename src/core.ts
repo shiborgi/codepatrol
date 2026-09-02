@@ -14,6 +14,7 @@ export function createState(projectId: string): State {
     works: [],
     tasks: [],
     proposals: [],
+    routing: { schemaVersion: 1, decisions: [], observations: [], aggregates: [] },
   };
 }
 

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { z } from "zod";
 import { AGENT_REFERENCE, EXACT_AGENT_VERSION } from "./agent-protocol.js";
 import { CodePatrolError, ERROR_CODES, zodIssues } from "./errors.js";
+import { operations } from "./schemas.js";
 
 const agentSelectionSchema = z
   .object({
@@ -63,8 +64,30 @@ const contextProfileSchema = z
       })
       .strict()
       .optional(),
+    supportedOperations: z.array(z.enum(operations)).max(20).optional(),
+    routingTags: z.array(z.string().min(1).max(32)).max(20).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((profile, context) => {
+    if (profile.routingTags) {
+      const unique = new Set(profile.routingTags);
+      if (unique.size !== profile.routingTags.length) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "routingTags must be unique",
+        });
+      }
+    }
+    if (profile.supportedOperations) {
+      const unique = new Set(profile.supportedOperations);
+      if (unique.size !== profile.supportedOperations.length) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "supportedOperations must be unique",
+        });
+      }
+    }
+  });
 
 const contextDefaultsSchema = z
   .object({
@@ -133,6 +156,19 @@ const configSchema = z
             pushMain: z.boolean().default(false),
           })
           .strict(),
+      })
+      .strict()
+      .optional(),
+    orchestrator: z
+      .object({
+        policyVersion: z.string().min(1).max(16),
+        uncertaintyThreshold: z.number().int().positive().max(1000),
+        maxFanout: z.number().int().min(2).max(5),
+        minObservations: z.number().int().min(0).max(10000),
+        explorationInterval: z.number().int().positive().max(10000),
+        coldStartPrior: z.number().int().min(0).max(100),
+        maxObservations: z.number().int().positive().max(100000),
+        maxAggregates: z.number().int().positive().max(10000),
       })
       .strict()
       .optional(),

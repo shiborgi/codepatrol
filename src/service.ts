@@ -276,6 +276,36 @@ export class CodePatrolService {
           }
           state.tasks.push(task);
         }
+        if (!state.routing) {
+          (state as any).routing = {
+            schemaVersion: 1,
+            decisions: [],
+            observations: [],
+            aggregates: [],
+          };
+        }
+        const routing = (state as any).routing;
+        const decId = `DEC-${randomUUID()}`;
+        const dummyDigest = "sha256:" + "0".repeat(64);
+        routing.decisions.push({
+          decisionId: decId,
+          operation,
+          policyVersion: "1",
+          policyDigest: dummyDigest,
+          taskFeatureDigest: dummyDigest,
+          taskClass: "general",
+          memoryDigest: dummyDigest,
+          eligibleRoutes: [],
+          scoreComponents: [],
+          selectedRoutes: [],
+          uncertainty: 0,
+          fanoutReason: "explicit",
+          overrideMode: "none",
+          createdAt: this.ctx.now().toISOString(),
+        });
+        for (const t of state.tasks.slice(-selections.length)) {
+          (t as any).routingDecisionId = decId;
+        }
         return allocatedTaskIds;
       });
       return { tasks: taskIds.map((taskId) => this.showTask(taskId)) };
@@ -356,6 +386,34 @@ export class CodePatrolService {
       state.tasks.push(task);
       round.status = "reviewing";
       round.reviewTaskId = taskId;
+      if (!state.routing) {
+        (state as any).routing = {
+          schemaVersion: 1,
+          decisions: [],
+          observations: [],
+          aggregates: [],
+        };
+      }
+      const routing = (state as any).routing;
+      const decId = `DEC-${randomUUID()}`;
+      const dummyDigest2 = "sha256:" + "0".repeat(64);
+      routing.decisions.push({
+        decisionId: decId,
+        operation,
+        policyVersion: "1",
+        policyDigest: dummyDigest2,
+        taskFeatureDigest: dummyDigest2,
+        taskClass: "general",
+        memoryDigest: dummyDigest2,
+        eligibleRoutes: [],
+        scoreComponents: [],
+        selectedRoutes: [],
+        uncertainty: 0,
+        fanoutReason: "explicit",
+        overrideMode: "none",
+        createdAt: this.ctx.now().toISOString(),
+      });
+      (task as any).routingDecisionId = decId;
     });
     if (operation === "build-review") this.prepareBuildReview(taskId);
     return this.showTask(taskId);
@@ -947,6 +1005,7 @@ function createTask(
     failure: null,
     createdAt: ctx.now().toISOString(),
     finishedAt: null,
+    routingDecisionId: (seed as { routingDecisionId?: string }).routingDecisionId,
   };
 }
 
