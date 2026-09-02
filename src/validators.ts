@@ -136,7 +136,8 @@ export function validateContextComparison(
         selectedContextProfile?: string;
       }
     | undefined;
-  if (artifacts.length <= 1) {
+  const uniqueProfiles = [...new Set(artifacts.map((artifact) => artifact.profile))];
+  if (uniqueProfiles.length <= 1) {
     assertDomain(
       comparison === undefined,
       ERROR_CODES.INVALID_RESULT,
@@ -152,7 +153,7 @@ export function validateContextComparison(
   const verdicts = comparison.verdicts ?? [];
   assertExactSet(
     verdicts.map((entry) => entry.profile as string),
-    artifacts.map((artifact) => artifact.profile),
+    uniqueProfiles,
     "CONTEXT_COMPARISON_MISMATCH",
   );
   if (comparison.selectedContextProfile !== undefined) {

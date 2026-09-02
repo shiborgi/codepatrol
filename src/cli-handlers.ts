@@ -12,7 +12,13 @@ import {
   resolveContext,
   unavailableContextProfileArtifact,
 } from "./context-provider.js";
-import type { Operation, ProducerOperation, ReviewOperation, Source } from "./core.js";
+import type {
+  Operation,
+  ProducerOperation,
+  ReviewOperation,
+  Source,
+  State,
+} from "./core.js";
 import { usage } from "./errors.js";
 import { type ExecutionDescriptor, executionDescriptorSchema } from "./execution.js";
 import { type Repository, STATE_REF } from "./git.js";
@@ -26,6 +32,11 @@ import {
   selectRoutesForFanout,
 } from "./orchestrator.js";
 import { syncGitHub } from "./remote.js";
+import {
+  attemptIsTerminal,
+  attemptsAgree,
+  isValidStoredAttempt,
+} from "./review-orchestration.js";
 import type { RunContext } from "./run-context.js";
 import { getInit, getWave, getWork } from "./selectors.js";
 import type { CodePatrolService } from "./service.js";
@@ -272,6 +283,42 @@ export const handlers: Record<Handler, DispatchHandler> = {
       options,
       operation === "spec-review" ? "--init" : "--wave",
     );
+    const live = repo.readState().state;
+    const latestRound =
+      operation === "spec-review"
+        ? getInit(live, subjectId).specRounds.at(-1)
+        : operation === "plan-review"
+          ? getWave(live, subjectId).planRounds.at(-1)
+          : getWave(live, subjectId).buildRounds.at(-1);
+    if (
+      latestRound?.status === "reviewing" &&
+      (latestRound.reviewAttemptIds ?? []).length > 0 &&
+      !latestRound.reviewTaskId
+    ) {
+      const attempts = live.tasks.filter((task) =>
+        (latestRound.reviewAttemptIds ?? []).includes(task.id),
+      );
+      const arbOpen = live.tasks.some(
+        (task) =>
+          task.id === latestRound.arbitrationTaskId &&
+          ["preparing", "open", "blocked"].includes(task.status),
+      );
+      if (attempts.every(attemptIsTerminal) && !arbOpen) {
+        const valid = attempts.filter((task) => isValidStoredAttempt(live, task));
+        const minValid = config.orchestrator?.minValidAttempts ?? 1;
+        if (valid.length >= minValid && !attemptsAgree(valid)) {
+          const retry = await reviewAgent(config, operation, options, ctx);
+          return ok(
+            service.openArbitration(
+              operation,
+              subjectId,
+              retry.source,
+              retry.instructions,
+            ),
+          );
+        }
+      }
+    }
     let selection = await reviewAgent(config, operation, options, ctx);
     let usedProfiles = contextProfiles(config, operation, options);
     if (
@@ -337,7 +384,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
         });
       }
       const mem = (state as any).routing || emptyMemory();
-      const { ranked } = rankRoutes(
+      const { ranked, confidence } = rankRoutes(
         eligible.length
           ? eligible
           : [
@@ -353,6 +400,66 @@ export const handlers: Record<Handler, DispatchHandler> = {
         orch,
         mem.decisions.length,
       );
+      const uncertain = confidence < orch.uncertaintyThreshold && ranked.length >= 2;
+      if (uncertain) {
+        const { selected } = selectRoutesForFanout(ranked, true, orch.maxFanout, false);
+        const harness = required(options, "--harness");
+        const model = options.get("--model") ?? null;
+        const query = contextQuery(operation, options, repo);
+        const fanout: Array<{
+          source: Source;
+          agentInstructions?: string;
+          contextSnapshot?: ContextSnapshot;
+          contextProfileArtifacts?: ReturnType<typeof contextProfileArtifact>[];
+        }> = [];
+        for (const sel of selected) {
+          const resolved = await resolveAgent(
+            config.agentCatalog!,
+            { reference: sel.agent.reference, version: sel.agent.version },
+            ctx,
+          );
+          const source: Source = {
+            harness,
+            model,
+            agent: resolved.agent.reference,
+            agentVersion: resolved.agent.version,
+            agentDigest: resolved.agent.digest,
+            agentInstructionsDigest: resolved.instructionsDigest,
+          };
+          let contextSnapshot: ContextSnapshot | undefined;
+          let contextProfileArtifacts:
+            | ReturnType<typeof contextProfileArtifact>[]
+            | undefined;
+          if (sel.contextProfile && operation === "build-review") {
+            contextProfileArtifacts = await proposalContextArtifacts(
+              config,
+              options,
+              repo,
+              ctx,
+              sel.contextProfile,
+              query,
+            );
+          } else if (sel.contextProfile) {
+            const anchor = contextAnchor(operation, options, repo, config);
+            contextSnapshot = await resolveContext(
+              config.contextPatrol,
+              sel.contextProfile,
+              repo.root,
+              query,
+              anchor.target,
+              anchor.baseline,
+              ctx,
+            );
+          }
+          fanout.push({
+            source,
+            agentInstructions: resolved.instructions,
+            contextSnapshot,
+            contextProfileArtifacts,
+          });
+        }
+        return ok(service.openReviewAttempts(operation, subjectId, fanout));
+      }
       const chosen = ranked[0];
       if (chosen) {
         const resolved = await resolveAgent(
@@ -479,6 +586,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
       subject,
       entries: timelineFromHistory(history, subject, initId ? "init" : "wave"),
       problems: problemsFromHistory(history, subject, initId ? "init" : "wave"),
+      routing: routingTrace(state, subject),
     });
   },
   doctor: ({ repo, config }) => {
@@ -799,6 +907,53 @@ function contextAnchor(
   };
 }
 
+async function proposalContextArtifacts(
+  config: ReturnType<typeof loadConfig>,
+  options: Map<string, string>,
+  repo: Repository,
+  ctx: RunContext,
+  profile: string,
+  query: string,
+): Promise<ReturnType<typeof contextProfileArtifact>[]> {
+  const state = repo.readState().state;
+  const wave = getWave(state, required(options, "--wave"));
+  const proposalIds = wave.buildRounds.at(-1)?.proposalIds ?? [];
+  const artifacts: ReturnType<typeof contextProfileArtifact>[] = [];
+  for (const proposalId of proposalIds) {
+    const candidate = state.proposals.find(
+      (proposal) => proposal.id === proposalId,
+    )?.candidate;
+    if (!candidate) continue;
+    try {
+      const snapshot = await resolveContext(
+        config.contextPatrol,
+        profile,
+        repo.root,
+        query,
+        { kind: "commit", oid: candidate.commit },
+        { oid: candidate.baseCommit },
+        ctx,
+      );
+      artifacts.push({ ...contextProfileArtifact(snapshot), proposalId });
+    } catch (error) {
+      artifacts.push({
+        ...unavailableContextProfileArtifact(
+          profile,
+          error instanceof Error && "code" in error
+            ? String(error.code)
+            : "CONTEXT_PROVIDER_FAILED",
+        ),
+        proposalId,
+      });
+    }
+  }
+  return artifacts.sort(
+    (left, right) =>
+      compareLexical(left.proposalId ?? "", right.proposalId ?? "") ||
+      compareLexical(left.profile, right.profile),
+  );
+}
+
 function contextProfiles(
   config: ReturnType<typeof loadConfig>,
   operation: Operation | "ship",
@@ -819,6 +974,57 @@ function contextProfiles(
 
 function compareLexical(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function routingTrace(state: State, subject: string): unknown {
+  const tasks = state.tasks.filter((task) => task.subjectId === subject);
+  const attempts = tasks
+    .filter((task) => task.reviewRole === "attempt")
+    .map((task) => ({
+      taskId: task.id,
+      operation: task.operation,
+      status: task.status,
+      route: `${task.source.agent ?? "none"}:${task.contextSnapshot?.profile ?? "none"}`,
+      selected:
+        state.tasks.some(
+          (other) =>
+            other.reviewRole === "arbitration" &&
+            other.result &&
+            (other.result as { selectedAttemptId?: string }).selectedAttemptId ===
+              task.id,
+        ) ||
+        (task.reviewRole === "attempt" &&
+          operationRound(state, task)?.reviewTaskId === task.id),
+    }));
+  const arbitration = tasks
+    .filter((task) => task.reviewRole === "arbitration")
+    .map((task) => ({
+      taskId: task.id,
+      status: task.status,
+      selectedAttemptId:
+        (task.result as { selectedAttemptId?: string } | null)?.selectedAttemptId ??
+        null,
+    }));
+  const aggregates = (state.routing?.aggregates ?? []).map((entry) => ({
+    routeKey: entry.routeKey,
+    observationCount: entry.observationCount,
+    selectedCount: entry.selectedCount,
+    effectivePassCount: entry.effectivePassCount,
+  }));
+  return { attempts, arbitration, aggregates };
+}
+
+function operationRound(
+  state: State,
+  task: { operation: string; subjectId: string; round: number },
+) {
+  if (task.operation === "spec-review")
+    return getInit(state, task.subjectId).specRounds.find(
+      (round) => round.number === task.round,
+    );
+  const wave = getWave(state, task.subjectId);
+  const rounds = task.operation === "plan-review" ? wave.planRounds : wave.buildRounds;
+  return rounds.find((round) => round.number === task.round);
 }
 
 async function readJson(ctx: RunContext, location: string): Promise<unknown> {

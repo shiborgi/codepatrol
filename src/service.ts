@@ -5,6 +5,7 @@ import { describeCommand } from "./command.js";
 import type { Config } from "./config.js";
 import type { ContextProfileArtifact, ContextSnapshot } from "./context-provider.js";
 import {
+  arbitrationResultSchema,
   type BuildReview,
   buildResultSchema,
   buildReviewSchema,
@@ -38,6 +39,22 @@ import {
   producerArtifactDigest,
 } from "./execution.js";
 import { filterSharedPathEntries, type StateStore } from "./git.js";
+import {
+  applySelectedAttempt,
+  attemptIsTerminal,
+  attemptsAgree,
+  attemptTasks,
+  evaluateAttempt,
+  isArbitrationTask,
+  isAuthoritativeReview,
+  isReviewAttempt,
+  isValidStoredAttempt,
+  pickConsensusAttempt,
+  recordReviewerOutcome,
+  recordShipOutcome,
+  reviewRoundFor,
+  validateArbitrationSelection,
+} from "./review-orchestration.js";
 import { type RunContext, systemRunContext } from "./run-context.js";
 import {
   buildReviewProtocol,
@@ -325,16 +342,24 @@ export class CodePatrolService {
     contextProfileArtifacts?: ContextProfileArtifact[],
   ): TaskEnvelope {
     const producer = producerFor(operation);
-    for (const profiles of [
-      contextSnapshots?.map((snapshot) => snapshot.profile),
-      contextProfileArtifacts?.map((artifact) => artifact.profile),
-    ]) {
-      if (profiles && new Set(profiles).size !== profiles.length) {
-        throw new CodePatrolError(
-          ERROR_CODES.CONTEXT_COMPARISON_MISMATCH,
-          "context profiles must be unique",
-        );
-      }
+    const snapshotProfiles = contextSnapshots?.map((snapshot) => snapshot.profile);
+    if (
+      snapshotProfiles &&
+      new Set(snapshotProfiles).size !== snapshotProfiles.length
+    ) {
+      throw new CodePatrolError(
+        ERROR_CODES.CONTEXT_COMPARISON_MISMATCH,
+        "context profiles must be unique",
+      );
+    }
+    const artifactKeys = contextProfileArtifacts?.map(
+      (artifact) => `${artifact.proposalId ?? ""}:${artifact.profile}`,
+    );
+    if (artifactKeys && new Set(artifactKeys).size !== artifactKeys.length) {
+      throw new CodePatrolError(
+        ERROR_CODES.CONTEXT_COMPARISON_MISMATCH,
+        "context artifacts must be unique by proposal and profile",
+      );
     }
     let taskId = "";
     this.repo.mutate(`${operation} open ${subjectId}`, (state) => {
@@ -381,6 +406,7 @@ export class CodePatrolService {
         contextProfileArtifacts,
         workspace: null,
         baseCommit: null,
+        reviewRole: "authoritative",
       });
       task.reviewProtocol = buildReviewProtocol(state, task, round.proposalIds);
       state.tasks.push(task);
@@ -483,6 +509,267 @@ export class CodePatrolService {
     return this.showTask(taskId);
   }
 
+  openReviewAttempts(
+    operation: ReviewOperation,
+    subjectId: string,
+    selections: Array<{
+      source: Source;
+      agentInstructions?: string;
+      contextSnapshot?: ContextSnapshot;
+      contextSnapshots?: ContextSnapshot[];
+      contextProfileArtifacts?: ContextProfileArtifact[];
+    }>,
+  ): { tasks: TaskEnvelope[] } {
+    const maxFanout = this.config.orchestrator?.maxFanout ?? 5;
+    assertDomain(
+      selections.length >= 2 && selections.length <= maxFanout,
+      ERROR_CODES.INVALID_TASK,
+      "review attempts require between two and maxFanout unique routes",
+    );
+    const producer = producerFor(operation);
+    const batchId = randomUUID();
+    const executions = selections.map((selection, index) => {
+      const descriptor = descriptorFromSource(
+        selection.source,
+        selection.contextSnapshot?.profile ?? null,
+      );
+      return {
+        schemaVersion: 1 as const,
+        descriptor,
+        configurationDigest: configurationDigest(descriptor),
+        batch: { id: batchId, ordinal: index + 1, total: selections.length },
+      };
+    });
+    const seen = new Set<string>();
+    for (const execution of executions) {
+      assertDomain(
+        !seen.has(execution.configurationDigest),
+        ERROR_CODES.DUPLICATE_EXECUTION,
+        "repeated canonical configuration digest in review attempt batch",
+      );
+      seen.add(execution.configurationDigest);
+    }
+    const taskIds: string[] = [];
+    this.repo.mutate(`${operation} open ${subjectId}`, (state) => {
+      const round = getOpenRound(
+        roundsFor(state, producer, subjectId),
+        producer,
+        subjectId,
+      );
+      assertDomain(
+        round.proposalIds.length > 0,
+        ERROR_CODES.NO_PROPOSALS,
+        "review requires at least one proposal",
+      );
+      assertDomain(
+        !state.tasks.some(
+          (task) =>
+            task.operation === producer &&
+            task.subjectId === subjectId &&
+            task.round === round.number &&
+            ["preparing", "open", "blocked"].includes(task.status),
+        ),
+        ERROR_CODES.PRODUCERS_ACTIVE,
+        "cancel or fail every open producer task before starting review",
+      );
+      assertDomain(
+        !state.tasks.some(
+          (task) =>
+            task.operation === operation &&
+            task.subjectId === subjectId &&
+            task.round === round.number &&
+            ["preparing", "open", "blocked"].includes(task.status),
+        ),
+        ERROR_CODES.REVIEW_EXISTS,
+        "this round already has an active review",
+      );
+      const protocolSeed = createTask(this.ctx, {
+        id: "TASK-protocol",
+        operation,
+        subjectId,
+        round: round.number,
+        status: "open",
+        source: selections[0]?.source as Source,
+        workspace: null,
+        baseCommit: null,
+      });
+      const protocol = buildReviewProtocol(state, protocolSeed, round.proposalIds);
+      const dummyDigest = `sha256:${"0".repeat(64)}`;
+      const decId = `DEC-${randomUUID()}`;
+      if (!state.routing) {
+        state.routing = {
+          schemaVersion: 1,
+          decisions: [],
+          observations: [],
+          aggregates: [],
+        };
+      }
+      state.routing.decisions.push({
+        decisionId: decId,
+        operation,
+        policyVersion: this.config.orchestrator?.policyVersion ?? "1",
+        policyDigest: dummyDigest,
+        taskFeatureDigest: dummyDigest,
+        taskClass: "general",
+        memoryDigest: dummyDigest,
+        eligibleRoutes: executions.map((entry) => entry.configurationDigest),
+        scoreComponents: [],
+        selectedRoutes: executions.map((entry) => entry.configurationDigest),
+        uncertainty: this.config.orchestrator?.uncertaintyThreshold ?? 1,
+        fanoutReason: "uncertain",
+        overrideMode: "none",
+        createdAt: this.ctx.now().toISOString(),
+      });
+      for (const [index, selection] of selections.entries()) {
+        const taskId = id("TASK");
+        taskIds.push(taskId);
+        const task = createTask(this.ctx, {
+          id: taskId,
+          operation,
+          subjectId,
+          round: round.number,
+          status: operation === "build-review" ? "preparing" : "open",
+          source: selection.source,
+          agentInstructions: selection.agentInstructions,
+          contextSnapshot: selection.contextSnapshot,
+          contextSnapshots: selection.contextSnapshots,
+          contextProfileArtifacts: selection.contextProfileArtifacts,
+          execution: executions[index],
+          workspace: null,
+          baseCommit: null,
+          reviewRole: "attempt",
+          reviewBatchId: batchId,
+          routingDecisionId: decId,
+        });
+        task.reviewProtocol = structuredClone(protocol);
+        state.tasks.push(task);
+      }
+      round.status = "reviewing";
+      round.reviewTaskId = null;
+      round.reviewAttemptIds = [...taskIds];
+      round.reviewBatchId = batchId;
+      round.arbitrationTaskId = null;
+    });
+    if (operation === "build-review") this.prepareBuildReviewBatch(taskIds);
+    return { tasks: taskIds.map((taskId) => this.showTask(taskId)) };
+  }
+
+  openArbitration(
+    operation: ReviewOperation,
+    subjectId: string,
+    source: Source,
+    agentInstructions?: string,
+  ): TaskEnvelope {
+    let taskId = "";
+    this.repo.mutate(`${operation} open ${subjectId}`, (state) => {
+      const producer = producerFor(operation);
+      const rounds = roundsFor(state, producer, subjectId);
+      const round = rounds.at(-1);
+      assertDomain(round, ERROR_CODES.NO_OPEN_ROUND, "round not found");
+      assertDomain(
+        round.status === "reviewing",
+        ERROR_CODES.ROUND_NOT_REVIEWING,
+        "round is not under review",
+      );
+      assertDomain(
+        (round.reviewAttemptIds ?? []).length > 0,
+        ERROR_CODES.INVALID_TASK,
+        "arbitration requires review attempts",
+      );
+      assertDomain(
+        !round.reviewTaskId,
+        ERROR_CODES.REVIEW_EXISTS,
+        "authoritative review already selected",
+      );
+      assertDomain(
+        !state.tasks.some(
+          (task) =>
+            task.id === round.arbitrationTaskId &&
+            ["preparing", "open", "blocked"].includes(task.status),
+        ),
+        ERROR_CODES.REVIEW_EXISTS,
+        "arbitration is already open",
+      );
+      const attempts = attemptTasks(state, round.reviewBatchId ?? undefined);
+      assertDomain(
+        attempts.every(attemptIsTerminal),
+        ERROR_CODES.PRODUCERS_ACTIVE,
+        "every review attempt must be terminal before arbitration",
+      );
+      const valid = attempts.filter((attempt) => isValidStoredAttempt(state, attempt));
+      const minValid = this.config.orchestrator?.minValidAttempts ?? 1;
+      assertDomain(
+        valid.length >= minValid,
+        ERROR_CODES.INSUFFICIENT_VALID_ATTEMPTS,
+        "not enough valid review attempts for arbitration",
+      );
+      assertDomain(
+        !attemptsAgree(valid),
+        ERROR_CODES.INVALID_TASK,
+        "agreeing attempts do not require arbitration",
+      );
+      taskId = id("TASK");
+      const template = attempts[0] as Task;
+      const task = createTask(this.ctx, {
+        id: taskId,
+        operation,
+        subjectId,
+        round: round.number,
+        status: "open",
+        source,
+        agentInstructions,
+        workspace: null,
+        baseCommit: null,
+        reviewRole: "arbitration",
+        reviewBatchId: round.reviewBatchId ?? template.reviewBatchId,
+        routingDecisionId: template.routingDecisionId,
+      });
+      task.reviewProtocol = structuredClone(template.reviewProtocol);
+      state.tasks.push(task);
+      round.arbitrationTaskId = taskId;
+    });
+    return this.showTask(taskId);
+  }
+
+  private prepareBuildReviewBatch(taskIds: string[]): void {
+    const snapshot = this.repo.readState().state;
+    const first = getTask(snapshot, taskIds[0] as string);
+    const round = getRound(roundsFor(snapshot, "build", first.subjectId), first.round);
+    const verification = round.proposalIds.map((proposalId) => {
+      const candidate = getProposal(snapshot, proposalId).candidate;
+      assertDomain(
+        candidate,
+        ERROR_CODES.INVALID_CANDIDATE,
+        `${proposalId} has no candidate`,
+      );
+      return verifyCandidate(
+        this.ctx,
+        this.repo,
+        proposalId,
+        candidate.commit,
+        this.config.verification.argv,
+        this.config.verification.timeoutMs,
+        this.config.verification.sharedPaths ?? [],
+      );
+    });
+    this.repo.mutate(`build-review prepared ${first.subjectId}`, (state) => {
+      for (const taskId of taskIds) {
+        const current = getTask(state, taskId);
+        current.verification = structuredClone(verification);
+        const infrastructure = verification.find(
+          (entry) => entry.status === "infrastructure-failed",
+        );
+        current.status = infrastructure ? "blocked" : "open";
+        current.failure = infrastructure
+          ? {
+              code: "INFRASTRUCTURE_FAILED",
+              message: infrastructure.output || "verification failed to start",
+            }
+          : null;
+      }
+    });
+  }
+
   submitTask(taskId: string, raw: unknown): TaskEnvelope {
     const before = getTask(this.repo.readState().state, taskId);
     assertDomain(
@@ -490,6 +777,7 @@ export class CodePatrolService {
       ERROR_CODES.TASK_NOT_OPEN,
       `${taskId} is not open`,
     );
+    if (isArbitrationTask(before)) return this.submitArbitration(taskId, raw);
     const parsed = parseResult(before.operation, raw);
     try {
       const mutation = this.repo.mutate(
@@ -585,19 +873,63 @@ export class CodePatrolService {
                   ? resultAs(parsed, buildReviewSchema)
                   : resultAs(parsed, documentReviewSchema);
               canonicalizeReview(review);
-              if (task.reviewProtocol) {
-                validateReviewScorecards(task, review);
-                const outcome = computeReviewOutcome(
+              try {
+                if (task.reviewProtocol) {
+                  validateReviewScorecards(task, review);
+                  const outcome = computeReviewOutcome(
+                    state,
+                    task,
+                    task.reviewProtocol,
+                    review.candidates.map((entry) => ({
+                      proposalId: entry.proposalId,
+                      status: entry.status,
+                      scorecard: entry.scorecard as CandidateScorecard,
+                    })),
+                  );
+                  task.reviewOutcome = outcome;
+                }
+              } catch (error) {
+                if (isReviewAttempt(task) && error instanceof CodePatrolError) {
+                  task.status = "failed";
+                  task.failure = { code: error.code, message: error.message };
+                  task.result = parsed as unknown as Record<string, unknown>;
+                  task.finishedAt = this.ctx.now().toISOString();
+                  recordReviewerOutcome(state, task, "invalid", {});
+                  this.resolveReviewBatch(
+                    state,
+                    task,
+                    refsToDelete,
+                    releasedBuildWorkspaces,
+                  );
+                  return { refsToDelete, releasedBuildWorkspaces, submittedCandidate };
+                }
+                throw error;
+              }
+              if (isReviewAttempt(task)) {
+                const gates = evaluateAttempt(state, task, review);
+                task.result = parsed as unknown as Record<string, unknown>;
+                task.status = "submitted";
+                task.finishedAt = this.ctx.now().toISOString();
+                if (!gates.valid) {
+                  recordReviewerOutcome(state, task, gates.reason ?? "invalid", {});
+                } else {
+                  recordReviewerOutcome(state, task, "submitted", {
+                    hostEffectivePass: task.reviewOutcome?.hardGateStatus === "passed",
+                    hostReviewScore: task.reviewOutcome?.candidates.find(
+                      (c) => c.rank === 1,
+                    )?.total,
+                    hostVerified: task.verification.every(
+                      (entry) => entry.status === "passed",
+                    ),
+                  });
+                }
+                this.resolveReviewBatch(
                   state,
                   task,
-                  task.reviewProtocol,
-                  review.candidates.map((entry) => ({
-                    proposalId: entry.proposalId,
-                    status: entry.status,
-                    scorecard: entry.scorecard as CandidateScorecard,
-                  })),
+                  refsToDelete,
+                  releasedBuildWorkspaces,
                 );
-                task.reviewOutcome = outcome;
+                return { refsToDelete, releasedBuildWorkspaces, submittedCandidate };
               }
               refsToDelete.push(
                 ...applyReview(state, task, review, this.config.maxReviewReturns),
@@ -645,6 +977,136 @@ export class CodePatrolService {
     }
   }
 
+  private submitArbitration(taskId: string, raw: unknown): TaskEnvelope {
+    const parsed = arbitrationResultSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new CodePatrolError(
+        ERROR_CODES.INVALID_RESULT,
+        "arbiter must select exactly one valid review-attempt id",
+        2,
+      );
+    }
+    const mutation = this.repo.mutate(
+      `${getTask(this.repo.readState().state, taskId).operation} submit ${getTask(this.repo.readState().state, taskId).subjectId}`,
+      (state) => {
+        const task = getTask(state, taskId);
+        assertDomain(
+          task.status === "open",
+          ERROR_CODES.TASK_NOT_OPEN,
+          `${taskId} is not open`,
+        );
+        const attempt = validateArbitrationSelection(state, task, parsed.data);
+        const refsToDelete = applySelectedAttempt(
+          state,
+          attempt,
+          this.config.maxReviewReturns,
+        );
+        const releasedBuildWorkspaces: string[] = [];
+        if (attempt.operation === "build-review") {
+          for (const producer of state.tasks) {
+            if (
+              producer.operation === "build" &&
+              producer.subjectId === attempt.subjectId &&
+              producer.round === attempt.round &&
+              producer.workspace
+            )
+              releasedBuildWorkspaces.push(producer.id);
+          }
+        }
+        task.status = "submitted";
+        task.result = parsed.data as unknown as Record<string, unknown>;
+        task.finishedAt = this.ctx.now().toISOString();
+        const batch = attemptTasks(state, task.reviewBatchId);
+        for (const entry of batch) {
+          recordReviewerOutcome(
+            state,
+            entry,
+            entry.id === attempt.id ? "selected" : "rejected",
+            {
+              hostSelected: entry.id === attempt.id,
+              hostReviewScore: entry.reviewOutcome?.candidates.find((c) => c.rank === 1)
+                ?.total,
+            },
+          );
+        }
+        recordReviewerOutcome(state, task, "arbitration", { hostSelected: true });
+        return { refsToDelete, releasedBuildWorkspaces };
+      },
+    );
+    for (const producerId of mutation.releasedBuildWorkspaces)
+      this.repo.removeWorkspace(producerId);
+    for (const candidate of mutation.refsToDelete) {
+      try {
+        this.repo.deleteRef(candidate.ref, candidate.commit);
+      } catch {}
+    }
+    return this.showTask(taskId);
+  }
+
+  private resolveReviewBatch(
+    state: State,
+    task: Task,
+    refsToDelete: Array<{ ref: string; commit: string }>,
+    releasedBuildWorkspaces: string[],
+  ): void {
+    const attempts = attemptTasks(state, task.reviewBatchId);
+    if (attempts.length === 0 || !attempts.every(attemptIsTerminal)) return;
+    const valid = attempts.filter((entry) => isValidStoredAttempt(state, entry));
+    const minValid = this.config.orchestrator?.minValidAttempts ?? 1;
+    if (valid.length < minValid) return;
+    if (attemptsAgree(valid)) {
+      const winner = pickConsensusAttempt(valid);
+      refsToDelete.push(
+        ...applySelectedAttempt(state, winner, this.config.maxReviewReturns),
+      );
+      for (const entry of attempts) {
+        recordReviewerOutcome(
+          state,
+          entry,
+          entry.id === winner.id ? "selected" : "agreement",
+          {
+            hostSelected: entry.id === winner.id,
+            hostReviewScore: entry.reviewOutcome?.candidates.find((c) => c.rank === 1)
+              ?.total,
+          },
+        );
+      }
+      if (winner.operation === "build-review") {
+        for (const producer of state.tasks) {
+          if (
+            producer.operation === "build" &&
+            producer.subjectId === winner.subjectId &&
+            producer.round === winner.round &&
+            producer.workspace
+          )
+            releasedBuildWorkspaces.push(producer.id);
+        }
+      }
+      return;
+    }
+    const round = reviewRoundFor(state, task);
+    if (round.arbitrationTaskId) return;
+    const template = attempts[0] as Task;
+    const arbId = id("TASK");
+    const arbitration = createTask(this.ctx, {
+      id: arbId,
+      operation: task.operation,
+      subjectId: task.subjectId,
+      round: task.round,
+      status: "open",
+      source: template.source,
+      agentInstructions: template.agentInstructions,
+      workspace: null,
+      baseCommit: null,
+      reviewRole: "arbitration",
+      reviewBatchId: template.reviewBatchId,
+      routingDecisionId: template.routingDecisionId,
+    });
+    arbitration.reviewProtocol = structuredClone(template.reviewProtocol);
+    state.tasks.push(arbitration);
+    round.arbitrationTaskId = arbId;
+  }
+
   cancelTask(taskId: string): TaskEnvelope {
     return this.terminateTask(taskId, "cancelled");
   }
@@ -669,7 +1131,7 @@ export class CodePatrolService {
           "task is already terminal",
         );
         workspace = task.workspace;
-        if (!isProducer(task.operation)) {
+        if (!isProducer(task.operation) && isAuthoritativeReview(task)) {
           const round = getRound(
             roundsFor(state, producerFor(task.operation), task.subjectId),
             task.round,
@@ -677,12 +1139,20 @@ export class CodePatrolService {
           round.status = "open";
           round.reviewTaskId = null;
         }
+        if (isArbitrationTask(task)) {
+          const round = reviewRoundFor(state, task);
+          round.arbitrationTaskId = null;
+        }
         task.status = status;
         task.failure =
           status === "failed"
             ? { code: "EXECUTOR_FAILED", message: message as string }
             : null;
         task.finishedAt = this.ctx.now().toISOString();
+        if (isReviewAttempt(task)) {
+          recordReviewerOutcome(state, task, status);
+          this.resolveReviewBatch(state, task, [], []);
+        }
       },
     );
     if (workspace) this.repo.removeWorkspace(taskId);
@@ -761,7 +1231,8 @@ export class CodePatrolService {
         task.operation === "build-review" &&
         task.subjectId === waveId &&
         task.status === "submitted" &&
-        task.reviewOutcome,
+        task.reviewOutcome &&
+        isAuthoritativeReview(task),
     );
     return {
       waveId,
@@ -856,6 +1327,7 @@ export class CodePatrolService {
           candidate.commit,
           `ship rollback ${waveId}`,
         );
+      recordShipOutcome(next, waveId, decision);
       this.cleanupCandidateRefs(next, waveId);
       return { waveId, decision, commit: candidate.commit };
     });
@@ -974,6 +1446,9 @@ function createTask(
     execution?: ExecutionRecord;
     workspace: string | null;
     baseCommit: string | null;
+    reviewRole?: Task["reviewRole"];
+    reviewBatchId?: string;
+    routingDecisionId?: string;
   },
 ): Task {
   return {
@@ -1005,7 +1480,9 @@ function createTask(
     failure: null,
     createdAt: ctx.now().toISOString(),
     finishedAt: null,
-    routingDecisionId: (seed as { routingDecisionId?: string }).routingDecisionId,
+    ...(seed.routingDecisionId ? { routingDecisionId: seed.routingDecisionId } : {}),
+    ...(seed.reviewRole ? { reviewRole: seed.reviewRole } : {}),
+    ...(seed.reviewBatchId ? { reviewBatchId: seed.reviewBatchId } : {}),
   };
 }
 
@@ -1056,7 +1533,8 @@ function preserveWorkspace(state: State, task: Task): boolean {
       review.operation === "build-review" &&
       review.subjectId === task.subjectId &&
       review.round === task.round &&
-      review.status === "submitted",
+      review.status === "submitted" &&
+      isAuthoritativeReview(review),
   );
 }
 

@@ -78,6 +78,7 @@ export type ContextProfileArtifact = {
     omittedSymbols: number;
   };
   evidenceRefs: string[];
+  proposalId?: string;
   availability:
     | { status: "available" }
     | { status: "unavailable"; reason: ContextProfileUnavailableReason };

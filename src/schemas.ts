@@ -57,6 +57,7 @@ const contextProfileArtifactSchema = z
         })
         .strict(),
     ]),
+    proposalId: z.string().min(1).optional(),
   })
   .strict()
   .superRefine((artifact, context) => {
@@ -262,6 +263,13 @@ export const buildReviewSchema = documentReviewSchema.extend({
   ),
 });
 
+export const arbitrationResultSchema = z
+  .object({
+    selectedAttemptId: z.string().min(1),
+    rationale: z.string().min(1),
+  })
+  .strict();
+
 const rubricCategorySchema = z
   .object({ category: z.string().min(1), weight: z.number().int().positive() })
   .strict();
@@ -387,6 +395,8 @@ const taskSchema = z
     createdAt: z.string(),
     finishedAt: z.string().nullable(),
     routingDecisionId: z.string().optional(),
+    reviewRole: z.enum(["authoritative", "attempt", "arbitration"]).optional(),
+    reviewBatchId: z.string().min(1).optional(),
   })
   .strict()
   .superRefine((task, context) => {
@@ -465,6 +475,9 @@ const roundSchema = z
     proposalIds: z.array(z.string()),
     reviewTaskId: z.string().nullable(),
     selectedProposalId: z.string().nullable(),
+    reviewAttemptIds: z.array(z.string()).optional().default([]),
+    arbitrationTaskId: z.string().nullable().optional().default(null),
+    reviewBatchId: z.string().nullable().optional().default(null),
   })
   .strict();
 
@@ -617,6 +630,7 @@ export type PlanDocument = z.infer<typeof planDocumentSchema>;
 export type BuildResult = z.infer<typeof buildResultSchema>;
 export type DocumentReview = z.infer<typeof documentReviewSchema>;
 export type BuildReview = z.infer<typeof buildReviewSchema>;
+export type ArbitrationResult = z.infer<typeof arbitrationResultSchema>;
 export type ReviewProtocol = z.infer<typeof reviewProtocolSchema>;
 export type ReviewOutcome = z.infer<typeof reviewOutcomeSchema>;
 export type CandidateScorecard = z.infer<typeof candidateScorecardSchema>;

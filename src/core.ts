@@ -38,5 +38,8 @@ export function newRound(operation: ProducerOperation, number: number): Round {
     proposalIds: [],
     reviewTaskId: null,
     selectedProposalId: null,
+    reviewAttemptIds: [],
+    arbitrationTaskId: null,
+    reviewBatchId: null,
   };
 }

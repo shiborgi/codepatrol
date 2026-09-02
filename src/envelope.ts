@@ -7,6 +7,11 @@ import type {
   Task,
   TaskEnvelope,
 } from "./core.js";
+import {
+  arbitrationEnvelopeInput,
+  isArbitrationTask,
+  isAuthoritativeReview,
+} from "./review-orchestration.js";
 import { getInit, getProposal, getRound, getWave, getWork } from "./selectors.js";
 
 export function taskEnvelope(state: State, task: Task): TaskEnvelope {
@@ -42,6 +47,7 @@ function taskInput(state: State, task: Task): unknown {
   }
   if (task.operation === "spec-review") {
     const round = getRound(getInit(state, task.subjectId).specRounds, task.round);
+    if (isArbitrationTask(task)) return arbitrationEnvelopeInput(state, task);
     return {
       init: getInit(state, task.subjectId),
       proposals: proposals(state, round),
@@ -56,6 +62,7 @@ function taskInput(state: State, task: Task): unknown {
   }
   if (task.operation === "plan-review") {
     const round = getRound(wave.planRounds, task.round);
+    if (isArbitrationTask(task)) return arbitrationEnvelopeInput(state, task);
     return {
       wave,
       works,
@@ -78,6 +85,7 @@ function taskInput(state: State, task: Task): unknown {
     };
   }
   const round = getRound(wave.buildRounds, task.round);
+  if (isArbitrationTask(task)) return arbitrationEnvelopeInput(state, task);
   return {
     wave,
     works,
@@ -125,7 +133,8 @@ function reviews(state: State, subjectId: string, operation: ReviewOperation): T
       (task) =>
         task.subjectId === subjectId &&
         task.operation === operation &&
-        task.status === "submitted",
+        task.status === "submitted" &&
+        isAuthoritativeReview(task),
     )
     .map(taskWithoutInstructions);
 }
@@ -150,6 +159,8 @@ export function contractFor(operation: Operation, state?: State, task?: Task): s
     return "Submit a PlanDocument covering every Work and acceptance ID.";
   if (operation === "build")
     return "Commit a clean implementation in workspace and submit its Work summaries.";
+  if (task?.reviewRole === "arbitration")
+    return "Select exactly one valid review-attempt id and an evidence-based rationale. Do not rewrite a review.";
   const multiSuffix = multi
     ? " Report a contextComparison verdict for every supplied profile."
     : "";

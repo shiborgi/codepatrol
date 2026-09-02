@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
-import type { Source } from "../src/core.js";
+import type { Source, Task } from "../src/core.js";
 import {
   commitCandidate,
   fixture,
@@ -487,4 +487,103 @@ test("review envelope exposes the anonymized protocol and candidates first", () 
     { label: protocol.labels[proposalA] as string, proposalId: proposalA },
     { label: protocol.labels[proposalB] as string, proposalId: proposalB },
   ]);
+});
+
+test("review attempts fan out, seal the round, and arbitrate on disagreement", () => {
+  const { service } = fixture();
+  const init = service.createInit("Fanout", "Review attempts and arbitration");
+  const specTask = service.openProducer("spec", init.id, producer).task;
+  const specProposal = service.submitTask(specTask.id, spec("Fanout")).task
+    .proposalId as string;
+
+  const attemptA = service.openReviewAttempts("spec-review", init.id, [
+    { source: { ...reviewer, model: "model-a" } },
+    { source: { ...reviewer, model: "model-b" } },
+  ]);
+  assert.equal(attemptA.tasks.length, 2);
+  const round = (
+    service.show("init", init.id) as {
+      specRounds: Array<{
+        status: string;
+        reviewTaskId: string | null;
+        reviewAttemptIds: string[];
+      }>;
+    }
+  ).specRounds.at(-1) as {
+    status: string;
+    reviewTaskId: string | null;
+    reviewAttemptIds: string[];
+  };
+  assert.equal(round.status, "reviewing");
+  assert.equal(round.reviewTaskId, null);
+  assert.equal(round.reviewAttemptIds.length, 2);
+
+  const [t1, t2] = attemptA.tasks.map((entry) => entry.task) as [Task, Task];
+  service.submitTask(t1.id, {
+    decision: "approve",
+    selectedProposalId: specProposal,
+    summary: "A",
+    candidates: [
+      {
+        proposalId: specProposal,
+        status: "passed",
+        summary: "Pass",
+        scorecard: stageScorecardFor("spec-review", specProposal, 75),
+      },
+    ],
+  });
+  service.submitTask(t2.id, {
+    decision: "return",
+    summary: "B",
+    candidates: [
+      {
+        proposalId: specProposal,
+        status: "failed",
+        summary: "Fail",
+        scorecard: stageScorecardFor("spec-review", specProposal, 25),
+      },
+    ],
+  });
+  const after = (
+    service.show("init", init.id) as {
+      specRounds: Array<{
+        status: string;
+        reviewTaskId: string | null;
+        arbitrationTaskId: string | null;
+      }>;
+    }
+  ).specRounds.at(-1) as {
+    status: string;
+    reviewTaskId: string | null;
+    arbitrationTaskId: string | null;
+  };
+  assert.equal(after.status, "reviewing");
+  assert.equal(after.reviewTaskId, null);
+  assert.ok(after.arbitrationTaskId, "arbitration should open on disagreement");
+  const arb = service.showTask(after.arbitrationTaskId as string);
+  assert.equal(arb.task.reviewRole, "arbitration");
+  const input = arb.input as {
+    attempts: Array<{ attemptId: string; decision: string | null }>;
+  };
+  assert.equal(input.attempts.length, 2);
+  service.submitTask(after.arbitrationTaskId as string, {
+    selectedAttemptId: t1.id,
+    rationale: "A is host-valid and approves",
+  });
+  const final = (
+    service.show("init", init.id) as {
+      specRounds: Array<{
+        status: string;
+        reviewTaskId: string | null;
+        selectedProposalId: string | null;
+      }>;
+    }
+  ).specRounds.at(-1) as {
+    status: string;
+    reviewTaskId: string | null;
+    selectedProposalId: string | null;
+  };
+  assert.equal(final.status, "approved");
+  assert.equal(final.reviewTaskId, t1.id);
+  assert.equal(final.selectedProposalId, specProposal);
 });

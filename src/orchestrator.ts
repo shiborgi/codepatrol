@@ -29,6 +29,7 @@ export interface OrchestratorConfig {
   coldStartPrior: number;
   maxObservations: number;
   maxAggregates: number;
+  minValidAttempts?: number;
 }
 
 export interface RouteKey {
@@ -422,4 +423,34 @@ export function makeObservationKey(
   subjectId: string,
 ): string {
   return `${decisionId}:${routeKey}:${outcome}:${subjectId}`;
+}
+
+export function ensureRoutingMemory(state: { routing?: RoutingMemory }): RoutingMemory {
+  if (!state.routing) {
+    state.routing = emptyMemory();
+  }
+  return state.routing;
+}
+
+export function recordObservation(
+  mem: RoutingMemory,
+  observation: RoutingObservation,
+  operation: Operation,
+  taskClass: string,
+  maxObservations: number,
+  maxAggregates: number,
+  delta: Partial<RoutingAggregate> = { observationCount: 1 },
+): boolean {
+  if (
+    mem.observations.some(
+      (entry) => entry.observationKey === observation.observationKey,
+    )
+  )
+    return false;
+  mem.observations.push(observation);
+  upsertAggregate(mem, observation.routeKey, operation, taskClass, delta);
+  const compacted = compactMemory(mem, maxObservations, maxAggregates);
+  mem.observations = compacted.observations;
+  mem.aggregates = compacted.aggregates;
+  return true;
 }

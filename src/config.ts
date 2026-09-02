@@ -169,6 +169,7 @@ const configSchema = z
         coldStartPrior: z.number().int().min(0).max(100),
         maxObservations: z.number().int().positive().max(100000),
         maxAggregates: z.number().int().positive().max(10000),
+        minValidAttempts: z.number().int().min(1).max(5).default(1),
       })
       .strict()
       .optional(),
