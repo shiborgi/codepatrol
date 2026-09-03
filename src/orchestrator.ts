@@ -65,6 +65,8 @@ export interface RoutingDecision {
   createdAt: string;
 }
 
+export type RoutingDecisionInput = Omit<RoutingDecision, "decisionId" | "createdAt">;
+
 export interface RoutingObservation {
   observationKey: string;
   decisionId: string;
@@ -170,6 +172,32 @@ export async function loadAgentInventory(
   }
 }
 
+const TASK_CLASS_ALIASES: Record<string, string> = {
+  front: "frontend",
+  frontend: "frontend",
+  ui: "frontend",
+  interaction: "frontend",
+  ops: "operations",
+};
+
+const GENERIC_TASK_CLASSES = new Set([
+  "spec",
+  "spec-review",
+  "plan",
+  "plan-review",
+  "build",
+  "build-review",
+  "ship",
+  "review",
+  "implementation",
+  "minimal",
+]);
+
+function normalizeTaskClass(value: string): string {
+  const normalized = value.toLowerCase();
+  return TASK_CLASS_ALIASES[normalized] ?? normalized;
+}
+
 export function deriveTaskClass(
   subjectText: string,
   inventory: AgentInventoryEntry[],
@@ -179,26 +207,26 @@ export function deriveTaskClass(
     0,
     100,
   );
-  const candidates: string[] = [];
+  const normalizedTokens = new Set(tokens.map(normalizeTaskClass));
+  const candidates = new Set<string>();
   for (const inv of inventory) {
     for (const cap of inv.capabilities) {
-      if (tokens.includes(cap.toLowerCase())) candidates.push(cap.toLowerCase());
-    }
-    for (const op of inv.operations) {
-      if (tokens.includes(String(op).toLowerCase()))
-        candidates.push(String(op).toLowerCase());
+      const normalized = normalizeTaskClass(cap);
+      if (normalizedTokens.has(normalized) && !GENERIC_TASK_CLASSES.has(normalized))
+        candidates.add(normalized);
     }
   }
-  for (const [name, meta] of Object.entries(profiles)) {
+  for (const meta of Object.values(profiles)) {
     if (meta.routingTags) {
       for (const tag of meta.routingTags) {
-        if (tokens.includes(tag.toLowerCase())) candidates.push(tag.toLowerCase());
+        const normalized = normalizeTaskClass(tag);
+        if (normalizedTokens.has(normalized) && !GENERIC_TASK_CLASSES.has(normalized))
+          candidates.add(normalized);
       }
     }
   }
-  if (candidates.length === 0) return "general";
-  candidates.sort();
-  return candidates[0]!;
+  if (candidates.size === 0) return "general";
+  return [...candidates].sort()[0]!;
 }
 
 export function taskFeatureDigest(subjectText: string, taskClass: string): string {
@@ -236,6 +264,7 @@ export function rankRoutes(
     agent: { reference: string; version: string };
     contextProfile: string | null;
     tags: string[];
+    isDefault?: boolean;
   }>,
   taskClass: string,
   memory: RoutingMemory,
@@ -251,8 +280,13 @@ export function rankRoutes(
     const agg = memByKey.get(e.key);
     const obsCount = agg?.observationCount ?? 0;
     let capFit = 0;
-    if (taskClass !== "general" && e.tags.some((t) => t.toLowerCase() === taskClass))
+    if (
+      taskClass !== "general" &&
+      e.tags.some((t) => normalizeTaskClass(t) === taskClass)
+    )
       capFit = 10;
+    const defaultFallback =
+      taskClass === "general" && e.isDefault ? orch.uncertaintyThreshold + 1 : 0;
     let prior = 0;
     if (obsCount < orch.minObservations) prior = orch.coldStartPrior;
     let pass = 0,
@@ -263,8 +297,9 @@ export function rankRoutes(
       sel = agg.selectedCount;
       ver = agg.verifiedCount;
     }
-    const total = capFit + prior + pass + sel + ver;
+    const total = defaultFallback + capFit + prior + pass + sel + ver;
     const components: ScoreComponent[] = [
+      { name: "defaultFallback", value: defaultFallback },
       { name: "capabilityFit", value: capFit },
       { name: "coldStartPrior", value: prior },
       { name: "effectivePassCount", value: pass },

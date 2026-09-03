@@ -28,8 +28,10 @@ import {
   isOrchestratorEnabled,
   loadAgentInventory,
   makeRouteKey,
+  policyDigest,
   rankRoutes,
   selectRoutesForFanout,
+  taskFeatureDigest,
 } from "./orchestrator.js";
 import { syncGitHub } from "./remote.js";
 import {
@@ -40,6 +42,7 @@ import {
 import type { RunContext } from "./run-context.js";
 import { getInit, getWave, getWork } from "./selectors.js";
 import type { CodePatrolService } from "./service.js";
+import { digest, stableJson } from "./shared.js";
 import { doctorSignals, problemsFromHistory, timelineFromHistory } from "./trace.js";
 
 export type DispatchContext = {
@@ -145,6 +148,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
         agent: { reference: string; version: string };
         contextProfile: string | null;
         tags: string[];
+        isDefault?: boolean;
       }> = [];
       const defaultAgent = config.agentCatalog?.defaults?.[operation];
       const candidateAgents = inventory.filter((a) => a.operations.includes(operation));
@@ -154,7 +158,7 @@ export const handlers: Record<Handler, DispatchHandler> = {
         // legacy: only if default for op
         return config.contextPatrol?.defaults?.[operation] === _;
       });
-      if (defaultAgent) {
+      if (defaultAgent && operation !== "build") {
         // use default agent + compatible profiles
         const ag = { reference: defaultAgent.agent, version: defaultAgent.version };
         if (candidateProfiles.length === 0) {
@@ -184,10 +188,26 @@ export const handlers: Record<Handler, DispatchHandler> = {
           }
         }
       } else {
-        for (const a of candidateAgents) {
+        const routeAgents = [...candidateAgents];
+        if (
+          operation === "build" &&
+          defaultAgent &&
+          !routeAgents.some(
+            (a) =>
+              a.reference === defaultAgent.agent && a.version === defaultAgent.version,
+          )
+        ) {
+          routeAgents.push({
+            reference: defaultAgent.agent,
+            version: defaultAgent.version,
+            capabilities: [],
+            operations: ["build"],
+          });
+        }
+        for (const a of routeAgents) {
           const ag = { reference: a.reference, version: a.version };
           for (const [pname, pmeta] of candidateProfiles) {
-            const tags = (pmeta as any).routingTags || [];
+            const tags = [...a.capabilities, ...((pmeta as any).routingTags || [])];
             eligible.push({
               key: makeRouteKey({
                 agentRef: ag.reference,
@@ -197,6 +217,10 @@ export const handlers: Record<Handler, DispatchHandler> = {
               agent: ag,
               contextProfile: pname,
               tags,
+              isDefault:
+                !!defaultAgent &&
+                ag.reference === defaultAgent.agent &&
+                ag.version === defaultAgent.version,
             });
           }
           if (candidateProfiles.length === 0) {
@@ -209,12 +233,16 @@ export const handlers: Record<Handler, DispatchHandler> = {
               agent: ag,
               contextProfile: null,
               tags: a.capabilities,
+              isDefault:
+                !!defaultAgent &&
+                ag.reference === defaultAgent.agent &&
+                ag.version === defaultAgent.version,
             });
           }
         }
       }
       const mem = (state as any).routing || emptyMemory();
-      const { ranked, confidence } = rankRoutes(
+      const { ranked, confidence, memoryDigest } = rankRoutes(
         eligible,
         taskClass,
         mem,
@@ -228,6 +256,33 @@ export const handlers: Record<Handler, DispatchHandler> = {
         orch.maxFanout,
         false,
       );
+      const taskDigest = taskFeatureDigest(subjectText, taskClass);
+      const routeConfigDigest = `sha256:${digest(
+        stableJson({
+          orchestrator: orch,
+          routes: eligible.map(({ key, agent, contextProfile, tags, isDefault }) => ({
+            key,
+            agent,
+            contextProfile,
+            tags,
+            isDefault: !!isDefault,
+          })),
+        }),
+      )}`;
+      const routingDecision = {
+        operation,
+        policyVersion: orch.policyVersion,
+        policyDigest: policyDigest(orch.policyVersion, routeConfigDigest),
+        taskFeatureDigest: taskDigest,
+        taskClass,
+        memoryDigest,
+        eligibleRoutes: ranked.map((route) => route.key),
+        scoreComponents: ranked[0]?.components ?? [],
+        selectedRoutes: selected.map((route) => route.key),
+        uncertainty: confidence,
+        fanoutReason: reason,
+        overrideMode: "none" as const,
+      };
       // now resolve each
       const harness = required(options, "--harness");
       const model = options.get("--model") ?? null;
@@ -263,9 +318,16 @@ export const handlers: Record<Handler, DispatchHandler> = {
           contextSnapshot: ctxSnap,
         });
       }
-      // TODO: record decision into service open; for now open and let state update later
       return ok(
-        service.openProducers(operation, subjectId, selections, options.get("--from")),
+        service.openProducers(
+          operation,
+          subjectId,
+          selections,
+          options.get("--from"),
+          undefined,
+          undefined,
+          routingDecision,
+        ),
       );
     }
     const agents = await producerAgents(config, operation, options, ctx);

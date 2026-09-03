@@ -39,6 +39,7 @@ import {
   producerArtifactDigest,
 } from "./execution.js";
 import { filterSharedPathEntries, type StateStore } from "./git.js";
+import type { RoutingDecisionInput } from "./orchestrator.js";
 import {
   applySelectedAttempt,
   attemptIsTerminal,
@@ -138,6 +139,7 @@ export class CodePatrolService {
     seedProposalId?: string,
     contextSnapshot?: ContextSnapshot,
     descriptors?: ExecutionDescriptor[],
+    routingDecision?: RoutingDecisionInput,
   ): { tasks: TaskEnvelope[] } {
     assertDomain(
       selections.length > 0,
@@ -303,23 +305,30 @@ export class CodePatrolService {
         }
         const routing = (state as any).routing;
         const decId = `DEC-${randomUUID()}`;
-        const dummyDigest = "sha256:" + "0".repeat(64);
-        routing.decisions.push({
-          decisionId: decId,
-          operation,
-          policyVersion: "1",
-          policyDigest: dummyDigest,
-          taskFeatureDigest: dummyDigest,
-          taskClass: "general",
-          memoryDigest: dummyDigest,
-          eligibleRoutes: [],
-          scoreComponents: [],
-          selectedRoutes: [],
-          uncertainty: 0,
-          fanoutReason: "explicit",
-          overrideMode: "none",
-          createdAt: this.ctx.now().toISOString(),
-        });
+        routing.decisions.push(
+          routingDecision
+            ? {
+                ...routingDecision,
+                decisionId: decId,
+                createdAt: this.ctx.now().toISOString(),
+              }
+            : {
+                decisionId: decId,
+                operation,
+                policyVersion: "1",
+                policyDigest: "sha256:" + "0".repeat(64),
+                taskFeatureDigest: "sha256:" + "0".repeat(64),
+                taskClass: "general",
+                memoryDigest: "sha256:" + "0".repeat(64),
+                eligibleRoutes: [],
+                scoreComponents: [],
+                selectedRoutes: [],
+                uncertainty: 0,
+                fanoutReason: "explicit",
+                overrideMode: "none",
+                createdAt: this.ctx.now().toISOString(),
+              },
+        );
         for (const t of state.tasks.slice(-selections.length)) {
           (t as any).routingDecisionId = decId;
         }
