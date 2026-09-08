@@ -1,0 +1,103 @@
+name: family
+
+on:
+  workflow_dispatch:
+    inputs:
+      agentpatrol_ref:
+        description: AgentPatrol v1 commit, branch or tag
+        required: true
+        default: main
+      contextpatrol_ref:
+        description: ContextPatrol v1 commit, branch or tag
+        required: true
+        default: main
+      modelpatrol_ref:
+        description: ModelPatrol v1 commit, branch or tag
+        required: true
+        default: main
+      memorypatrol_ref:
+        description: MemoryPatrol v1 commit, branch or tag
+        required: true
+        default: main
+  workflow_call:
+    inputs:
+      agentpatrol_ref:
+        required: true
+        type: string
+      contextpatrol_ref:
+        required: true
+        type: string
+      modelpatrol_ref:
+        required: true
+        type: string
+      memorypatrol_ref:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: codepatrol
+      - uses: actions/checkout@v7
+        with:
+          repository: shiborgi/agentpatrol
+          ref: ${{ inputs.agentpatrol_ref }}
+          path: agentpatrol
+      - uses: actions/checkout@v7
+        with:
+          repository: shiborgi/contextpatrol
+          ref: ${{ inputs.contextpatrol_ref }}
+          path: contextpatrol
+      - uses: actions/checkout@v7
+        with:
+          repository: shiborgi/modelpatrol
+          ref: ${{ inputs.modelpatrol_ref }}
+          path: modelpatrol
+      - uses: actions/checkout@v7
+        with:
+          repository: shiborgi/memorypatrol
+          ref: ${{ inputs.memorypatrol_ref }}
+          path: memorypatrol
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            codepatrol/package-lock.json
+            agentpatrol/package-lock.json
+            contextpatrol/package-lock.json
+            modelpatrol/package-lock.json
+            memorypatrol/package-lock.json
+      - run: npm ci
+        working-directory: agentpatrol
+      - run: npm run verify
+        working-directory: agentpatrol
+      - run: npm ci
+        working-directory: contextpatrol
+      - run: npm run verify
+        working-directory: contextpatrol
+      - run: npm ci
+        working-directory: codepatrol
+      - run: npm run verify
+        working-directory: codepatrol
+      - run: npm ci
+        working-directory: modelpatrol
+      - run: npm run verify
+        working-directory: modelpatrol
+      - run: npm ci
+        working-directory: memorypatrol
+      - run: npm run verify
+        working-directory: memorypatrol
+      - run: npm run test:family
+        working-directory: codepatrol
