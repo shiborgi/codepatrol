@@ -9,6 +9,8 @@ export type ProcessOptions = {
   env?: NodeJS.ProcessEnv;
 };
 
+const STDERR_ERROR_TAIL = 2000;
+
 /** Execute exact argv. Both pipes and stdin are bounded; no shell or write retry. */
 export async function runProcess(
   argv: string[],
@@ -27,7 +29,8 @@ export async function runProcess(
       stdio: ["pipe", "pipe", "pipe"],
       env: options.env,
     });
-    const chunks: Buffer[] = [];
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
     let bytes = 0;
     let settled = false;
     let timer: ReturnType<typeof setTimeout>;
@@ -38,7 +41,8 @@ export async function runProcess(
       child.stdin.destroy();
       child.stdout.destroy();
       child.stderr.destroy();
-      chunks.length = 0;
+      stdout.length = 0;
+      stderr.length = 0;
       if (error) reject(error);
       else resolve(output);
     };
@@ -56,24 +60,26 @@ export async function runProcess(
       finish(error);
     };
     timer = setTimeout(() => stop(new Error("Process timed out")), limits.timeoutMs);
-    for (const pipe of [child.stdout, child.stderr]) {
-      pipe.on("data", (chunk: Buffer) => {
-        if (settled) return;
-        bytes += chunk.length;
-        if (bytes > limits.maxOutputBytes)
-          stop(new Error("Process output exceeds byte limit"));
-        else if (pipe === child.stdout) chunks.push(chunk);
-      });
-      pipe.on("error", stop);
-    }
+    const collect = (target: Buffer[], chunk: Buffer) => {
+      if (settled) return;
+      bytes += chunk.length;
+      if (bytes > limits.maxOutputBytes)
+        stop(new Error("Process output exceeds byte limit"));
+      else target.push(chunk);
+    };
+    child.stdout.on("data", (chunk: Buffer) => collect(stdout, chunk));
+    child.stderr.on("data", (chunk: Buffer) => collect(stderr, chunk));
+    for (const pipe of [child.stdout, child.stderr]) pipe.on("error", stop);
     child.on("error", stop);
     child.stdin.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code !== "EPIPE") stop(error);
     });
     child.on("close", (code, signal) => {
       if (settled) return;
-      if (code !== 0) finish(new Error(`Process exited ${code ?? signal}`));
-      else finish(undefined, Buffer.concat(chunks).toString("utf8"));
+      if (code !== 0) {
+        const tail = Buffer.concat(stderr).toString("utf8").slice(-STDERR_ERROR_TAIL);
+        finish(new Error(`Process exited ${code ?? signal}${tail ? `: ${tail}` : ""}`));
+      } else finish(undefined, Buffer.concat(stdout).toString("utf8"));
     });
     child.stdin.end(input);
   });

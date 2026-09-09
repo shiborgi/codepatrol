@@ -862,6 +862,43 @@ test("bounded RPC rejects timeout, excess pipes, exit, JSON, protocol and digest
     );
   }
   await assert.rejects(
+    rpc(command("nonzero"), { protocolVersion: "0.9" }, z.unknown(), options),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /^Process exited 7: executor diagnostic$/);
+      assert.equal(error.message.includes("stdout-must-not-appear"), false);
+      return true;
+    },
+  );
+  await assert.rejects(
+    runProcess([process.execPath, "-e", "process.exit(3)"], {
+      cwd: input.root,
+      limits: options.limits,
+    }),
+    /Process exited 3$/,
+  );
+  await assert.rejects(
+    runProcess(
+      [
+        process.execPath,
+        "-e",
+        "process.stderr.write('HEAD' + 'x'.repeat(2500) + 'TAIL-MARKER'); process.exit(1)",
+      ],
+      {
+        cwd: input.root,
+        limits: { timeoutMs: 1000, maxOutputBytes: 65_536 },
+      },
+    ),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /^Process exited 1:/);
+      assert.match(error.message, /TAIL-MARKER$/);
+      assert.equal(error.message.includes("HEAD"), false);
+      assert.equal(error.message.length, "Process exited 1: ".length + 2000);
+      return true;
+    },
+  );
+  await assert.rejects(
     runProcess(command("timeout"), {
       ...options,
       limits: { ...options.limits, timeoutMs: 50 },

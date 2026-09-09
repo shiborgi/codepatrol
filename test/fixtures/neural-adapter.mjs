@@ -31,7 +31,11 @@ if (mode === "stderr-overflow") {
   process.stderr.write("x".repeat(2048));
   process.exit(0);
 }
-if (mode === "nonzero") process.exit(7);
+if (mode === "nonzero") {
+  process.stdout.write("stdout-must-not-appear");
+  process.stderr.write("executor diagnostic");
+  process.exit(7);
+}
 if (mode === "malformed") {
   process.stdout.write("not json");
   process.exit(0);

@@ -14,6 +14,7 @@
 - Refresh context and artifact seeds before every stage while caching immutable agent resolutions.
 - Keep reviewer quality feedback unknown rather than learning approval bias.
 - Settle RPC timeout/overflow despite escaped descendants retaining inherited pipes.
+- Preserve a bounded stderr tail on trusted-process failures so stage errors remain diagnosable.
 - Rotate telemetry through owned random exclusive files with symlink checks.
 - Enforce aggregate plan/state budgets, bounded route alternatives and ContextPatrol input parity.
 
