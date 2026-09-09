@@ -74,6 +74,7 @@ test("ModelPatrol emits scoped headers without mutating parent environment or in
   const headers = JSON.parse(child?.MODELPATROL_HEADERS ?? "{}");
   assert.equal(headers["x-patrol-step"], "build");
   assert.equal(headers["x-patrol-profile"], "general,react");
+  assert.equal(headers["x-patrol-workspace"], input.workspace);
   assert.equal(headers["x-patrol-run-id"], input.runId);
   assert.equal(child?.MODELPATROL_MODEL, "auto");
   assert.deepEqual(parent, { MODELPATROL_API_KEY: "fixture-secret" });

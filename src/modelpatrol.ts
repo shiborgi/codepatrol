@@ -25,6 +25,7 @@ export function modelpatrolEnvironment(
     "x-patrol-profile": request.agent.profiles.join(",") || "general",
     "x-patrol-harness": gateway.harness,
     "x-patrol-project": gateway.project,
+    "x-patrol-workspace": request.workspace,
     "x-patrol-run-id": request.runId,
     "x-patrol-session-id": request.runId,
     "x-patrol-trace-id": `${request.runId}:${request.stage}`,

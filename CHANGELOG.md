@@ -2,6 +2,7 @@
 
 ## 1.0.0
 
+- Send the isolated stage worktree as `x-patrol-workspace` so ModelPatrol harnesses do not mutate the operator project.
 - Add a modular Pi executor and completion plugin integrated with the ModelPatrol provider extension.
 - Keep harness-specific code under `integrations/pi/` and accept only structured stage results.
 - Package the Pi extension globally with an interactive `/patrol` feature command, isolated from stage completion processes.

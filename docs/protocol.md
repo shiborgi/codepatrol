@@ -246,8 +246,8 @@ HTTP), `harness` (`opencode` or `pi`), required operator label `project`,
 `chat`) and `apiKeyEnv` (default `MODELPATROL_API_KEY`). At stage execution,
 CodePatrol injects `MODELPATROL_BASE_URL`, `MODELPATROL_MODEL`, `MODELPATROL_API`,
 `MODELPATROL_API_KEY_ENV` and JSON `MODELPATROL_HEADERS` into the trusted child
-process. Headers identify step, persona, profiles, harness, project, run,
-session and stage trace. Credentials are inherited, never included in the
+process. Headers identify step, persona, profiles, harness, project, isolated workspace,
+run, session and stage trace. Credentials are inherited, never included in the
 executor JSON. Missing configured credentials fail before executing the child.
 
 The trusted executor must load ModelPatrol's OpenCode plugin or Pi extension
