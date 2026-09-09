@@ -63,6 +63,27 @@ codepatrol telemetry summary --root /absolute/path/to/repository
 codepatrol remote sync --root /absolute/path/to/repository --dry-run
 ```
 
+For interactive use, install this checkout once as a global Pi package (or use
+`pi install npm:codepatrol@1.0.0` after publication):
+
+```bash
+pi install /absolute/path/to/codepatrol
+```
+
+Start Pi from the root of any clean, committed repository that has a valid
+`codepatrol.json`, with `MODELPATROL_API_KEY` already exported, then run:
+
+```text
+/patrol Implement the requested feature
+```
+
+The global extension exposes only this command in an interactive session. It
+starts the complete CodePatrol workflow for the current directory; each stage
+runs in its own fresh Pi process and receives only the stage-appropriate tools.
+Successful Ship ends at `awaiting-approval`, and changes remain in the retained
+detached worktree for inspection. The command never merges, commits, pushes,
+publishes or deploys.
+
 Keep the input outside the target repository or commit it before running. Plan
 can inspect dirty and non-Git directories. It calls the real catalog, obtains
 overview context, selects eligible routes, and resolves an agent and appropriate
@@ -97,9 +118,9 @@ the retained worktree and all actual release actions are separate responsibiliti
 
 ## Configuration
 
-The repository's portable `codepatrol.json` has no default executor. All fields
-are closed and v1-only; unknown keys are rejected. This example includes optional
-execution configuration with a placeholder name for your own trusted adapter:
+The repository's `codepatrol.json` uses the packaged Pi executor and the separately
+installed ModelPatrol Pi provider extension. All fields are closed and v1-only;
+unknown keys are rejected:
 
 ```json
 {
@@ -117,12 +138,25 @@ execution configuration with a placeholder name for your own trusted adapter:
     "store": "codepatrol",
     "budget": { "maxResults": 10, "maxBytes": 24000, "maxVisited": 500 }
   },
-  "executor": ["my-trusted-executor"],
-  "verification": ["npm", "test"],
-  "limits": { "timeoutMs": 120000, "maxOutputBytes": 1048576 },
+  "executor": ["codepatrol-pi-executor"],
+  "modelpatrol": {
+    "baseUrl": "http://127.0.0.1:4318",
+    "model": "auto",
+    "apiKeyEnv": "MODELPATROL_API_KEY",
+    "harness": "pi",
+    "api": "chat",
+    "project": "codepatrol"
+  },
+  "verification": ["npm", "run", "verify"],
+  "limits": { "timeoutMs": 900000, "maxOutputBytes": 1048576 },
   "telemetry": { "enabled": true }
 }
 ```
+
+The checked-in Pi configuration allows 15 minutes for each model stage or
+verification process. This remains below the protocol's one-hour ceiling and
+avoids treating a normal coding turn as a transport failure. Tune it explicitly
+for other executors; timeout never implies retry or resume.
 
 Provider defaults are exactly the PATH argv above. No arguments are implicitly
 appended, and no shell is used. During planning, commands run in the input root;
@@ -184,8 +218,13 @@ plan, preserving previously completed records.
 
 ## Trusted Executor
 
-An executor is an external adapter you provide, not an included model runtime.
-It reads one JSON object on stdin and returns one JSON object on stdout. Send
+An executor reads one JSON object on stdin and returns one JSON object on stdout.
+CodePatrol includes `codepatrol-pi-executor`, a trusted launcher that starts a
+fresh Pi process per stage, loads the modular CodePatrol completion plugin and
+ModelPatrol provider extension, restricts non-build stages to read-only tools,
+and derives usage from Pi events rather than model claims. Pi and ModelPatrol are
+installed and operated separately. The same Pi package registers `/patrol` only
+outside executor stages, preventing recursive workflow commands. Custom executors remain supported. Send
 diagnostics to stderr. See [protocol.md](docs/protocol.md). Requests contain
 `protocolVersion`, `runId`, `stage`, `task`, `workspace`, resolved `agent`, stage
 `context`, optional transient `memory`, and `previous` completed stage records. Each previous record includes
@@ -206,7 +245,9 @@ nonnegative `inputTokens`, `outputTokens`, and `costUsd`; missing values mean
 unknown, not zero. Artifact strings are advisory, never run; safe existing producer
 artifacts can be passed to the read-only context provider as bounded seeds.
 The adapter must perform the real work, restrict writes to its provided workspace,
-and never deploy or push. This is a trust requirement, not an OS sandbox.
+and never deploy or push. The packaged Pi plugin provides a protocol boundary and
+tool allowlist, not an OS sandbox; operators must still trust the configured Pi,
+ModelPatrol and extension installations.
 
 ## State And Learning
 

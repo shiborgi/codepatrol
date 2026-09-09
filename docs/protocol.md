@@ -145,7 +145,13 @@ limited to 16, plans to 8 MiB, and run state to 64 MiB.
 `paths` and optional `config` (a config file path). It resolves real providers and
 returns a proposed execution plan without pretending work was executed.
 `codepatrol run --input FILE` additionally invokes an explicitly configured
-executor. No default model, network access, or deployment is implied.
+executor. The package supplies `codepatrol-pi-executor`, but it is active only
+when named in configuration and requires separately installed Pi and ModelPatrol.
+When installed as a Pi package, CodePatrol also exposes `/patrol <feature>` in
+interactive sessions; the command submits the closed v1 run input for the current
+working directory. Executor stage processes receive the completion tool instead
+of the interactive command, preventing recursion. No default model, gateway
+lifecycle, credentials, merge, commit, push or deployment is implied.
 
 An executor command receives:
 
@@ -199,13 +205,25 @@ configuration. No implicit arguments are appended to configured commands.
     "store": "codepatrol",
     "budget": {"maxResults": 10, "maxBytes": 24000, "maxVisited": 500}
   },
-  "executor": ["my-trusted-executor"],
-  "verification": ["npm", "test"],
-  "limits": {"timeoutMs": 120000, "maxOutputBytes": 1048576},
+  "executor": ["codepatrol-pi-executor"],
+  "modelpatrol": {
+    "baseUrl": "http://127.0.0.1:4318",
+    "model": "auto",
+    "apiKeyEnv": "MODELPATROL_API_KEY",
+    "harness": "pi",
+    "api": "chat",
+    "project": "my-project"
+  },
+  "verification": ["npm", "run", "verify"],
+  "limits": {"timeoutMs": 900000, "maxOutputBytes": 1048576},
   "telemetry": {"enabled": true},
   "remote": {"github": {"repository": "owner/repository", "sync": "manual"}}
 }
 ```
+
+The Pi example uses a 15-minute per-process timeout because a complete coding
+stage can legitimately exceed the library's conservative two-minute default.
+Timeout still fails closed and never causes automatic replay.
 
 Providers default to these PATH commands. Executor and verification have no
 implicit defaults. Limits and telemetry have documented bounded defaults.
@@ -234,7 +252,12 @@ executor JSON. Missing configured credentials fail before executing the child.
 
 The trusted executor must load ModelPatrol's OpenCode plugin or Pi extension
 and preserve that environment. It must still produce the existing executor
-response; a raw harness CLI is not a Patrol executor. Use a fresh harness
+response; a raw harness CLI is not a Patrol executor. The packaged
+`codepatrol-pi-executor` performs this translation through the modular
+`codepatrol/pi` completion plugin and ModelPatrol's resolved `modelpatrol/pi`
+provider extension. It accepts exactly one completion result, uses exact-JSON
+fallback only for providers without tool calls, and replaces model-supplied usage
+with structured Pi event usage. Use a fresh harness
 process per stage, not a shared server with stale stage metadata. ModelPatrol
 selects only compatible models and owns its own accounting. It cannot grant
 approvals or override verification/release gates. No sibling-source imports or

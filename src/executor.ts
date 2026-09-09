@@ -30,7 +30,7 @@ export const executorRequestSchema = z
   })
   .strict();
 export type ExecutorRequest = z.infer<typeof executorRequestSchema>;
-const executorResponseSchema = executorResultSchema
+export const executorResponseSchema = executorResultSchema
   .extend({
     memories: z.array(memoryCandidateSchema).max(10).optional(),
   })

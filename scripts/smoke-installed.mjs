@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -25,10 +25,21 @@ try {
       "--ignore-scripts",
       "--pack-destination",
       directory,
+      "--cache",
+      join(directory, "cache"),
     ]),
   );
   assert.equal(artifact.version, "1.0.0");
   assert.ok(artifact.files.some((file) => file.path === "dist/src/index.d.ts"));
+  for (const path of [
+    "bin/codepatrol-pi-executor.js",
+    "dist/src/executors/pi.js",
+    "integrations/pi/index.mjs",
+  ])
+    assert.ok(
+      artifact.files.some((file) => file.path === path),
+      `${path} missing`,
+    );
   assert.ok(
     !artifact.files.some(
       (file) =>
@@ -43,9 +54,15 @@ try {
     "--ignore-scripts",
     "--no-audit",
     "--no-fund",
+    "--cache",
+    join(directory, "cache"),
     join(directory, artifact.filename),
   ]);
   const installed = join(directory, "node_modules/codepatrol");
+  const installedManifest = JSON.parse(
+    await readFile(join(installed, "package.json"), "utf8"),
+  );
+  assert.deepEqual(installedManifest.pi?.extensions, ["./integrations/pi/index.mjs"]);
   const exportsCheck = invoke(
     [
       process.execPath,
@@ -67,6 +84,18 @@ try {
   assert.match(
     invoke([join(directory, "node_modules/.bin/codepatrol"), "--version"]),
     /1\.0\.0/,
+  );
+  assert.equal(
+    invoke(
+      [
+        process.execPath,
+        "--input-type=module",
+        "-e",
+        "import extension from 'codepatrol/pi'; const commands=[]; const tools=[]; extension({registerCommand:(name)=>commands.push(name),registerTool:(tool)=>tools.push(tool.name)}); if(JSON.stringify({commands,tools}) !== JSON.stringify({commands:['patrol'],tools:[]})) process.exit(1)",
+      ],
+      directory,
+    ),
+    "",
   );
   process.stdout.write(
     "Installed package smoke: exports, declarations, npm binary, full lifecycle passed\n",

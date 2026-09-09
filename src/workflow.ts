@@ -23,6 +23,7 @@ import type { ExecutionPlan, PlannedStage, RunState, StageRecord } from "./domai
 import { executeStage, verifyBuild } from "./executor.js";
 import { syncRemote } from "./github-sync.js";
 import { recallMemory, rememberMemory } from "./memorypatrol.js";
+import { requireModelpatrolCredential } from "./modelpatrol.js";
 import { getCatalog, getContext, resolveAgent } from "./providers.js";
 import { selectRoute } from "./routing.js";
 import { runProcess } from "./rpc.js";
@@ -169,6 +170,7 @@ export async function run(raw: unknown, override?: Config): Promise<RunState> {
     throw new Error(
       "run requires explicit executor and verification commands; neither has a default",
     );
+  requireModelpatrolCredential(config);
   const git = (args: string[], cwd = input.root) =>
     runProcess(["git", ...args], { cwd, limits: config.limits });
   const top = await realpath((await git(["rev-parse", "--show-toplevel"])).trim());

@@ -6,6 +6,7 @@ export {
   type ExecutorRequest,
   executeStage,
   executorRequestSchema,
+  executorResponseSchema,
   type StageExecution,
   verifyBuild,
 } from "./executor.js";
@@ -20,7 +21,10 @@ export {
   recallMemory,
   rememberMemory,
 } from "./memorypatrol.js";
-export { modelpatrolEnvironment } from "./modelpatrol.js";
+export {
+  modelpatrolEnvironment,
+  requireModelpatrolCredential,
+} from "./modelpatrol.js";
 export {
   contextRequestFor,
   getCatalog,

@@ -6,6 +6,7 @@ import {
   type ExecutorRequest,
   executeStage,
   modelpatrolEnvironment,
+  requireModelpatrolCredential,
 } from "../src/index.js";
 
 function request(): ExecutorRequest {
@@ -78,6 +79,10 @@ test("ModelPatrol emits scoped headers without mutating parent environment or in
   assert.deepEqual(parent, { MODELPATROL_API_KEY: "fixture-secret" });
   assert(!JSON.stringify(input).includes("fixture-secret"));
   assert.throws(() => modelpatrolEnvironment(config, input, {}), /credential/);
+  assert.throws(
+    () => requireModelpatrolCredential(config, {}),
+    /MODELPATROL_API_KEY is missing/,
+  );
 });
 
 test("executeStage delivers ModelPatrol metadata through actual child process", async () => {

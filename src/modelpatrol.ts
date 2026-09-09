@@ -1,6 +1,15 @@
 import type { Config } from "./contracts.js";
 import type { ExecutorRequest } from "./executor.js";
 
+export function requireModelpatrolCredential(
+  config: Config,
+  environment: NodeJS.ProcessEnv = process.env,
+): void {
+  const gateway = config.modelpatrol;
+  if (gateway && !environment[gateway.apiKeyEnv])
+    throw new Error(`ModelPatrol gateway credential ${gateway.apiKeyEnv} is missing`);
+}
+
 /** Scoped to the stage process; credentials never enter executor JSON or durable state. */
 export function modelpatrolEnvironment(
   config: Config,
@@ -9,8 +18,7 @@ export function modelpatrolEnvironment(
 ): NodeJS.ProcessEnv | undefined {
   const gateway = config.modelpatrol;
   if (!gateway) return undefined;
-  if (!environment[gateway.apiKeyEnv])
-    throw new Error("ModelPatrol gateway credential is missing");
+  requireModelpatrolCredential(config, environment);
   const headers = {
     "x-patrol-step": request.stage,
     "x-patrol-agent": request.agent.persona,

@@ -15,6 +15,7 @@ state projection, not workflow authority.
 | `memorypatrol.ts` | Bounded local memory recall/remember protocol, digest checks, state exclusion |
 | `routing.ts` | Stage eligibility, task classification, stack matching, stable adaptive scores |
 | `executor.ts` | Trusted adapter request/result and objective verification |
+| `executors/pi.ts`, `integrations/pi/` | Pi launcher and structured stage-completion plugin |
 | `workflow.ts` | Ordered stages, worktree isolation, fail-closed gates and human approval |
 | `state.ts` | Exclusive lock and run reservation, atomic fsynced state, state validation |
 | `telemetry.ts` | Allowlisted optional JSONL, bounded sanitized history, feedback and summary |

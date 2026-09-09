@@ -2,6 +2,10 @@
 
 ## 1.0.0
 
+- Add a modular Pi executor and completion plugin integrated with the ModelPatrol provider extension.
+- Keep harness-specific code under `integrations/pi/` and accept only structured stage results.
+- Package the Pi extension globally with an interactive `/patrol` feature command, isolated from stage completion processes.
+
 - Integrate optional MemoryPatrol recall and successful-stage remember through
   closed Patrol Protocol 1.0 argv, without persisting memory in run state.
 
