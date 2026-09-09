@@ -16,7 +16,7 @@
   "executor": ["codepatrol-pi-executor"],
   "modelpatrol": {
     "baseUrl": "http://127.0.0.1:4318",
-    "model": "auto",
+    "model": "antigravity/coder",
     "apiKeyEnv": "MODELPATROL_API_KEY",
     "harness": "pi",
     "api": "chat",
