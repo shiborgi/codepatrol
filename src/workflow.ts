@@ -288,7 +288,12 @@ export async function run(raw: unknown, override?: Config): Promise<RunState> {
             tracking: input.tracking,
           });
           record.result = execution.result;
-          if (record.result.status !== "passed" || record.result.approved === false)
+          if (record.result.status !== "passed")
+            throw new Error(`Executor blocked ${stage}`);
+          if (
+            (stage.endsWith("-review") || stage === "ship") &&
+            record.result.approved === false
+          )
             throw new Error(`Executor blocked ${stage}`);
           if (stage === "build") {
             const verificationStart = performance.now();
@@ -377,7 +382,6 @@ export async function approve(options: {
           record.stage !== STAGES[index] ||
           record.status !== "passed" ||
           record.result?.status !== "passed" ||
-          record.result.approved === false ||
           (record.stage.endsWith("-review") && record.result.approved !== true),
       ) ||
       state.stages.find((record) => record.stage === "build")?.verification?.status !==
