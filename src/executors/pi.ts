@@ -13,6 +13,8 @@ import {
 const MAX_INPUT_BYTES = 8 * 1_048_576;
 const MAX_PI_BYTES = 8 * 1_048_576;
 const RESULT_TOOL = "codepatrol_result";
+const DIAGNOSTIC_TEXT = 500;
+const DIAGNOSTIC_ITEMS = 16;
 type ExecutorResponse = z.infer<typeof executorResponseSchema>;
 
 type CommandResult = {
@@ -112,17 +114,41 @@ function authoritativeUsage(value: unknown): ExecutorResponse["usage"] {
   return Object.values(result).some((item) => item !== undefined) ? result : undefined;
 }
 
+function collapseText(text: string, max = DIAGNOSTIC_TEXT): string {
+  const collapsed = text.replace(/\s+/g, " ").trim();
+  if (!collapsed) return "";
+  return collapsed.length <= max ? collapsed : collapsed.slice(-max);
+}
+
+function pushUnique(list: string[], value: unknown) {
+  if (typeof value !== "string" || !value || list.includes(value)) return;
+  if (list.length < DIAGNOSTIC_ITEMS) list.push(value);
+}
+
+function parseFailure(
+  reason: string,
+  events: string[],
+  tools: string[],
+  text?: string,
+): Error {
+  const parts = [
+    `events: ${events.length ? events.join(",") : "none"}`,
+    `tools: ${tools.length ? tools.join(",") : "none"}`,
+  ];
+  const collapsed = text ? collapseText(text) : "";
+  if (collapsed) parts.push(`text: ${collapsed}`);
+  return new Error(`${reason} (${parts.join("; ")})`);
+}
+
 function exactJson(text: string): unknown {
-  try {
-    return JSON.parse(text.trim());
-  } catch {
-    throw new Error("Pi did not submit an exact JSON CodePatrol result");
-  }
+  return JSON.parse(text.trim()) as unknown;
 }
 
 export function parsePiEvents(output: string): ExecutorResponse {
   const calls = new Map<string, unknown>();
   const completed: unknown[] = [];
+  const events: string[] = [];
+  const tools: string[] = [];
   let finalText: string | undefined;
   let usage: ExecutorResponse["usage"];
   for (const line of output.split("\n")) {
@@ -131,10 +157,16 @@ export function parsePiEvents(output: string): ExecutorResponse {
     try {
       event = JSON.parse(line) as Record<string, unknown>;
     } catch {
-      throw new Error("Pi returned malformed JSONL");
+      throw new Error(
+        `Pi returned malformed JSONL (line: ${collapseText(line) || "empty"})`,
+      );
     }
-    if (event.type === "tool_execution_start" && event.toolName === RESULT_TOOL)
-      calls.set(String(event.toolCallId), event.args);
+    pushUnique(events, event.type);
+    if (event.type === "tool_execution_start") {
+      pushUnique(tools, event.toolName);
+      if (event.toolName === RESULT_TOOL)
+        calls.set(String(event.toolCallId), event.args);
+    }
     if (event.type === "tool_execution_end" && event.toolName === RESULT_TOOL) {
       if (event.isError === true) throw new Error("Pi rejected its CodePatrol result");
       const result = calls.get(String(event.toolCallId));
@@ -150,9 +182,26 @@ export function parsePiEvents(output: string): ExecutorResponse {
   }
   if (completed.length > 1)
     throw new Error("Pi submitted more than one CodePatrol result");
-  const proposed = completed[0] ?? (finalText ? exactJson(finalText) : undefined);
+  let proposed = completed[0];
+  if (proposed === undefined && finalText) {
+    try {
+      proposed = exactJson(finalText);
+    } catch {
+      throw parseFailure(
+        "Pi did not submit an exact JSON CodePatrol result",
+        events,
+        tools,
+        finalText,
+      );
+    }
+  }
   if (!proposed || typeof proposed !== "object")
-    throw new Error("Pi did not submit a CodePatrol result");
+    throw parseFailure(
+      "Pi did not submit a CodePatrol result",
+      events,
+      tools,
+      finalText,
+    );
   const response = { ...(proposed as Record<string, unknown>) };
   delete response.usage;
   if (usage) response.usage = usage;
@@ -264,7 +313,14 @@ export async function runPiExecutor(
         input: piPrompt(request),
       },
     );
-    return parsePiEvents(result.stdout);
+    try {
+      return parsePiEvents(result.stdout);
+    } catch (error) {
+      const stderr = collapseText(result.stderr);
+      if (!stderr) throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`${message}; stderr: ${stderr}`);
+    }
   } finally {
     await rm(agentDirectory, { recursive: true, force: true });
   }

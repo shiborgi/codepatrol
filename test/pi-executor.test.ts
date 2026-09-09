@@ -108,7 +108,72 @@ test("Pi executor accepts an exact JSON fallback and fails closed on ambiguity",
       ),
     /exact JSON/,
   );
-  assert.throws(() => parsePiEvents("not-json"), /malformed JSONL/);
+  assert.throws(() => parsePiEvents("not-json"), /malformed JSONL \(line: not-json\)/);
+});
+
+test("Pi executor errors include bounded events, tools and assistant text", () => {
+  assert.throws(
+    () => parsePiEvents(""),
+    /Pi did not submit a CodePatrol result \(events: none; tools: none\)$/,
+  );
+  assert.throws(
+    () =>
+      parsePiEvents(
+        [
+          line({ type: "session", version: 3 }),
+          line({
+            type: "tool_execution_start",
+            toolCallId: "read-1",
+            toolName: "read",
+            args: { path: "README.md" },
+          }),
+          line({
+            type: "tool_execution_end",
+            toolCallId: "read-1",
+            toolName: "read",
+            isError: false,
+          }),
+          line({
+            type: "message_end",
+            message: {
+              role: "assistant",
+              content: [{ type: "text", text: "Here is a prose spec.\nNext steps." }],
+            },
+          }),
+        ].join("\n"),
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(
+        error.message,
+        /^Pi did not submit an exact JSON CodePatrol result \(events: session,tool_execution_start,tool_execution_end,message_end; tools: read; text: Here is a prose spec\. Next steps\.\)$/,
+      );
+      return true;
+    },
+  );
+  const long = `HEAD${"x".repeat(600)}TAIL-MARKER`;
+  assert.throws(
+    () =>
+      parsePiEvents(
+        line({
+          type: "message_end",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: `Result: ${long}` }],
+          },
+        }),
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /^Pi did not submit an exact JSON CodePatrol result/);
+      assert.match(error.message, /text: /);
+      assert.match(error.message, /TAIL-MARKER\)$/);
+      assert.equal(error.message.includes("HEAD"), false);
+      const text = error.message.slice(error.message.indexOf("text: ") + 6, -1);
+      assert.equal(text.length, 500);
+      return true;
+    },
+  );
 });
 
 test("Pi prompt grants writes only to build and preserves the closed request", () => {

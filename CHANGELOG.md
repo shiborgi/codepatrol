@@ -15,6 +15,7 @@
 - Keep reviewer quality feedback unknown rather than learning approval bias.
 - Settle RPC timeout/overflow despite escaped descendants retaining inherited pipes.
 - Preserve a bounded stderr tail on trusted-process failures so stage errors remain diagnosable.
+- Include a bounded Pi event/tool/text diagnostic when a stage result is missing or not exact JSON.
 - Rotate telemetry through owned random exclusive files with symlink checks.
 - Enforce aggregate plan/state budgets, bounded route alternatives and ContextPatrol input parity.
 
