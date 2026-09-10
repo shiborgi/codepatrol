@@ -40,6 +40,7 @@ export function modelpatrolEnvironment(
     MODELPATROL_MODEL: gateway.model,
     MODELPATROL_API: gateway.api,
     MODELPATROL_API_KEY_ENV: gateway.apiKeyEnv,
+    MODELPATROL_CONTEXT_WINDOW: "200000",
     MODELPATROL_HEADERS: JSON.stringify(headers),
   };
 }

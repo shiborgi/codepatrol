@@ -2,6 +2,7 @@
 
 ## 1.0.0
 
+- Declare a 200K Pi context window so later stages with previous-stage payloads remain eligible.
 - Send the isolated stage worktree as `x-patrol-workspace` so ModelPatrol harnesses do not mutate the operator project.
 - Add a modular Pi executor and completion plugin integrated with the ModelPatrol provider extension.
 - Keep harness-specific code under `integrations/pi/` and accept only structured stage results.
