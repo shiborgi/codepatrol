@@ -183,4 +183,5 @@ test("Pi prompt grants writes only to build and preserves the closed request", (
   assert.match(piPrompt(review), /read and analyze only; do not modify files/);
   assert.match(piPrompt(review), new RegExp(review.runId));
   assert.match(piPrompt(review), /codepatrol_result exactly once/);
+  assert.match(piPrompt(review), /empty assistant turn or prose/);
 });

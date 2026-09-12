@@ -22,13 +22,26 @@ import {
 import type { ExecutionPlan, PlannedStage, RunState, StageRecord } from "./domain.js";
 import { executeStage, verifyBuild } from "./executor.js";
 import { syncRemote } from "./github-sync.js";
-import { recallMemory, rememberMemory } from "./memorypatrol.js";
+import { recallMemory, recordHandoffMemory, rememberMemory } from "./memorypatrol.js";
 import { requireModelpatrolCredential } from "./modelpatrol.js";
+import { emitProgress, PROGRESS_PREFIX, parseProgressLine } from "./progress.js";
 import { getCatalog, getContext, resolveAgent } from "./providers.js";
 import { selectRoute } from "./routing.js";
 import { runProcess } from "./rpc.js";
 import { readRun, saveRun, stateDirectory, withStateLock } from "./state.js";
+
 import { readTelemetry, recordTelemetry, type TelemetryEvent } from "./telemetry.js";
+
+function relayProgress(line: string) {
+  const event = parseProgressLine(line);
+  if (!event) return;
+  if (process.env.CODEPATROL_PROGRESS === "jsonl") {
+    process.stderr.write(`${PROGRESS_PREFIX}${JSON.stringify(event)}\n`);
+    return;
+  }
+  const { protocolVersion: _, time: __, ...current } = event;
+  emitProgress(current);
+}
 
 async function prepare(raw: unknown, override?: Config) {
   const input = inputSchema.parse(raw);
@@ -231,6 +244,11 @@ export async function run(raw: unknown, override?: Config): Promise<RunState> {
       const workspaceInput = { ...input, root: workspace };
       state.plan = proposed;
       await persist();
+      emitProgress({
+        runId,
+        kind: "run_started",
+        message: `Running ${STAGES.length} stages in ${workspace}`,
+      });
       for (const stage of STAGES) {
         if (!state.plan) throw new Error("Missing execution plan");
         const catalog = await getCatalog(config, workspace);
@@ -272,22 +290,46 @@ export async function run(raw: unknown, override?: Config): Promise<RunState> {
         state.activeStage = stage;
         // Persist intent before invoking trusted, potentially non-idempotent code. Never replay it.
         await persist();
+        emitProgress({ runId, stage, kind: "stage_started" });
         const start = performance.now();
+        const heartbeat = setInterval(
+          () =>
+            emitProgress({
+              runId,
+              stage,
+              kind: "heartbeat",
+              elapsedMs: performance.now() - start,
+              message: "Waiting for the active stage",
+            }),
+          10_000,
+        );
+        heartbeat.unref();
         try {
           const memory = await recallMemory(config, input.root, input.task);
-          const execution = await executeStage(config, {
-            protocolVersion: "1.0",
+          const execution = await executeStage(
+            config,
+            {
+              protocolVersion: "1.0",
+              runId,
+              stage,
+              task: input.task,
+              workspace,
+              agent: planned.agent,
+              context: planned.context,
+              ...(memory ? { memory } : {}),
+              previous: state.stages,
+              tracking: input.tracking,
+            },
+            relayProgress,
+          );
+          record.result = execution.result;
+          emitProgress({
             runId,
             stage,
-            task: input.task,
-            workspace,
-            agent: planned.agent,
-            context: planned.context,
-            ...(memory ? { memory } : {}),
-            previous: state.stages,
-            tracking: input.tracking,
+            kind: "stage_decided",
+            elapsedMs: performance.now() - start,
+            message: execution.result.summary,
           });
-          record.result = execution.result;
           if (record.result.status !== "passed")
             throw new Error(`Executor blocked ${stage}`);
           if (
@@ -310,11 +352,34 @@ export async function run(raw: unknown, override?: Config): Promise<RunState> {
             }
           }
           await rememberMemory(config, input.root, execution.memories);
+          const decisionsMade = execution.memories
+            ?.filter((m) => m.category === "decision")
+            .map((m) => m.content);
+          const gotchasEncountered = execution.memories
+            ?.filter((m) => m.category === "gotcha")
+            .map((m) => m.content);
+          const previousStage = state.stages.at(-1)?.stage;
+          const stageIndex = state.plan.stages.findIndex((s) => s.stage === stage);
+          const nextPlanned =
+            stageIndex >= 0 ? state.plan.stages[stageIndex + 1] : undefined;
+          await recordHandoffMemory(config, input.root, {
+            stage,
+            previousStage,
+            runId,
+            summary: execution.result.summary,
+            decisionsMade,
+            gotchasEncountered,
+            artifacts: execution.result.artifacts,
+            nextActor: nextPlanned
+              ? `${nextPlanned.agent.persona} (${nextPlanned.stage})`
+              : undefined,
+          });
           record.status = "passed";
         } catch (error) {
           record.error =
             error instanceof Error ? error.message.slice(0, 4096) : "Stage failed";
         }
+        clearInterval(heartbeat);
         record.durationMs = performance.now() - start;
         state.stages.push(record);
         if (record.status === "failed") {
@@ -322,6 +387,13 @@ export async function run(raw: unknown, override?: Config): Promise<RunState> {
           state.error = record.error ?? `Stage ${stage} failed`;
         }
         await persist();
+        emitProgress({
+          runId,
+          stage,
+          kind: "stage_finished",
+          elapsedMs: record.durationMs,
+          message: record.error ?? record.status,
+        });
         const review = stage.endsWith("-review");
         if (review) {
           const producer = state.stages.at(-2);
@@ -358,6 +430,11 @@ export async function run(raw: unknown, override?: Config): Promise<RunState> {
       if (error instanceof PayloadLimitError) delete state.plan;
     }
     await persist();
+    emitProgress({
+      runId,
+      kind: "run_finished",
+      message: state.error ?? state.status,
+    });
     return state;
   });
   if (config.remote?.github.sync === "run-end")

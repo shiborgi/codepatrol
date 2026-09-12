@@ -1,5 +1,6 @@
 {
   "protocolVersion": "1.0",
+  "progress": { "detail": "safe" },
   "providers": {
     "agents": {
       "catalog": ["agentpatrol", "catalog"],
@@ -10,6 +11,7 @@
   "memorypatrol": {
     "recall": ["memorypatrol", "recall"],
     "remember": ["memorypatrol", "remember"],
+    "handoff": ["memorypatrol", "handoff"],
     "store": "codepatrol",
     "budget": { "maxResults": 10, "maxBytes": 24000, "maxVisited": 500 }
   },

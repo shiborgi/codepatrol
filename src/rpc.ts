@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { StringDecoder } from "node:string_decoder";
 import type { z } from "zod";
 import { argvSchema, type Config, limitsSchema } from "./contracts.js";
 
@@ -7,6 +8,7 @@ export type ProcessOptions = {
   limits: Config["limits"];
   input?: string;
   env?: NodeJS.ProcessEnv;
+  onStderrLine?: (line: string) => void;
 };
 
 const STDERR_ERROR_TAIL = 2000;
@@ -32,6 +34,8 @@ export async function runProcess(
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let bytes = 0;
+    const stderrDecoder = new StringDecoder("utf8");
+    let stderrLines = "";
     let settled = false;
     let timer: ReturnType<typeof setTimeout>;
     const finish = (error?: Error, output = "") => {
@@ -68,7 +72,17 @@ export async function runProcess(
       else target.push(chunk);
     };
     child.stdout.on("data", (chunk: Buffer) => collect(stdout, chunk));
-    child.stderr.on("data", (chunk: Buffer) => collect(stderr, chunk));
+    child.stderr.on("data", (chunk: Buffer) => {
+      collect(stderr, chunk);
+      if (!options.onStderrLine || settled) return;
+      stderrLines += stderrDecoder.write(chunk);
+      let newline = stderrLines.indexOf("\n");
+      while (newline >= 0) {
+        options.onStderrLine(stderrLines.slice(0, newline).replace(/\r$/, ""));
+        stderrLines = stderrLines.slice(newline + 1);
+        newline = stderrLines.indexOf("\n");
+      }
+    });
     for (const pipe of [child.stdout, child.stderr]) pipe.on("error", stop);
     child.on("error", stop);
     child.stdin.on("error", (error: NodeJS.ErrnoException) => {
@@ -76,6 +90,9 @@ export async function runProcess(
     });
     child.on("close", (code, signal) => {
       if (settled) return;
+      stderrLines += stderrDecoder.end();
+      if (options.onStderrLine && stderrLines)
+        options.onStderrLine(stderrLines.replace(/\r$/, ""));
       if (code !== 0) {
         const tail = Buffer.concat(stderr).toString("utf8").slice(-STDERR_ERROR_TAIL);
         finish(new Error(`Process exited ${code ?? signal}${tail ? `: ${tail}` : ""}`));

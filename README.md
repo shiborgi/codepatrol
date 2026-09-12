@@ -80,6 +80,8 @@ Start Pi from the root of any clean, committed repository that has a valid
 The global extension exposes only this command in an interactive session. It
 starts the complete CodePatrol workflow for the current directory; each stage
 runs in its own fresh Pi process and receives only the stage-appropriate tools.
+The footer is updated throughout the run and completed stage decisions appear in
+a bounded widget, including while a provider is still working.
 Successful Ship ends at `awaiting-approval`, and changes remain in the retained
 detached worktree for inspection. The command never merges, commits, pushes,
 publishes or deploys.
@@ -125,6 +127,7 @@ unknown keys are rejected:
 ```json
 {
   "protocolVersion": "1.0",
+  "progress": { "detail": "safe" },
   "providers": {
     "agents": {
       "catalog": ["agentpatrol", "catalog"],
@@ -157,6 +160,13 @@ The checked-in Pi configuration allows 15 minutes for each model stage or
 verification process. This remains below the protocol's one-hour ceiling and
 avoids treating a normal coding turn as a transport failure. Tune it explicitly
 for other executors; timeout never implies retry or resume.
+
+The default `safe` progress stream reports stage state, ten-second heartbeats,
+tool names and validated decisions on stderr while stdout remains the final JSON
+state. Set `progress.detail` to `verbose` to add bounded assistant-visible text
+deltas. Reasoning blocks, prompts, tool payloads and credentials are never emitted.
+The `/patrol` command renders these events in Pi and disables automatic stage
+retries so an ambiguous dispatch is not replayed.
 
 Provider defaults are exactly the PATH argv above. No arguments are implicitly
 appended, and no shell is used. During planning, commands run in the input root;

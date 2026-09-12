@@ -39,7 +39,11 @@ export type StageExecution = {
   result: z.infer<typeof executorResultSchema>;
   memories?: MemoryCandidate[];
 };
-export async function executeStage(config: Config, request: ExecutorRequest) {
+export async function executeStage(
+  config: Config,
+  request: ExecutorRequest,
+  onStderrLine?: (line: string) => void,
+) {
   if (!config.executor)
     throw new Error("run requires an explicit trusted executor command");
   executorRequestSchema.parse(request);
@@ -47,6 +51,7 @@ export async function executeStage(config: Config, request: ExecutorRequest) {
     cwd: request.workspace,
     limits: config.limits,
     env: modelpatrolEnvironment(config, request),
+    onStderrLine,
   });
   const { memories, ...result } = response;
   if (request.stage.endsWith("-review") && result.approved === undefined)

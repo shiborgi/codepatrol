@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import { fileURLToPath } from "node:url";
 import type { z } from "zod";
 import {
@@ -9,6 +10,7 @@ import {
   executorRequestSchema,
   executorResponseSchema,
 } from "../executor.js";
+import { emitProgress } from "../progress.js";
 
 const MAX_INPUT_BYTES = 8 * 1_048_576;
 const MAX_PI_BYTES = 8 * 1_048_576;
@@ -25,7 +27,12 @@ type CommandResult = {
 function runCommand(
   command: string,
   args: string[],
-  options: { cwd: string; env: NodeJS.ProcessEnv; input?: string },
+  options: {
+    cwd: string;
+    env: NodeJS.ProcessEnv;
+    input?: string;
+    onStdoutLine?: (line: string) => void;
+  },
 ): Promise<CommandResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -37,6 +44,8 @@ function runCommand(
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let bytes = 0;
+    const stdoutDecoder = new StringDecoder("utf8");
+    let stdoutLines = "";
     let settled = false;
     const finish = (error?: Error) => {
       if (settled) return;
@@ -55,10 +64,24 @@ function runCommand(
         finish(new Error("Pi output exceeds byte limit"));
       } else target.push(chunk);
     };
-    child.stdout.on("data", (chunk: Buffer) => collect(stdout, chunk));
+    child.stdout.on("data", (chunk: Buffer) => {
+      collect(stdout, chunk);
+      if (!options.onStdoutLine || settled) return;
+      stdoutLines += stdoutDecoder.write(chunk);
+      let newline = stdoutLines.indexOf("\n");
+      while (newline >= 0) {
+        options.onStdoutLine(stdoutLines.slice(0, newline).replace(/\r$/, ""));
+        stdoutLines = stdoutLines.slice(newline + 1);
+        newline = stdoutLines.indexOf("\n");
+      }
+    });
     child.stderr.on("data", (chunk: Buffer) => collect(stderr, chunk));
     child.once("error", finish);
     child.once("close", (code, signal) => {
+      if (options.onStdoutLine) {
+        stdoutLines += stdoutDecoder.end();
+        if (stdoutLines) options.onStdoutLine(stdoutLines.replace(/\r$/, ""));
+      }
       if (code !== 0)
         finish(
           new Error(
@@ -231,6 +254,7 @@ Stage policy:
 - Suggest only durable, non-sensitive memories. Do not include usage; the adapter derives it from Pi events.
 
 When finished, call codepatrol_result exactly once with the final result. If the provider cannot call tools, output that same object as exact JSON and no other text.
+An empty assistant turn or prose without codepatrol_result (or its exact-JSON fallback) is a failed stage.
 
 CodePatrol request:
 ${JSON.stringify(request)}`;
@@ -268,6 +292,22 @@ export async function runPiExecutor(
     throw new Error("The Pi executor requires CodePatrol ModelPatrol configuration");
   const agentDirectory = await mkdtemp(join(tmpdir(), "codepatrol-pi-"));
   try {
+    const timeoutMs = Number(environment.CODEPATROL_TIMEOUT_MS ?? 120_000);
+    await writeFile(
+      join(agentDirectory, "settings.json"),
+      JSON.stringify({
+        retry: {
+          enabled: false,
+          maxRetries: 0,
+          provider: {
+            timeoutMs:
+              Number.isSafeInteger(timeoutMs) && timeoutMs > 0 ? timeoutMs : 120_000,
+            maxRetries: 0,
+          },
+        },
+      }),
+      { mode: 0o600 },
+    );
     const modelpatrolExtension = await modelpatrolPiPath(
       environment,
       request.workspace,
@@ -279,6 +319,51 @@ export async function runPiExecutor(
       request.stage === "build"
         ? "read,bash,edit,write,grep,find,ls,codepatrol_result"
         : "read,grep,find,ls,codepatrol_result";
+    let verboseBytes = 0;
+    const progressFromPi = (line: string) => {
+      let event: Record<string, unknown>;
+      try {
+        event = JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        return;
+      }
+      if (event.type === "tool_execution_start") {
+        const tool = typeof event.toolName === "string" ? event.toolName : "tool";
+        if (tool !== RESULT_TOOL)
+          emitProgress({
+            runId: request.runId,
+            stage: request.stage,
+            kind: "activity",
+            message: `${tool} started`,
+          });
+      }
+      if (event.type === "auto_retry_start")
+        emitProgress({
+          runId: request.runId,
+          stage: request.stage,
+          kind: "activity",
+          message: "Provider retry started",
+        });
+      const update = event.assistantMessageEvent as
+        | { type?: unknown; delta?: unknown }
+        | undefined;
+      if (
+        environment.CODEPATROL_PROGRESS_DETAIL === "verbose" &&
+        event.type === "message_update" &&
+        update?.type === "text_delta" &&
+        typeof update.delta === "string" &&
+        verboseBytes < 65_536
+      ) {
+        const delta = update.delta.slice(0, 4096);
+        verboseBytes += Buffer.byteLength(delta);
+        emitProgress({
+          runId: request.runId,
+          stage: request.stage,
+          kind: "model_delta",
+          message: delta,
+        });
+      }
+    };
     const result = await runCommand(
       environment.CODEPATROL_PI_BIN ?? "pi",
       [
@@ -311,6 +396,7 @@ export async function runPiExecutor(
           PI_TELEMETRY: "0",
         },
         input: piPrompt(request),
+        onStdoutLine: progressFromPi,
       },
     );
     try {

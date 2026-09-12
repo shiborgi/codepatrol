@@ -26,6 +26,14 @@ export {
   requireModelpatrolCredential,
 } from "./modelpatrol.js";
 export {
+  emitProgress,
+  isProgressLine,
+  PROGRESS_PREFIX,
+  type ProgressEvent,
+  type ProgressKind,
+  parseProgressLine,
+} from "./progress.js";
+export {
   contextRequestFor,
   getCatalog,
   getContext,

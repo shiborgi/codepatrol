@@ -77,6 +77,9 @@ test("ModelPatrol emits scoped headers without mutating parent environment or in
   assert.equal(headers["x-patrol-workspace"], input.workspace);
   assert.equal(headers["x-patrol-run-id"], input.runId);
   assert.equal(child?.MODELPATROL_MODEL, "auto");
+  assert.equal(child?.CODEPATROL_PROGRESS, "jsonl");
+  assert.equal(child?.CODEPATROL_PROGRESS_DETAIL, "safe");
+  assert.equal(child?.CODEPATROL_TIMEOUT_MS, "120000");
   assert.deepEqual(parent, { MODELPATROL_API_KEY: "fixture-secret" });
   assert(!JSON.stringify(input).includes("fixture-secret"));
   assert.throws(() => modelpatrolEnvironment(config, input, {}), /credential/);
@@ -84,6 +87,38 @@ test("ModelPatrol emits scoped headers without mutating parent environment or in
     () => requireModelpatrolCredential(config, {}),
     /MODELPATROL_API_KEY is missing/,
   );
+});
+
+test("tracked build review scopes acceptance keys to the stage process", () => {
+  const config = configSchema.parse({
+    protocolVersion: "1.0",
+    progress: { detail: "verbose" },
+    modelpatrol: connection,
+  });
+  const input = {
+    ...request(),
+    stage: "build-review" as const,
+    tracking: {
+      init: { key: "init", title: "Init", brief: "Brief" },
+      wave: { key: "wave", title: "Wave" },
+      work: {
+        key: "work",
+        title: "Work",
+        acceptance: [
+          { key: "tests-pass", text: "Tests pass" },
+          { key: "streams", text: "Streaming works" },
+        ],
+      },
+    },
+  };
+  const child = modelpatrolEnvironment(config, input, {
+    MODELPATROL_API_KEY: "fixture-secret",
+  });
+  assert.equal(child?.CODEPATROL_PROGRESS_DETAIL, "verbose");
+  assert.deepEqual(JSON.parse(child?.CODEPATROL_ACCEPTANCE_KEYS ?? "[]"), [
+    "tests-pass",
+    "streams",
+  ]);
 });
 
 test("executeStage delivers ModelPatrol metadata through actual child process", async () => {

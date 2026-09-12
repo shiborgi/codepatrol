@@ -48,6 +48,7 @@ test("MemoryPatrol recalls canonical-root memory and persists executor-selected 
     memorypatrol: {
       recall: [process.execPath, adapter, "memory", "pass", "", trace],
       remember: [process.execPath, adapter, "memory", "pass", "", trace],
+      handoff: [process.execPath, adapter, "memory", "pass", "", trace],
     },
   });
   const state = await run(
@@ -61,10 +62,14 @@ test("MemoryPatrol recalls canonical-root memory and persists executor-selected 
     .split("\n")
     .map((line) => JSON.parse(line) as Record<string, unknown>);
   const memoryEvents = events.filter(
-    (event) => event.memory === "recall" || event.memory === "remember",
+    (event) =>
+      event.memory === "recall" ||
+      event.memory === "remember" ||
+      event.memory === "handoff",
   );
   assert.equal(memoryEvents.filter((event) => event.memory === "recall").length, 7);
   assert.equal(memoryEvents.filter((event) => event.memory === "remember").length, 1);
+  assert.equal(memoryEvents.filter((event) => event.memory === "handoff").length, 7);
   assert.ok(memoryEvents.every((event) => event.root === root));
   const execution = events.find((event) => event.mode === "execute") as {
     memory?: { protocolVersion?: string; store?: string };

@@ -42,3 +42,11 @@ The package switches capability by process context: interactive Pi receives only
 worktree at `awaiting-approval`. This configuration does not start the gateway,
 provide credentials, merge, commit, push, publish or deploy. Verification and
 review gates retain their existing semantics.
+
+`/patrol` consumes bounded progress events from CodePatrol stderr and updates the
+Pi status while each stage is running. ModelPatrol forwards the native Chat
+events available from Codex, Claude, OpenCode, Grok, Ollama and Antigravity;
+CodePatrol also emits a ten-second heartbeat during provider silence. Configure
+`progress.detail` as `safe` (default) or `verbose`. The stage Pi process disables
+automatic retry so an ambiguous or partially streamed executor dispatch is never
+replayed.

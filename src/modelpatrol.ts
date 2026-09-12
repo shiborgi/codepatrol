@@ -42,5 +42,15 @@ export function modelpatrolEnvironment(
     MODELPATROL_API_KEY_ENV: gateway.apiKeyEnv,
     MODELPATROL_CONTEXT_WINDOW: "1000000",
     MODELPATROL_HEADERS: JSON.stringify(headers),
+    CODEPATROL_PROGRESS: "jsonl",
+    CODEPATROL_PROGRESS_DETAIL: config.progress.detail,
+    CODEPATROL_TIMEOUT_MS: String(config.limits.timeoutMs),
+    ...(request.stage === "build-review" && request.tracking
+      ? {
+          CODEPATROL_ACCEPTANCE_KEYS: JSON.stringify(
+            request.tracking.work.acceptance.map((criterion) => criterion.key),
+          ),
+        }
+      : {}),
   };
 }

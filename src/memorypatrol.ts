@@ -20,6 +20,8 @@ const insightSchema = z
       "insight",
       "context",
       "general",
+      "gotcha",
+      "procedure",
     ]),
     importance: z.number().int().min(1).max(5),
     tags: z.array(z.string().min(1).max(128)).max(20),
@@ -137,4 +139,57 @@ export async function rememberMemory(
       }),
     );
   }
+}
+
+export const memoryHandoffSchema = z
+  .object({
+    protocolVersion: z.literal("1.0"),
+    store: idSchema,
+    id: z.string().uuid(),
+    stage: z.string().min(1).max(64),
+    path: z.string().min(1).max(1024),
+    digest: digestSchema,
+  })
+  .strict();
+export type MemoryHandoff = z.infer<typeof memoryHandoffSchema>;
+
+/** Record a structured stage handoff into MemoryPatrol wiki outside durable run state. */
+export async function recordHandoffMemory(
+  config: Config,
+  root: string,
+  record: {
+    stage: string;
+    previousStage?: string | undefined;
+    runId?: string | undefined;
+    summary: string;
+    decisionsMade?: string[] | undefined;
+    gotchasEncountered?: string[] | undefined;
+    pendingQuestions?: string[] | undefined;
+    artifacts?: string[] | undefined;
+    nextActor?: string | undefined;
+  },
+): Promise<MemoryHandoff | undefined> {
+  if (!config.memorypatrol) return undefined;
+  const memory = integration(config);
+  const request = {
+    protocolVersion: "1.0" as const,
+    root,
+    store: memory.store,
+    stage: record.stage,
+    ...(record.previousStage ? { previousStage: record.previousStage } : {}),
+    ...(record.runId ? { runId: record.runId } : {}),
+    summary: record.summary,
+    decisionsMade: [...new Set(record.decisionsMade ?? [])].sort(),
+    gotchasEncountered: [...new Set(record.gotchasEncountered ?? [])].sort(),
+    pendingQuestions: [...new Set(record.pendingQuestions ?? [])].sort(),
+    artifacts: [...new Set(record.artifacts ?? [])].sort(),
+    ...(record.nextActor ? { nextActor: record.nextActor } : {}),
+  };
+  boundedJson(request, config.limits.maxOutputBytes, "MemoryPatrol handoff request");
+  return validateDigest(
+    await rpc(memory.handoff, request, memoryHandoffSchema, {
+      cwd: root,
+      limits: config.limits,
+    }),
+  );
 }

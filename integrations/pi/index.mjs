@@ -1,19 +1,22 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { StringDecoder } from "node:string_decoder";
 import { Type } from "typebox";
 
 const MAX_COMMAND_OUTPUT_BYTES = 64 * 1_048_576 + 65_536;
+const PROGRESS_PREFIX = "CODEPATROL_EVENT ";
+const PROGRESS_KINDS = new Set([
+  "run_started",
+  "stage_started",
+  "heartbeat",
+  "activity",
+  "model_delta",
+  "stage_decided",
+  "stage_finished",
+  "run_finished",
+]);
 const packagedCli = fileURLToPath(
   new URL("../../bin/codepatrol.js", import.meta.url),
-);
-
-const acceptance = Type.Object(
-  {
-    key: Type.String({ minLength: 1, maxLength: 64 }),
-    status: Type.Union([Type.Literal("passed"), Type.Literal("failed")]),
-    summary: Type.String({ minLength: 1, maxLength: 100000 }),
-  },
-  { additionalProperties: false },
 );
 
 const memory = Type.Object(
@@ -47,7 +50,7 @@ export function featureRequest(root, task) {
 export function runFeature(
   root,
   task,
-  { env = process.env, cliPath = packagedCli } = {},
+  { env = process.env, cliPath = packagedCli, onProgress } = {},
 ) {
   const request = featureRequest(root, task);
   return new Promise((resolve, reject) => {
@@ -58,6 +61,8 @@ export function runFeature(
     });
     const stdout = [];
     const stderr = [];
+    const stderrDecoder = new StringDecoder("utf8");
+    let stderrLines = "";
     let size = 0;
     let settled = false;
     const fail = (error) => {
@@ -75,13 +80,46 @@ export function runFeature(
       target.push(chunk);
     };
     child.stdout.on("data", collect(stdout));
-    child.stderr.on("data", collect(stderr));
+    const progressLine = (line) => {
+      if (!line.startsWith(PROGRESS_PREFIX)) return;
+      try {
+        const event = JSON.parse(line.slice(PROGRESS_PREFIX.length));
+        if (
+          event?.protocolVersion === "1.0" &&
+          typeof event.runId === "string" &&
+          typeof event.kind === "string" &&
+          PROGRESS_KINDS.has(event.kind) &&
+          (event.message === undefined ||
+            (typeof event.message === "string" && event.message.length <= 4096))
+        )
+          onProgress?.(event);
+      } catch {
+        /* Malformed child diagnostics remain ordinary stderr. */
+      }
+    };
+    child.stderr.on("data", (chunk) => {
+      collect(stderr)(chunk);
+      stderrLines += stderrDecoder.write(chunk);
+      let newline = stderrLines.indexOf("\n");
+      while (newline >= 0) {
+        progressLine(stderrLines.slice(0, newline).replace(/\r$/, ""));
+        stderrLines = stderrLines.slice(newline + 1);
+        newline = stderrLines.indexOf("\n");
+      }
+    });
     child.on("error", fail);
     child.on("close", (exitCode) => {
       if (settled) return;
       settled = true;
+      stderrLines += stderrDecoder.end();
+      if (stderrLines) progressLine(stderrLines.replace(/\r$/, ""));
       const output = Buffer.concat(stdout).toString("utf8");
-      const diagnostics = Buffer.concat(stderr).toString("utf8").trim();
+      const diagnostics = Buffer.concat(stderr)
+        .toString("utf8")
+        .split("\n")
+        .filter((line) => !line.startsWith(PROGRESS_PREFIX))
+        .join("\n")
+        .trim();
       let state;
       try {
         state = JSON.parse(output);
@@ -104,10 +142,34 @@ function registerInteractiveCommand(pi) {
   pi.registerCommand("patrol", {
     description: "Run a complete CodePatrol feature workflow in this repository",
     handler: async (args, ctx) => {
+      const decisions = [];
       try {
         const request = featureRequest(ctx.cwd, args);
         ctx.ui.notify("CodePatrol workflow started", "info");
-        const { state } = await runFeature(request.root, request.task);
+        ctx.ui.setStatus("codepatrol", "CodePatrol: preparing workflow");
+        const { state } = await runFeature(request.root, request.task, {
+          env: { ...process.env, CODEPATROL_PROGRESS: "jsonl" },
+          onProgress: (event) => {
+            const stage = event.stage ? ` ${event.stage}` : "";
+            const elapsed = Number.isFinite(event.elapsedMs)
+              ? ` (${Math.round(event.elapsedMs / 1000)}s)`
+              : "";
+            ctx.ui.setStatus(
+              "codepatrol",
+              `CodePatrol:${stage} ${event.kind}${elapsed}`,
+            );
+            if (event.kind === "stage_decided" && event.message) {
+              decisions.push(`${event.stage}: ${event.message}`);
+              if (decisions.length > 6) decisions.shift();
+              ctx.ui.setWidget("codepatrol", decisions);
+            }
+            if (event.kind === "stage_finished")
+              ctx.ui.notify(
+                `${event.stage} ${event.message ?? "finished"}`,
+                event.message === "passed" ? "info" : "warning",
+              );
+          },
+        });
         const run = state?.runId ? ` (${state.runId})` : "";
         const status = state?.status ?? "unknown";
         ctx.ui.notify(
@@ -121,12 +183,62 @@ function registerInteractiveCommand(pi) {
           error instanceof Error ? error.message : "CodePatrol failed",
           "error",
         );
+      } finally {
+        ctx.ui.setStatus("codepatrol", undefined);
+        ctx.ui.setWidget("codepatrol", undefined);
       }
     },
   });
 }
 
-function registerStageResultTool(pi, stage) {
+function acceptanceKeys(environment) {
+  if (!environment.CODEPATROL_ACCEPTANCE_KEYS) return [];
+  const value = JSON.parse(environment.CODEPATROL_ACCEPTANCE_KEYS);
+  if (
+    !Array.isArray(value) ||
+    value.length > 100 ||
+    value.some(
+      (key) =>
+        typeof key !== "string" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(key),
+    ) ||
+    new Set(value).size !== value.length
+  )
+    throw new Error("Invalid CodePatrol acceptance keys");
+  return value;
+}
+
+function registerStageResultTool(pi, stage, environment = process.env) {
+  const keys = stage === "build-review" ? acceptanceKeys(environment) : [];
+  const approved = stage.endsWith("-review") || stage === "ship";
+  const properties = {
+    protocolVersion: Type.Literal("1.0"),
+    status: Type.Union([Type.Literal("passed"), Type.Literal("failed")]),
+    summary: Type.String({ minLength: 1, maxLength: 100000 }),
+    artifacts: Type.Array(Type.String({ maxLength: 4096 }), { maxItems: 1024 }),
+    ...(approved ? { approved: Type.Boolean() } : {}),
+    ...(keys.length
+      ? {
+          acceptance: Type.Array(
+            Type.Object(
+              {
+                key:
+                  keys.length === 1
+                    ? Type.Literal(keys[0])
+                    : Type.Union(keys.map((key) => Type.Literal(key))),
+                status: Type.Union([
+                  Type.Literal("passed"),
+                  Type.Literal("failed"),
+                ]),
+                summary: Type.String({ minLength: 1, maxLength: 100000 }),
+              },
+              { additionalProperties: false },
+            ),
+            { minItems: keys.length, maxItems: keys.length },
+          ),
+        }
+      : {}),
+    memories: Type.Optional(Type.Array(memory, { maxItems: 10 })),
+  };
   pi.registerTool({
     name: "codepatrol_result",
     label: "CodePatrol Result",
@@ -136,20 +248,7 @@ function registerStageResultTool(pi, stage) {
       "Call codepatrol_result exactly once, only after the active CodePatrol stage is complete.",
       "Never claim files, approval, acceptance, usage, or verification without direct evidence.",
     ],
-    parameters: Type.Object(
-      {
-        protocolVersion: Type.Literal("1.0"),
-        status: Type.Union([Type.Literal("passed"), Type.Literal("failed")]),
-        summary: Type.String({ minLength: 1, maxLength: 100000 }),
-        artifacts: Type.Array(Type.String({ maxLength: 4096 }), {
-          maxItems: 1024,
-        }),
-        approved: Type.Optional(Type.Boolean()),
-        acceptance: Type.Optional(Type.Array(acceptance, { maxItems: 100 })),
-        memories: Type.Optional(Type.Array(memory, { maxItems: 10 })),
-      },
-      { additionalProperties: false },
-    ),
+    parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, result) {
       return {
         content: [{ type: "text", text: "CodePatrol result accepted." }],

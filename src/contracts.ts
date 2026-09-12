@@ -111,6 +111,10 @@ export const limitsSchema = z
 export const configSchema = z
   .object({
     protocolVersion: version,
+    progress: z
+      .object({ detail: z.enum(["safe", "verbose"]).default("safe") })
+      .strict()
+      .default({}),
     providers: z
       .object({
         agents: z
@@ -129,6 +133,7 @@ export const configSchema = z
       .object({
         recall: argvSchema.default(["memorypatrol", "recall"]),
         remember: argvSchema.default(["memorypatrol", "remember"]),
+        handoff: argvSchema.default(["memorypatrol", "handoff"]),
         store: idSchema.default("codepatrol"),
         budget: z
           .object({
@@ -397,7 +402,16 @@ export const memoryCandidateSchema = z
       .max(8000)
       .refine((value) => value.trim().length > 0),
     category: z
-      .enum(["preference", "decision", "fact", "insight", "context", "general"])
+      .enum([
+        "preference",
+        "decision",
+        "fact",
+        "insight",
+        "context",
+        "general",
+        "gotcha",
+        "procedure",
+      ])
       .default("insight"),
     importance: z.number().int().min(1).max(5).default(3),
     tags: z.array(z.string().min(1).max(128)).max(20).default([]),

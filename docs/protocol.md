@@ -4,7 +4,11 @@ The Patrol packages are independently distributable Node.js 22.13+ tools. No pac
 imports source files from a sibling checkout. Provider commands are
 explicit argument arrays, executed without a shell. Each invocation reads one
 JSON object from stdin and writes one JSON object to stdout. Diagnostics go to
-stderr; invalid input or provider failure exits nonzero. Consumers reject any
+stderr; invalid input or provider failure exits nonzero. CodePatrol `run` emits
+human-readable progress when stderr is a TTY or `CODEPATROL_PROGRESS=1`. With
+`CODEPATROL_PROGRESS=jsonl`, each stderr line starts with `CODEPATROL_EVENT ` and
+contains a bounded Protocol 1.0 progress event. The final stdout remains one JSON
+object. Consumers reject any
 `protocolVersion` other than `1.0`, validate responses, and bound time and bytes.
 
 ## Ownership
@@ -192,6 +196,7 @@ configuration. No implicit arguments are appended to configured commands.
 ```json
 {
   "protocolVersion": "1.0",
+  "progress": {"detail": "safe"},
   "providers": {
     "agents": {
       "catalog": ["agentpatrol", "catalog"],
@@ -202,6 +207,7 @@ configuration. No implicit arguments are appended to configured commands.
   "memorypatrol": {
     "recall": ["memorypatrol", "recall"],
     "remember": ["memorypatrol", "remember"],
+    "handoff": ["memorypatrol", "handoff"],
     "store": "codepatrol",
     "budget": {"maxResults": 10, "maxBytes": 24000, "maxVisited": 500}
   },
@@ -225,18 +231,28 @@ The Pi example uses a 15-minute per-process timeout because a complete coding
 stage can legitimately exceed the library's conservative two-minute default.
 Timeout still fails closed and never causes automatic replay.
 
+`progress.detail` is `safe` by default and may be set to `verbose`. Safe progress
+contains stage state, elapsed time, tool names and validated stage summaries.
+Verbose progress additionally carries bounded assistant-visible text deltas; it
+never carries reasoning blocks, prompts, tool arguments/results or credentials.
+The Pi integration selects the JSONL stderr transport and refreshes its status and
+decision widget at runtime. A heartbeat is emitted every ten seconds while a stage
+is active.
+
 Providers default to these PATH commands. Executor and verification have no
 implicit defaults. Limits and telemetry have documented bounded defaults.
 
 ### Optional MemoryPatrol provider
 
-`memorypatrol` is a closed optional object. It contains exact `recall` and
-`remember` argv (defaulting to the installed MemoryPatrol commands), a lowercase
+`memorypatrol` is a closed optional object. It contains exact `recall`,
+`remember`, and `handoff` argv (defaulting to the installed MemoryPatrol commands), a lowercase
 named `store` (default `codepatrol`), and bounded recall `budget`. The recall
 budget's `maxBytes` cannot exceed CodePatrol's process output limit. Recall is
 run-stage-only; `plan` remains read-only and does not access memory. A configured
 memory command failure blocks execution. Its recall response and executor-proposed
 insights are transient and do not enter state, telemetry, or remote projection.
+After a passing stage, a generic checkpoint is persisted through `handoff`; this
+does not grant MemoryPatrol any workflow or approval authority.
 
 ### Optional ModelPatrol transport
 
@@ -245,7 +261,8 @@ HTTP), `harness` (`opencode` or `pi`), required operator label `project`,
 `model` (default `auto`), `api` (`chat`, `responses`, or `messages`, default
 `chat`) and `apiKeyEnv` (default `MODELPATROL_API_KEY`). At stage execution,
 CodePatrol injects `MODELPATROL_BASE_URL`, `MODELPATROL_MODEL`, `MODELPATROL_API`,
-`MODELPATROL_API_KEY_ENV` and JSON `MODELPATROL_HEADERS` into the trusted child
+`MODELPATROL_API_KEY_ENV`, the stage timeout/progress settings and JSON
+`MODELPATROL_HEADERS` into the trusted child
 process. Headers identify step, persona, profiles, harness, project, isolated workspace,
 run, session and stage trace. Credentials are inherited, never included in the
 executor JSON. Missing configured credentials fail before executing the child.

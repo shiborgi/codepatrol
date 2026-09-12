@@ -2,6 +2,8 @@
 
 ## 1.0.0
 
+- Stream bounded run, stage, heartbeat, activity and validated-decision events on stderr while preserving the final stdout state JSON; render them live in `/patrol` and keep verbose model deltas opt-in.
+- Disable Pi retries for trusted stages, align its provider timeout with CodePatrol, and generate stage-specific completion schemas for review approval and tracked acceptance.
 - Declare a 1M Pi context window so later stages with previous-stage payloads remain eligible.
 - Send the isolated stage worktree as `x-patrol-workspace` so ModelPatrol harnesses do not mutate the operator project.
 - Add a modular Pi executor and completion plugin integrated with the ModelPatrol provider extension.

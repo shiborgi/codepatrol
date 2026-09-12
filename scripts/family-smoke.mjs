@@ -4,6 +4,7 @@ import {
   access,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   realpath,
   rm,
@@ -151,7 +152,10 @@ if (mode === "execute") {
       );
       tarballs.push(join(temp, packed[0].filename));
       const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
-      for (const name of Object.keys(manifest.dependencies ?? {})) {
+      for (const name of [
+        ...Object.keys(manifest.dependencies ?? {}),
+        ...Object.keys(manifest.peerDependencies ?? {}),
+      ]) {
         const dependencyRoot = join(root, "node_modules", ...name.split("/"));
         const dependency = JSON.parse(
           await readFile(join(dependencyRoot, "package.json"), "utf8"),
@@ -356,6 +360,17 @@ if (mode === "execute") {
       recalled.insights.some((insight) =>
         insight.content.includes("isolated verified worktrees"),
       ),
+    );
+    const handoffFiles = await readdir(
+      join(main.root, ".memorypatrol/v1/wiki/handoffs"),
+    ).catch(() => []);
+    assert.ok(
+      handoffFiles.length >= 1,
+      "Handoff checkpoints should be persisted in wiki/handoffs/",
+    );
+    assert.ok(
+      handoffFiles.some((f) => f.startsWith("spec-")),
+      "Spec stage handoff checkpoint must exist",
     );
     assert.match(
       await readFile(join(main.root, "src/validation.ts"), "utf8"),

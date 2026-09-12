@@ -127,30 +127,41 @@ const activeSkills = [
 const catalogDigest = digest({ personas, profiles, skills: activeSkills });
 let response;
 if (mode === "memory") {
+  const memoryType = request.task ? "recall" : request.stage ? "handoff" : "remember";
   if (tracePath)
     await appendFile(
       tracePath,
-      `${JSON.stringify({ memory: request.task ? "recall" : "remember", root: request.root, store: request.store })}\n`,
+      `${JSON.stringify({ memory: memoryType, root: request.root, store: request.store, ...(request.stage ? { stage: request.stage } : {}) })}\n`,
     );
-  response = request.task
-    ? signed({
-        protocolVersion: "1.0",
-        store: request.store,
-        intent: "general",
-        insights: [],
-        diagnostics: [],
-        stats: { activeInsights: 0, selectedInsights: 0, truncated: false },
-      })
-    : signed({
-        protocolVersion: "1.0",
-        store: request.store,
-        id: "00000000-0000-4000-8000-000000000001",
-        action: "added",
-        edgesCreated: { temporal: 0, entity: 0, causal: 0, semantic: 0 },
-        candidates: [],
-        autoPrunedIds: [],
-        effectiveImportance: 1,
-      });
+  if (request.task) {
+    response = signed({
+      protocolVersion: "1.0",
+      store: request.store,
+      intent: "general",
+      insights: [],
+      diagnostics: [],
+      stats: { activeInsights: 0, selectedInsights: 0, truncated: false },
+    });
+  } else if (request.stage) {
+    response = signed({
+      protocolVersion: "1.0",
+      store: request.store,
+      id: "00000000-0000-4000-8000-000000000002",
+      stage: request.stage,
+      path: `.memorypatrol/v1/wiki/handoffs/${request.stage}-00000000-0000-4000-8000-000000000002.md`,
+    });
+  } else {
+    response = signed({
+      protocolVersion: "1.0",
+      store: request.store,
+      id: "00000000-0000-4000-8000-000000000001",
+      action: "added",
+      edgesCreated: { temporal: 0, entity: 0, causal: 0, semantic: 0 },
+      candidates: [],
+      autoPrunedIds: [],
+      effectiveImportance: 1,
+    });
+  }
 } else if (mode === "catalog")
   response = {
     protocolVersion: "1.0",
